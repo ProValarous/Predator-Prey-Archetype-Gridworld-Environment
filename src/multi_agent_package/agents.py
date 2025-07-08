@@ -21,23 +21,23 @@ class Agent(gym.Env):
         self.agent_type = agent_type
         self.agent_name = agent_name
 
-        self.observation_space = self._make_observation_space() # implement self._make_observation_space()
+        # self.observation_space = self._make_observation_space() # implement self._make_observation_space()
 
         # We have 4 actions, corresponding to "right", "up", "left", "down"
         self.action_space = self._make_action_space() # implement self._make_action_space()
 
-        self._action_to_direction = self._action_to_direction() # implement self._action_to_direction()
+        self._actions_to_directions = self._action_to_direction() # implement self._action_to_direction()
 
-        self._agent_location  = None
+        self._agent_location  = np.array([0, 0])
 
        
-    def _make_observation_space(self):
-        observation_space = spaces.Dict(
-                {
-                    "agent": spaces.Box(0, self.size - 1, shape=(2,), dtype=int)
-                }
-            )
-        return observation_space
+    # def _make_observation_space(self):
+    #     observation_space = spaces.Dict(
+    #             {
+    #                 "agent": spaces.Box(0, self.size - 1, shape=(2,), dtype=int)
+    #             }
+    #         )
+    #     return observation_space
 
     def _make_action_space(self):
         action_space = spaces.Discrete(4)
@@ -59,7 +59,7 @@ class Agent(gym.Env):
         return action_to_direction
     
 
-    def _get_obs(self,global_obs):
+    def _get_obs(self,global_obs=None):
         return { 'local' : self._agent_location,
                  'global' : global_obs}
 

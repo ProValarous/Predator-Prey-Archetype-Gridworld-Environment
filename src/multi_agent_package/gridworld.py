@@ -23,7 +23,7 @@ class GridWorldEnv(gym.Env):
         # self.observation_space = self._make_observation_space() # implement self._make_observation_space()
 
         # We have 4 actions, corresponding to "right", "up", "left", "down"
-        # self.action_space = self._make_action_space() # implement self._make_action_space()
+        self.action_space = self._make_action_space() # implement self._make_action_space()
 
         # self._action_to_direction = self._action_to_direction() # implement self._action_to_direction()
         self.agents = agents
@@ -60,9 +60,15 @@ class GridWorldEnv(gym.Env):
      
         return observation_space
 
-    # def _make_action_space(self):
+
+    # def action_space(self,agent):
+    #     agent._make_action_space()
     #     action_space = spaces.Discrete(4)
     #     return action_space
+    
+    def _make_action_space(self):
+        action_space = spaces.Discrete(4)
+        return action_space
     
 
     # def _action_to_direction(self):
@@ -71,6 +77,7 @@ class GridWorldEnv(gym.Env):
     #     the direction we will walk in if that action is taken.
     #     I.e. 0 corresponds to "right", 1 to "up" etc.
     #     """
+        
     #     action_to_direction = {
     #             0: np.array([1, 0]),
     #             1: np.array([0, 1]),
@@ -147,7 +154,7 @@ class GridWorldEnv(gym.Env):
         return obstacle_location
     
 
-    def _reward_system(self,agent_id,agent_location):
+    def _get_reward(self):
         # agent_win = np.array_equal(self.agents[agent_id]._agent_location, self.agents[agent_id]._target_location)
         # obstacle_hit = any(np.array_equal(self.agents[agent_id]._agent_location, arr) for arr in self._obstacle_location)
 
@@ -167,12 +174,29 @@ class GridWorldEnv(gym.Env):
         return reward
 
 
-    def step(self, action):
-        # Map the action (element of {0,1,2,3}) to the direction we walk in
+    def step(self, action: dict):
+       
         agents_mdp = {}
-        for agent_id in range(self.num_agents):
-            agents_mdp[agent_id] = self.agents[agent_id].step(action[agent_id])
+        # agents_mdp = {'obs': None, 'reward' : None, 'done': None, 'trunc' : None, 'info': None}
 
+        for ag in self.agents:
+            # Map the action (element of {0,1,2,3}) to the direction we walk in
+            direction = ag._actions_to_directions[action[ag.agent_name]]
+            
+            # We use `np.clip` to make sure we don't leave the grid
+            ag._agent_location = np.clip(
+                        ag._agent_location + direction, 0, self.size - 1
+                        )
+
+        agents_mdp['obs'] = self._get_obs()
+
+        agents_mdp['reward'] = self._get_reward()
+
+        agents_mdp['terminated'] = False
+
+        agents_mdp['trunc'] = False
+
+        agents_mdp['info']  = self._get_info()
         
         if self.render_mode == "human":
             self._render_frame()
