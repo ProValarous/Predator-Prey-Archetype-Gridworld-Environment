@@ -6,7 +6,7 @@ from multi_agent_package.helpers.helper import print_action, print_mgp_info
 agent1 = Agent("prey", "Tom")
 agent2 = Agent("predator", "Jerry")
 agent3 = Agent("predator", "Spike")
-agents = [agent1, agent2, agent3]
+agents = [agent1, agent2]#, agent3]
 
 # Create the GridWorld environment with given agents and settings
 env = GridWorldEnv(agents=agents, render_mode="human", size=10, perc_num_obstacle=10)

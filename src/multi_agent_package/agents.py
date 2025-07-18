@@ -24,11 +24,13 @@ class Agent(gym.Env):
 
         # Assign speed based on agent type
         if self.agent_type == 'predator':
-            self.agent_speed = 1
+            self.agent_speed = 10
         elif self.agent_type == 'prey':
             self.agent_speed = 3
         else:
             self.agent_speed = 9
+
+        self.stamina = 10
 
         # Define agent action space (Right, Up, Left, Down)
         self.action_space = self._make_action_space()
@@ -39,7 +41,7 @@ class Agent(gym.Env):
 
     def _make_action_space(self):
         """Defines discrete action space with 4 directions."""
-        return spaces.Discrete(4)
+        return spaces.Discrete(5)
 
     def _action_to_direction(self):
         """Maps action indices to direction vectors."""
@@ -47,7 +49,8 @@ class Agent(gym.Env):
             0: np.array([1, 0]),   # Right
             1: np.array([0, 1]),   # Up
             2: np.array([-1, 0]),  # Left
-            3: np.array([0, -1])   # Down
+            3: np.array([0, -1]) ,  # Down
+            4: np.array([0, 0])   # Noop
         }
 
     def _get_obs(self, global_obs=None):
@@ -69,7 +72,9 @@ class Agent(gym.Env):
         """Returns metadata about the agent (name, speed)."""
         return {
             "name": self.agent_name,
-            "speed": self.agent_speed
+            "type": self.agent_type,
+            "speed": self.agent_speed,
+            "stamina": self.stamina
         }
 
     def _draw_agent(self, canvas, pix_square_size):

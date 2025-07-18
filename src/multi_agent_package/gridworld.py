@@ -53,7 +53,7 @@ class GridWorldEnv(gym.Env):
 
     def _make_action_space(self):
         """Defines 4 discrete actions for each agent."""
-        return spaces.Discrete(4)
+        return spaces.Discrete(5)
 
     def _get_obs(self):
         """Gets current observations: relative distances to other agents."""
@@ -107,6 +107,11 @@ class GridWorldEnv(gym.Env):
 
     def _get_reward(self):
         """Assigns reward to each agent. Default = 0 for all."""
+        get_obs = self._get_obs()
+        dist_coeff = 10
+        dist_lst = []
+        for ag in get_obs:
+            get_obs[ag]['global']
         return {ag.agent_name: 0 for ag in self.agents}
 
     def step(self, action: dict):
@@ -117,9 +122,22 @@ class GridWorldEnv(gym.Env):
         agents_mdp = {}
         for ag in self.agents:
             steps = ag._get_info()['speed']
-            for _ in range(steps):
-                direction = ag._actions_to_directions[action[ag.agent_name]]
+            if steps <= ag.stamina:
+                for _ in range(steps):
+                    direction = ag._actions_to_directions[action[ag.agent_name]]
+                    ag._agent_location = np.clip(ag._agent_location + direction, 0, self.size - 1)
+            else:
+                print("no action")
+                direction = ag._actions_to_directions[4]
                 ag._agent_location = np.clip(ag._agent_location + direction, 0, self.size - 1)
+            if action[ag.agent_name] == 4 or steps > ag.stamina:
+                ag.stamina += 1
+                print("in + 1")
+            else:
+                ag.stamina -= steps
+                print("in -",steps)
+            print(ag._get_info()["stamina"])
+
 
         agents_mdp['obs'] = self._get_obs()
         agents_mdp['reward'] = self._get_reward()
@@ -134,6 +152,9 @@ class GridWorldEnv(gym.Env):
 
     def _render_frame(self):
         """Renders the environment frame using Pygame."""
+
+        pygame.display.set_caption("Simulation")
+
         if self.window is None and self.render_mode == "human":
             pygame.init()
             pygame.display.init()
