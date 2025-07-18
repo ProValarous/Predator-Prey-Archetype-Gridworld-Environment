@@ -21,7 +21,7 @@ class Agent(gym.Env):
         self.agent_type = agent_type
         self.agent_name = agent_name
 
-        self.observation_space = self._make_observation_space() # implement self._make_observation_space()
+        # self.observation_space = self._make_observation_space() # implement self._make_observation_space()
 
         # We have 4 actions, corresponding to "right", "up", "left", "down"
         self.action_space = self._make_action_space() # implement self._make_action_space()
@@ -31,13 +31,13 @@ class Agent(gym.Env):
         self._agent_location  = None
 
        
-    def _make_observation_space(self):
-        observation_space = spaces.Dict(
-                {
-                    "agent": spaces.Box(0, self.size - 1, shape=(2,), dtype=int)
-                }
-            )
-        return observation_space
+    # def _make_observation_space(self):
+    #     observation_space = spaces.Dict(
+    #             {
+    #                 "agent": spaces.Box(0, self.size - 1, shape=(2,), dtype=int)
+    #             }
+    #         )
+    #     return observation_space
 
     def _make_action_space(self):
         action_space = spaces.Discrete(4)

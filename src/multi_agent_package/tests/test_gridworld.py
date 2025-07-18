@@ -8,7 +8,7 @@ agent2 = Agent("predator","Jerry")
 agent3 = Agent("judge","Spike")
 agents = [agent1,agent2,agent3]
 # Create an environment (e.g., CartPole)
-env = GridWorldEnv(agents= agents, render_mode="human", size=10, perc_num_obstacle=10)
+env = GridWorldEnv(agents = agents, render_mode="human", size=10, perc_num_obstacle=10)
 
 # Reset the environment
 state, info = env.reset()
