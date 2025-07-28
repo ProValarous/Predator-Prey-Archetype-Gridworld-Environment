@@ -20,21 +20,21 @@ Key goals of this framework:
 
 ## Features
 
-### $$ Fully Interpretable
+### Fully Interpretable
 
 * **State and action spaces are fully enumerable and transparent**, making it easy to track agent behavior, transitions, and environment evolution step-by-step.
 
-### $$ Modular and Customizable
+### Modular and Customizable
 
 * **Variables and reward structures can be modified in isolation**, enabling controlled experimentation.
 * Easily change grid size, agent behavior, episode length, reward schemes, terminal conditions, etc.
 
-### $$ Ideal for Rigorous Experimentation
+### Built for Rigorous Experimentation
 
 * **Reproducible ablation experiments** are supported by design.
 * Codebase encourages transparency, logging, and clear interpretation of learning dynamics.
 
-### $$ Education-Ready
+### Education-Ready
 
 * **Simplified structure** and clean API make it beginner-friendly.
 * Excellent for undergraduates or early-stage researchers to explore MARL concepts without the overhead of complex simulator frameworks.
