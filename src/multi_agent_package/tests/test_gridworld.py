@@ -3,10 +3,16 @@ from multi_agent_package.agents import Agent
 from multi_agent_package.helpers.helper import print_action, print_mgp_info
 
 # Initialize agents with different types and unique names
-agent1 = Agent("prey", "Tom")
-agent2 = Agent("predator", "Jerry")
-agent3 = Agent("predator", "Spike")
-agents = [agent1, agent2]#, agent3]
+agent101 = Agent("prey_1", "PY101_Tom")
+agent102 = Agent("prey_1", "PY102_Garfield")
+
+agent201 = Agent("predator_1", "PD101_Jerry")
+agent202 = Agent("predator_1", "PD102_Stuart")
+
+agent301 = Agent("predator_2", "PD201_Spike")
+agent302 = Agent("predator_2", "PD202_Krypto")
+
+agents = [agent101,agent102, agent201, agent202,agent301,agent302]
 
 # Create the GridWorld environment with given agents and settings
 env = GridWorldEnv(agents=agents, render_mode="human", size=10, perc_num_obstacle=10)
