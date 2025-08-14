@@ -6,16 +6,21 @@ from multi_agent_package.helpers.helper import print_action, print_mgp_info
 agent101 = Agent("prey_1", "PY101_Tom")
 agent102 = Agent("prey_1", "PY102_Garfield")
 
-agent201 = Agent("predator_1", "PD101_Jerry")
-agent202 = Agent("predator_1", "PD102_Stuart")
 
-agent301 = Agent("predator_2", "PD201_Spike")
-agent302 = Agent("predator_2", "PD202_Krypto")
+agent201 = Agent("prey_2", "PD201_Jerry")
+agent202 = Agent("prey_2", "PD202_Stuart")
 
-agents = [agent101,agent102, agent201, agent202,agent301,agent302]
+agent301 = Agent("prey_3", "PD301_Spike")
+agent302 = Agent("prey_3", "PD302_Krypto")
+
+agent401 = Agent("prey_4", "PD402_Krypto")
+
+agent501 = Agent("prey_5", "PD502_Krypto")
+
+agents = [agent101,agent102, agent201, agent202,agent301,agent302, agent401, agent501]
 
 # Create the GridWorld environment with given agents and settings
-env = GridWorldEnv(agents=agents, render_mode="human", size=10, perc_num_obstacle=10)
+env = GridWorldEnv(agents=agents, render_mode="human", size=5, perc_num_obstacle=10)
 
 # Reset environment to start state
 current_state, info = env.reset()

@@ -3,6 +3,7 @@ import pygame
 import gymnasium as gym
 from gymnasium import spaces
 import colorsys
+import math
 
 class Agent(gym.Env):
     """
@@ -77,10 +78,8 @@ class Agent(gym.Env):
             "speed": self.agent_speed,
             "stamina": self.stamina
         }
-    
-    import colorsys
-
-    def get_agent_color(self,agent_type_str):
+        
+    def get_agent_color(self, agent_type_str):
         """
         Returns an RGB color for the agent based on its base type and subteam number.
         Example: predator_1, predator_2, prey_1...
@@ -102,13 +101,13 @@ class Agent(gym.Env):
             "prey": 120 / 360,      # green
             "other": 240 / 360      # blue
         }
-
         hue = base_hues.get(base_type.lower(), 0 / 360)
 
-        # --- vary saturation and brightness for contrast ---
-        # alternate between lighter & darker pastel tones
-        total_subteams = 5
-        
+        # Determine total_subteams (allow override on the agent instance)
+        total_subteams = getattr(self, "total_subteams", 5)
+        if total_subteams < 1:
+            total_subteams = 1
+
         # Adaptive spread: fewer teams → bigger saturation/brightness difference
         max_sat_spread = 0.4  # maximum possible spread in saturation
         max_val_spread = 0.25 # maximum possible spread in brightness
@@ -119,8 +118,8 @@ class Agent(gym.Env):
         val_max = 1.0
         val_min = val_max - max_val_spread * spread_factor
 
-        # Position in range
-        fraction = (sub_id - 1) / max(1, total_subteams - 1)
+        # Position in range (sub_id parsed again)
+        fraction = ((sub_id - 1) % total_subteams) / max(1, total_subteams - 1)
         sat = sat_min + (sat_max - sat_min) * fraction
         val = val_max - (val_max - val_min) * fraction
 
@@ -129,87 +128,109 @@ class Agent(gym.Env):
         return (int(r * 255), int(g * 255), int(b * 255))
 
 
+    def _star_points(self,center, outer_r, inner_r, points=5):
+        """Return list of points for a star polygon centered at center."""
+        cx, cy = center
+        pts = []
+        angle_step = math.pi / points  # half-step
+        start_angle = -math.pi / 2  # start at top
+        for i in range(points * 2):
+            r = outer_r if i % 2 == 0 else inner_r
+            angle = start_angle + i * angle_step
+            x = cx + r * math.cos(angle)
+            y = cy + r * math.sin(angle)
+            pts.append((int(round(x)), int(round(y))))
+        return pts
+
+
     def _draw_agent(self, canvas, pix_square_size):
         """
-        Draws the agent as a colored circle and a centered, appropriately sized label
-        (uses self.agent_type). Text color is black.
+        Draws the agent as a colored shape (circle/square/triangle/star/diamond)
+        and a centered, appropriately sized label (uses self.agent_name). Text color is black.
         """
-
-        # Ensure font system initialized (do once in __init__ ideally)
+        # Ensure font system initialized
         if not pygame.font.get_init():
             pygame.font.init()
 
-        # --- circle color ---
-        # if getattr(self, "agent_type", "")[:7] == "predator" or getattr(self, "agent_name", "")[:2] == 'PD':
-        #     color = (255, 0, 0)
-        # elif getattr(self, "agent_type", "")[:7] == "prey" or getattr(self, "agent_name", "")[:2] == 'PY':
-        #     color = (0, 255, 0)
-        # else:
-        #     color = (0, 0, 255)
+        # parse agent_type for subteam id
+        agent_type_str = str(getattr(self, "agent_type", "") or "")
+        if "_" in agent_type_str:
+            base_type, sub_id_str = agent_type_str.split("_", 1)
+            try:
+                sub_id = int(sub_id_str)
+            except ValueError:
+                sub_id = 1
+        else:
+            base_type = agent_type_str
+            sub_id = 1
 
-        # 1. Get color based on agent_type (e.g., predator_1, prey_3)
-        
-        color = self.get_agent_color(self.agent_type)
+        # get color (uses self.total_subteams if set)
+        color = self.get_agent_color(agent_type_str)
 
-        # compute pixel center (handle numpy array or tuple)
+        # compute center (handle numpy arrays or tuples)
         cx_f, cy_f = (self._agent_location + 0.5) * pix_square_size
-        center = (int(round(cx_f)), int(round(cy_f)))
+        cx, cy = int(round(cx_f)), int(round(cy_f))
 
+        # radius used to size shapes
         radius = max(2, int(pix_square_size / 3))
-        pygame.draw.circle(canvas, color, center, radius)
 
-        # text specifics
-        text_color = (0, 0, 0)  # forced black
+        # choose shape based on sub_id (cycle through shapes)
+        shapes = ["circle", "square", "triangle", "star", "diamond"]
+        shape_id = (sub_id - 1) % len(shapes)
+        shape = shapes[shape_id]
+
+        # Draw chosen shape centered on (cx, cy)
+        if shape == "circle":
+            pygame.draw.circle(canvas, color, (cx, cy), radius)
+        elif shape == "square":
+            rect = pygame.Rect(cx - radius, cy - radius, radius * 2, radius * 2)
+            # rounded rectangle if available; border_radius works with SDL2
+            try:
+                pygame.draw.rect(canvas, color, rect, border_radius=max(0, radius // 4))
+            except TypeError:
+                pygame.draw.rect(canvas, color, rect)
+        elif shape == "triangle":
+            pts = [
+                (cx, cy - radius),
+                (cx - radius, cy + radius),
+                (cx + radius, cy + radius),
+            ]
+            pygame.draw.polygon(canvas, color, pts)
+        elif shape == "diamond":
+            pts = [
+                (cx, cy - radius),
+                (cx - radius, cy),
+                (cx, cy + radius),
+                (cx + radius, cy),
+            ]
+            pygame.draw.polygon(canvas, color, pts)
+        elif shape == "star":
+            outer_r = radius
+            inner_r = max(1, int(radius * 0.45))
+            center = (cx, cy)
+            pts = self._star_points(center, outer_r, inner_r)
+            pygame.draw.polygon(canvas, color, pts)
+
+        # --- label text (centered inside shape), up to 5 chars from agent_name ---
+        text_color = (0, 0, 0)
         full_label = str(getattr(self, "agent_name", "") or "").strip()
-        # short label (use first 5 letters or initials)
         parts = [p for p in full_label.split() if p]
         if parts:
             short_label = (parts[0][:5] if len(parts) == 1 else (parts[0][0] + parts[1][0])).upper()
         else:
-            short_label = "A"
+            # fallback show first 3 chars of base type
+            short_label = (base_type[:3].upper() if base_type else "A")
 
-        # Heuristic: if cell is big enough, attempt to draw full label below circle.
-        MIN_CELL_FOR_FULL_LABEL = 100 #pix_square_size # tweakable
-        padding = 2
-
-        if pix_square_size >= MIN_CELL_FOR_FULL_LABEL and len(full_label) <= 12:
-            # render full label below the circle and make it fit horizontally in the cell
-            max_width = int(pix_square_size - 4)
-            font_size = max(10, int(pix_square_size / 4))
-            font = pygame.font.SysFont(None, font_size)
-            surf = font.render(full_label, True, text_color)
-
-            while surf.get_width() > max_width and font_size > 6:
-                font_size -= 1
-                font = pygame.font.SysFont(None, font_size)
-                surf = font.render(full_label, True, text_color)
-
-            text_rect = surf.get_rect()
-            # place it centered horizontally, just below the circle
-            text_rect.midtop = (center[0], center[1] + radius + padding)
-            # clamp vertically inside cell
-            cell_top = int(round(cy_f - pix_square_size / 2))
-            cell_bottom = int(round(cy_f + pix_square_size / 2))
-            if text_rect.top < cell_top:
-                text_rect.top = cell_top + padding
-            if text_rect.bottom > cell_bottom:
-                text_rect.bottom = cell_bottom - padding
-
-            canvas.blit(surf, text_rect)
-            return
-
-        # Otherwise, draw short_label INSIDE the circle and size so it fits comfortably.
-        # Aim for text width/height <= ~1.6 * radius (so it sits inside with some padding).
+        # fit text inside shape: aim for <= ~1.6 * radius
         max_dim = int(radius * 1.6)
-        font_size = max(8, int(radius * 1.0))  # start guess
+        font_size = max(8, int(radius * 1.0))
         font = pygame.font.SysFont(None, font_size)
         surf = font.render(short_label, True, text_color)
 
-        # shrink until it fits (or until minimum size)
         while (surf.get_width() > max_dim or surf.get_height() > max_dim) and font_size > 6:
             font_size -= 1
             font = pygame.font.SysFont(None, font_size)
             surf = font.render(short_label, True, text_color)
 
-        text_rect = surf.get_rect(center=center)
+        text_rect = surf.get_rect(center=(cx, cy))
         canvas.blit(surf, text_rect)
