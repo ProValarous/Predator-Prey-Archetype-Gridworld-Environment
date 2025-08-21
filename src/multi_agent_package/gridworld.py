@@ -105,15 +105,34 @@ class GridWorldEnv(gym.Env):
         """Return current observations for every agent.
 
         The returned structure is a dict mapping agent_name -> agent._get_obs(...)
-        where each agent receives a small 'global' context containing distances.
+        where each agent receives a small 'global' context containing distances
+        to all other agents and all obstacles (from `self._obstacle_location`).
         """
         obs: Dict[str, Dict] = {}
         for ag in self.agents:
             distances: Dict[str, int] = {}
+            obstacle_distances: Dict[str, int] = {}
+
+            # Distances to other agents
             for ag2 in self.agents:
                 if ag.agent_name != ag2.agent_name:
                     distances[ag2.agent_name] = self._dist_func(ag, ag2)
-            obs[ag.agent_name] = ag._get_obs({"dist": distances})
+
+            # Distances to obstacles (indexed) from self._obstacle_location
+            if getattr(self, "_obstacle_location", None):
+                for idx, obstacle in enumerate(self._obstacle_location):
+                    # obstacle expected as (x, y) np.ndarray or tuple
+                    try:
+                        dist = int(np.linalg.norm(ag._agent_location - np.asarray(obstacle)))
+                    except Exception:
+                        ox, oy = obstacle  # fallback if needed
+                        dist = int(np.linalg.norm(ag._agent_location - np.array([ox, oy])))
+                    obstacle_distances[f"obstacle_{idx}"] = dist
+
+            obs[ag.agent_name] = ag._get_obs({
+                "dist_agents": distances,
+                "dist_obstacles": obstacle_distances,
+            })
         return obs
 
     def _get_info(self) -> Dict[str, Dict]:
@@ -178,11 +197,131 @@ class GridWorldEnv(gym.Env):
         return int(np.linalg.norm(agent1._agent_location - agent2._agent_location))
 
     def _get_reward(self) -> Dict[str, float]:
-        """Compute reward for every agent (placeholder: zeros).
-
-        Override this method to implement game-specific rewards.
         """
-        return {ag.agent_name: 0.0 for ag in self.agents}
+        Tuned reward system:
+        - Predators: big bonus for catching prey, scaled reward for getting closer.
+        - Prey: big penalty for being caught, scaled reward for distance from predators.
+        - Obstacles: stronger penalty to avoid camping.
+        - Small living penalty for prey to encourage movement.
+        """
+        rewards = {}
+        catch_distance = 0
+        obstacle_penalty = -10
+        catch_reward = 50
+        distance_reward_scale = 5.0  # scaling for distance-based rewards
+        prey_living_penalty = -0.5
+
+        predator_positions = [ag._agent_location for ag in self.agents if ag.agent_type.startswith("predator")]
+        prey_positions = [ag._agent_location for ag in self.agents if ag.agent_type.startswith("prey")]
+
+        # Optional: Max distance in the grid for normalization
+        grid_size = self.size  # assuming self.grid_shape = (rows, cols)
+
+        for ag in self.agents:
+            reward = 0.0
+
+            if ag.agent_type.startswith("predator"):
+                distances = [np.linalg.norm(ag._agent_location - prey_pos) for prey_pos in prey_positions]
+                if distances:
+                    min_distance = min(distances)
+                    # Normalize and scale
+                    norm_reward = (grid_size - min_distance) / grid_size
+                    reward += norm_reward * distance_reward_scale
+                    if min_distance <= catch_distance:
+                        reward += catch_reward
+
+            elif ag.agent_type.startswith("prey"):
+                distances = [np.linalg.norm(ag._agent_location - pred_pos) for pred_pos in predator_positions]
+                if distances:
+                    min_distance = min(distances)
+                    # Normalize and scale
+                    norm_reward = min_distance / grid_size
+                    reward += norm_reward * distance_reward_scale
+                    if min_distance <= catch_distance:
+                        reward -= catch_reward
+                # Small time penalty to push movement
+                reward += prey_living_penalty
+
+            # Obstacle penalty
+            if any(np.array_equal(ag._agent_location, obs) for obs in self._obstacle_location):
+                reward += obstacle_penalty
+
+            rewards[ag.agent_name] = reward
+
+        return rewards
+
+    def compute_cumulative_reward(self,
+                                rewards: Dict[str, float],
+                                name_to_type: Optional[Dict[str, str]] = None,
+                                eps: float = 1e-6) -> float:
+        """
+        Compute the cumulative score according to the formula:
+
+            cumulative_reward = (1 / mean_diff) * (sum_prey_rewards + sum_predator_rewards)
+
+        Where:
+        - rewards: dict mapping agent_name -> scalar reward (as returned by _get_reward()).
+        - name_to_type: optional mapping {agent_name: "prey"|"predator"|...}. If provided,
+            it is used to determine which agents are prey vs predator.
+            If not provided, a simple name-based heuristic is used:
+            - if 'prey' in name (case-insensitive) => prey
+            - elif 'predator' in name (case-insensitive) => predator
+            - elif name startswith 'py' => prey
+            - elif name startswith 'pd' => predator
+            - otherwise the agent is ignored in prey/predator aggregations
+        - eps: small value to avoid division by zero.
+
+        Returns
+        -------
+        float
+            The computed cumulative_reward (float). If there are no predators or no preys
+            in the reward dict, returns 0.0 (can't compute meaningful mean difference).
+        """
+        if not rewards:
+            return 0.0
+
+        # If a mapping is provided, use it; else infer using heuristic from agent_name strings.
+        def infer_type(agent_name: str) -> Optional[str]:
+            if name_to_type and agent_name in name_to_type:
+                return name_to_type[agent_name].lower()
+            ln = agent_name.lower()
+            if "prey" in ln:
+                return "prey"
+            if "predator" in ln:
+                return "predator"
+            if ln.startswith("py"):
+                return "prey"
+            if ln.startswith("pd"):
+                return "predator"
+            return None  # unknown / ignore
+
+        prey_values = []
+        pred_values = []
+
+        for name, val in rewards.items():
+            typ = infer_type(name)
+            if typ == "prey":
+                prey_values.append(float(val))
+            elif typ == "predator":
+                pred_values.append(float(val))
+            else:
+                # ignore other agent types (or unknown names) for this metric
+                continue
+
+        # If either group is empty, we cannot compute a meaningful mean-difference; return 0.
+        if len(prey_values) == 0 or len(pred_values) == 0:
+            return 0.0
+
+        sum_prey = sum(prey_values)
+        sum_pred = sum(pred_values)
+        mean_prey = sum_prey / len(prey_values)
+        mean_pred = sum_pred / len(pred_values)
+
+        mean_diff = abs(mean_pred - mean_prey)
+        denom = max(mean_diff, eps)  # avoid division by zero
+        cumulative = (1.0 / denom) * (sum_prey + sum_pred)
+
+        return float(cumulative)
 
     # -------------------------
     # Step function
@@ -225,6 +364,8 @@ class GridWorldEnv(gym.Env):
                 direction = ag._actions_to_directions.get(4, np.array([0, 0]))
                 ag._agent_location = np.clip(ag._agent_location + direction, 0, self.size - 1)
                 ag.stamina = min(ag.stamina + 1, 100)
+
+    
 
         agents_mdp = {
             "obs": self._get_obs(),
