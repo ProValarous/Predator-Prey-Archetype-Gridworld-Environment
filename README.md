@@ -2,7 +2,7 @@
   (Work-In-Progress) A minimalist, discrete multi-agent predator-prey archytype environment.
 
 <h3> Early Environment SnapShot</h3>
-<img src="miscellenous/imgs/game_snap.png" alt="Early Environment SnapShot" width="400"/>
+<img src="miscellenous/imgs/game_snap_v2.png" alt="Early Environment SnapShot" width="400"/>
 
 ---
 
