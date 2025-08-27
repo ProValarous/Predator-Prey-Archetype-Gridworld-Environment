@@ -195,62 +195,60 @@ class GridWorldEnv(gym.Env):
     def _dist_func(self, agent1: Agent, agent2: Agent) -> int:
         """Euclidean distance (rounded to int) between two agents."""
         return int(np.linalg.norm(agent1._agent_location - agent2._agent_location))
-
+    
+    
     def _get_reward(self) -> Dict[str, float]:
         """
-        Tuned reward system:
-        - Predators: big bonus for catching prey, scaled reward for getting closer.
-        - Prey: big penalty for being caught, scaled reward for distance from predators.
-        - Obstacles: stronger penalty to avoid camping.
-        - Small living penalty for prey to encourage movement.
+        Safer normalized reward:
+        - predator: small reward for being closer (normalized), big capture bonus
+        - prey: small reward for being farther (normalized), small time penalty, large penalty if caught
+        - obstacles: moderate penalty
+        All per-step quantities kept small to avoid huge cumulative sums.
         """
         rewards = {}
-        catch_distance = 0
-        obstacle_penalty = 20
-        catch_reward = 100
-        distance_reward_scale = 10.0  # scaling for distance-based rewards
-        prey_living_penalty = 5
+        catch_distance = 0             # same cell
+        obstacle_penalty = -5.0        # moderate penalty when on obstacle
+        catch_reward = 50.0            # large sparse reward for capture
+        distance_reward_scale = 1.5    # small per-step scale
+        prey_time_penalty = -0.01      # tiny per-step penalty for prey (encourage movement)
 
-        predator_positions = [ag._agent_location for ag in self.agents if ag.agent_type.startswith("predator")]
-        prey_positions = [ag._agent_location for ag in self.agents if ag.agent_type.startswith("prey")]
+        predators = [ag for ag in self.agents if ag.agent_type.startswith("predator")]
+        preys = [ag for ag in self.agents if ag.agent_type.startswith("prey")]
 
-        # Optional: Max distance in the grid for normalization
-        grid_size = self.size  # assuming self.grid_shape = (rows, cols)
+        # max euclidean distance on grid
+        max_dist = math.sqrt((self.size - 1) ** 2 + (self.size - 1) ** 2) or 1.0
 
         for ag in self.agents:
             reward = 0.0
 
             if ag.agent_type.startswith("predator"):
-                distances = [np.linalg.norm(ag._agent_location - prey_pos) for prey_pos in prey_positions]
-                if distances:
-                    min_distance = min(distances)
-                    # Normalize and scale
-                    norm_reward = (grid_size - min_distance) / grid_size
-                    reward += norm_reward * distance_reward_scale
-                    if min_distance <= catch_distance:
+                if preys:
+                    dists = [np.linalg.norm(ag._agent_location - p._agent_location) for p in preys]
+                    min_d = float(min(dists))
+                    norm = (max_dist - min_d) / max_dist  # closer -> larger
+                    reward += distance_reward_scale * norm
+                    if min_d <= catch_distance:
                         reward += catch_reward
-                    else:
-                        reward -= prey_living_penalty
 
             elif ag.agent_type.startswith("prey"):
-                distances = [np.linalg.norm(ag._agent_location - pred_pos) for pred_pos in predator_positions]
-                if distances:
-                    min_distance = min(distances)
-                    # Normalize and scale
-                    norm_reward = min_distance / grid_size
-                    reward += norm_reward * distance_reward_scale
-                    if min_distance <= catch_distance:
+                if predators:
+                    dists = [np.linalg.norm(ag._agent_location - p._agent_location) for p in predators]
+                    min_d = float(min(dists))
+                    norm = min_d / max_dist  # farther -> larger
+                    reward += distance_reward_scale * norm
+                    if min_d <= catch_distance:
                         reward -= catch_reward
-                    else:
-                        reward += prey_living_penalty
+                # small time penalty to discourage stalling
+                reward += prey_time_penalty
 
-            # Obstacle penalty
+            # obstacle penalty (if exactly on an obstacle)
             if any(np.array_equal(ag._agent_location, obs) for obs in self._obstacle_location):
-                reward -= obstacle_penalty
+                reward += obstacle_penalty
 
-            rewards[ag.agent_name] = reward
+            rewards[ag.agent_name] = float(reward)
 
         return rewards
+
 
     # -------------------------
     # Step function

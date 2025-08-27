@@ -2,23 +2,19 @@
 Train tabular IQL (Independent Q-Learning) for 1 predator and 1 prey using
 the GridWorldEnv's reward function (env._get_reward) and termination logic.
 
-TensorBoard logs are written alongside the saved Qs:
-    <save_dir>/logs/<timestamp>/
-
-Run from project root:
-    python src/baselines/IQL/train_iql.py --episodes 5000 --size 8
-
-View logs:
-    tensorboard --logdir src/baselines/IQL/logs
+This variant uses the environment's `obs[agent]['global']['dist_agents']`
+to build a compact joint state: (agent_pos, discretized_distance_to_other).
+Note: `dist_agents` provides distance only (no direction).
 """
+
 import argparse
 import os
 import time
 from typing import Dict, Tuple, Optional
 
+import math
 import numpy as np
 
-# from tensorflow.summary import create_file_writer  # if using TF directly
 from torch.utils.tensorboard import SummaryWriter
 
 from multi_agent_package.gridworld import GridWorldEnv
@@ -32,64 +28,48 @@ def make_agents() -> Tuple[Agent, Agent]:
 
 
 def state_index(pos: np.ndarray, size: int) -> int:
-    """Encode (x,y) into a single integer state index."""
+    """Encode (x,y) into a single integer state index (row-major)."""
     x, y = int(pos[0]), int(pos[1])
     return x * size + y
 
 
-# def compute_cumulative_reward_from_episode_rewards(
-#     episode_rewards: Dict[str, float],
-#     name_to_type: Optional[Dict[str, str]] = None,
-#     eps: float = 1e-6,
-# ) -> float:
-#     """Compute cumulative reward for an episode using only the per-agent reward dict.
+def global_joint_state_index(
+    own_pos: np.ndarray,
+    dist_agents: Dict[str, float],
+    other_name: str,
+    size: int,
+) -> int:
+    """
+    Create a compact joint-state index using:
+      - own position (ax,ay) encoded as a_idx = ax*size + ay
+      - distance to other agent (from dist_agents[other_name]) discretized to integer bins
 
-#     cumulative_reward = (1 / mean_diff) * (sum_prey_rewards + sum_predator_rewards)
-#     with mean_diff = |mean_pred - mean_prey|. Returns 0.0 if either group is missing.
-#     """
-#     if not episode_rewards:
-#         return 0.0
+    Returns index in range [0, n_cells * (max_dist+1) - 1].
+    """
+    # own cell index
+    a_idx = state_index(own_pos, size)
 
-#     def infer_type(name: str) -> Optional[str]:
-#         if name_to_type and name in name_to_type:
-#             return name_to_type[name].lower()
-#         ln = name.lower()
-#         if "prey" in ln:
-#             return "prey"
-#         if "predator" in ln:
-#             return "predator"
-#         if ln.startswith("py"):
-#             return "prey"
-#         if ln.startswith("pd"):
-#             return "predator"
-#         return None
+    # estimate maximum possible Euclidean distance on grid and number of bins
+    max_dist = math.ceil(math.sqrt(2) * (size - 1))
+    # read distance (fallback to max_dist if missing)
+    d = None
+    if dist_agents is not None:
+        try:
+            d = float(dist_agents.get(other_name, max_dist))
+        except Exception:
+            d = max_dist
+    else:
+        d = max_dist
 
-#     prey_vals = []
-#     pred_vals = []
-#     for name, val in episode_rewards.items():
-#         t = infer_type(name)
-#         if t == "prey":
-#             prey_vals.append(float(val))
-#         elif t == "predator":
-#             pred_vals.append(float(val))
+    # discretize/clamp distance to integer bin [0..max_dist]
+    dist_bin = int(min(max_dist, max(0, int(round(d)))))
 
-#     if len(prey_vals) == 0 or len(pred_vals) == 0:
-#         return 0.0
-
-#     sum_prey = sum(prey_vals)
-#     sum_pred = sum(pred_vals)
-#     mean_prey = sum_prey / len(prey_vals)
-#     mean_pred = sum_pred / len(pred_vals)
-
-#     mean_diff = abs(mean_pred - mean_prey)
-#     denom = max(mean_diff, eps)
-#     cumulative = (1.0 / denom) * (sum_prey + sum_pred)
-#     return float(cumulative)
+    return a_idx * (max_dist + 1) + dist_bin
 
 
 def train(
     episodes: int = 5000,
-    max_steps: int = 500,
+    max_steps: int = 250,
     alpha: float = 0.1,
     gamma: float = 0.99,
     eps_start: float = 1.0,
@@ -102,57 +82,79 @@ def train(
     prey, predator = make_agents()
     agents = [prey, predator]
 
-    # Set total_subteams for color/shape logic (not required for training)
+    # Set total_subteams for color / shape logic (not required for training)
     for ag in agents:
         ag.total_subteams = 1
 
     env = GridWorldEnv(agents=agents, render_mode=None, size=grid_size, perc_num_obstacle=10, seed=seed)
-
     rng = np.random.default_rng(seed)
 
-    n_states = grid_size * grid_size
+    # n_cells for own position; distance bins determined by grid geometry
+    n_cells = grid_size * grid_size
+    max_dist = math.ceil(math.sqrt(2) * (grid_size - 1))
+    n_distance_bins = max_dist + 1
+
+    # total states = own_cell * distance_bin
+    n_states = n_cells * n_distance_bins
     n_actions = env.action_space.n  # expected 5
 
-    # Tabular Q per agent
+    # Q-tables
     Qs: Dict[str, np.ndarray] = {
         prey.agent_name: np.zeros((n_states, n_actions), dtype=np.float32),
         predator.agent_name: np.zeros((n_states, n_actions), dtype=np.float32),
     }
 
-    # Stats tracking
+    # Stats
     prey_episode_totals = []
     predator_episode_totals = []
-    cumulative_episode_totals = []
-
     eps = eps_start
     capture_count = 0
 
-    # Ensure save directory exists
+    # Make save/log dirs
     save_dir = os.path.dirname(save_path)
     if save_dir:
         os.makedirs(save_dir, exist_ok=True)
 
-    # Prepare TensorBoard writer
-    timestamp = time.strftime("%d-%m-%Y -- %H-%M-%S")
+    # TensorBoard writer (safe timestamp format)
+    timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
     log_dir = os.path.join(save_dir or ".", "logs", timestamp)
     os.makedirs(log_dir, exist_ok=True)
     writer = SummaryWriter(log_dir=log_dir)
     print(f"TensorBoard logs -> {log_dir}")
 
-
+    # ---- training loop ----
     for ep in range(1, episodes + 1):
         obs, info = env.reset()
 
-        # per-episode accumulators per agent (use agent names as keys)
+        # per-episode raw reward accumulators
         ep_agent_totals: Dict[str, float] = {ag.agent_name: 0.0 for ag in agents}
 
-        # step loop
         for t in range(max_steps):
-            # state indices for each agent
-            s_idx = {ag.agent_name: state_index(obs[ag.agent_name]["local"], grid_size) for ag in agents}
+            # Build state indices using obs[agent]['global']['dist_agents']
+            s_idx: Dict[str, int] = {}
+            pos_map: Dict[str, np.ndarray] = {}
 
-            # select actions epsilon-greedy (independent)
-            actions = {}
+            # read positions (from obs[].get('local')) for own_pos fallback
+            for ag in agents:
+                # get local pos if present
+                local = obs.get(ag.agent_name, {}).get("local", None)
+                if local is None:
+                    # fallback to agent internal state
+                    local = getattr(ag, "_agent_location", np.array([0, 0]))
+                pos_map[ag.agent_name] = np.asarray(local, dtype=int)
+
+            # compute s_idx for each agent using the distance provided in global
+            for ag in agents:
+                other = next(o for o in agents if o.agent_name != ag.agent_name)
+                # dist_agents dict is under obs[ag]['global']['dist_agents']
+                global_info = obs.get(ag.agent_name, {}).get("global", {})
+                dist_agents = global_info.get("dist_agents", {}) if global_info is not None else {}
+                s_idx[ag.agent_name] = global_joint_state_index(
+                    pos_map[ag.agent_name], dist_agents, other.agent_name, grid_size
+                )
+
+            # epsilon-greedy action selection
+            actions: Dict[str, int] = {}
             for ag in agents:
                 q_row = Qs[ag.agent_name][s_idx[ag.agent_name]]
                 if rng.random() < eps:
@@ -161,17 +163,33 @@ def train(
                     a = int(np.argmax(q_row))
                 actions[ag.agent_name] = a
 
-            # step using env (we will use env's reward)
+            # step environment
             mgp = env.step(actions)
             next_obs = mgp["obs"]
             rewards_from_env = mgp["reward"]
 
-            # accumulate per-agent rewards for this episode
+            # accumulate raw rewards
             for ag in agents:
                 ep_agent_totals[ag.agent_name] += float(rewards_from_env.get(ag.agent_name, 0.0))
 
-            # Q update (IQL: each agent treats others as environment)
-            s_next_idx = {ag.agent_name: state_index(next_obs[ag.agent_name]["local"], grid_size) for ag in agents}
+            # Compute next-state indices using next_obs
+            s_next_idx: Dict[str, int] = {}
+            next_pos_map: Dict[str, np.ndarray] = {}
+            for ag in agents:
+                local = next_obs.get(ag.agent_name, {}).get("local", None)
+                if local is None:
+                    local = getattr(ag, "_agent_location", np.array([0, 0]))
+                next_pos_map[ag.agent_name] = np.asarray(local, dtype=int)
+
+            for ag in agents:
+                other = next(o for o in agents if o.agent_name != ag.agent_name)
+                global_info_next = next_obs.get(ag.agent_name, {}).get("global", {})
+                dist_agents_next = global_info_next.get("dist_agents", {}) if global_info_next is not None else {}
+                s_next_idx[ag.agent_name] = global_joint_state_index(
+                    next_pos_map[ag.agent_name], dist_agents_next, other.agent_name, grid_size
+                )
+
+            # IQL updates (per-agent)
             for ag in agents:
                 s = s_idx[ag.agent_name]
                 a = int(actions[ag.agent_name])
@@ -182,25 +200,21 @@ def train(
                 td_error = td_target - qvals[s, a]
                 qvals[s, a] += alpha * td_error
 
-            # termination handled by env
+            # termination check
             if mgp.get("terminated", False):
                 capture_count += 1
                 break
 
             obs = next_obs
 
-        # episode finished: aggregate per-type totals and compute cumulative metric
+        # episode finished: aggregate totals (by name heuristics)
         ep_prey_total = sum(v for n, v in ep_agent_totals.items() if "prey" in n.lower() or n.lower().startswith("py"))
         ep_pred_total = sum(v for n, v in ep_agent_totals.items() if "predator" in n.lower() or n.lower().startswith("pd"))
 
         prey_episode_totals.append(ep_prey_total)
         predator_episode_totals.append(ep_pred_total)
 
-        # compute cumulative reward from the episode-level per-agent totals
-        # cumulative = compute_cumulative_reward_from_episode_rewards(ep_agent_totals)
-        # cumulative_episode_totals.append(cumulative)
-
-        # decay epsilon
+        # decay epsilon periodically
         if ep % 100 == 0:
             eps = max(eps_end, eps * eps_decay)
 
@@ -208,15 +222,13 @@ def train(
         mean_prey = float(np.mean(prey_episode_totals)) if prey_episode_totals else 0.0
         mean_pred = float(np.mean(predator_episode_totals)) if predator_episode_totals else 0.0
         mean_diff = abs(mean_pred - mean_prey)
-        # mean_cumulative = float(np.mean(cumulative_episode_totals)) if cumulative_episode_totals else 0.0
 
-        # TensorBoard logging (per-episode scalars)
+        # log to TensorBoard
         writer.add_scalar("total/prey", ep_prey_total, ep)
         writer.add_scalar("total/predator", ep_pred_total, ep)
         writer.add_scalar("mean/prey", mean_prey, ep)
         writer.add_scalar("mean/predator", mean_pred, ep)
         writer.add_scalar("mean_diff/pred_minus_prey", mean_diff, ep)
-        # writer.add_scalar("cumulative/episode", cumulative, ep)
 
         if ep % 100 == 0:
             print(
@@ -225,7 +237,6 @@ def train(
                 f"mean_prey={mean_prey:.3f} | mean_pred={mean_pred:.3f} | mean_diff(pred-prey)={mean_diff:.3f}"
             )
 
-        # flush periodically so logs are available during long runs
         if ep % 10 == 0:
             writer.flush()
 
@@ -239,7 +250,6 @@ def train(
     mean_diff = mean_pred - mean_prey
     total_prey_reward = float(np.sum(prey_episode_totals))
     total_pred_reward = float(np.sum(predator_episode_totals))
-    mean_cumulative = float(np.mean(cumulative_episode_totals)) if cumulative_episode_totals else 0.0
 
     print("FINAL SUMMARY:")
     print(f"  Episodes run: {episodes}")
@@ -248,9 +258,7 @@ def train(
     print(f"  Mean prey reward per episode: {mean_prey:.3f}")
     print(f"  Mean predator reward per episode: {mean_pred:.3f}")
     print(f"  Mean difference (predator - prey): {mean_diff:.3f}")
-    print(f"  Mean cumulative_reward per episode: {mean_cumulative:.3f}")
 
-    # finalize writer
     writer.flush()
     writer.close()
 
