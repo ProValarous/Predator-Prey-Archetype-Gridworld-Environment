@@ -24,7 +24,7 @@ def state_index(pos: np.ndarray, size: int) -> int:
     return x * size + y
 
 
-def run_test(q_file: str = "baselines/IQL/iql_qs.npz", size: int = 8, episodes: int = 3, max_steps: int = 200, pause: float = 0.05):
+def run_test(q_file: str = "baselines/IQL/iql_qs.npz", size: int = 8, episodes: int = 3, max_steps: int = 250, pause: float = 0.05):
     data = np.load(q_file)
     Qs: Dict[str, np.ndarray] = {k: data[k] for k in data.files}
     print("Loaded Q keys:", list(Qs.keys()))
