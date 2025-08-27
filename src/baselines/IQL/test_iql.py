@@ -35,7 +35,7 @@ def run_test(q_file: str = "baselines/IQL/iql_qs.npz", size: int = 8, episodes: 
     for ag in agents:
         ag.total_subteams = 1
 
-    env = GridWorldEnv(agents=agents, render_mode="human", size=size, perc_num_obstacle=0)
+    env = GridWorldEnv(agents=agents, render_mode="human", size=size, perc_num_obstacle=10)
 
     try:
         for ep in range(episodes):
@@ -51,6 +51,7 @@ def run_test(q_file: str = "baselines/IQL/iql_qs.npz", size: int = 8, episodes: 
 
                 mgp = env.step(actions)
                 obs = mgp["obs"]
+                print(mgp['reward'])
                 time.sleep(pause)
 
                 # termination if capture
@@ -66,7 +67,7 @@ def run_test(q_file: str = "baselines/IQL/iql_qs.npz", size: int = 8, episodes: 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Test IQL-trained agents")
     parser.add_argument("--file", type=str, default="baselines/IQL/iql_qs.npz")
-    parser.add_argument("--size", type=int, default=5)
+    parser.add_argument("--size", type=int, default=8)
     parser.add_argument("--episodes", type=int, default=3)
     parser.add_argument("--pause", type=float, default=0.05)
     args = parser.parse_args()

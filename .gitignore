@@ -3,6 +3,7 @@
 
 # Ignore Python virtual environments
 marl-project-venv/
+venv/
 
 # Ignore pytest cache
 .pytest_cache/

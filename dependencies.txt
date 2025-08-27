@@ -3,3 +3,4 @@ numpy
 pygame
 setuptools
 pytest
+tensorflow
