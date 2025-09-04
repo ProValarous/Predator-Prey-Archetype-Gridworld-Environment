@@ -82,6 +82,12 @@ class GridWorldEnv(gym.Env):
         self._agents_location: List[np.ndarray] = []
         self._obstacle_location: List[np.ndarray] = []
 
+        # capture bookkeeping
+        self._captures_total: int = 0         # cumulative captures since last reset
+        self._captures_this_step: int = 0     # number of captures that happened in the current step
+        self._captured_agents: List[str] = [] # list of agent_names involved in last-step captures
+
+
     # -------------------------
     # Spaces / observations
     # -------------------------
@@ -156,6 +162,11 @@ class GridWorldEnv(gym.Env):
             self.rng = np.random.default_rng(seed)
 
         self._agents_location = []
+    
+        self._captures_total = 0
+        self._captures_this_step = 0
+        self._captured_agents = []
+
 
         # Assign unique start positions for agents by sampling without replacement
         all_positions = [(x, y) for x in range(self.size) for y in range(self.size)]
@@ -199,105 +210,337 @@ class GridWorldEnv(gym.Env):
     
     def _get_reward(self) -> Dict[str, float]:
         """
-        Safer normalized reward:
-        - predator: small reward for being closer (normalized), big capture bonus
-        - prey: small reward for being farther (normalized), small time penalty, large penalty if caught
-        - obstacles: moderate penalty
-        All per-step quantities kept small to avoid huge cumulative sums.
+        Improved reward with:
+        - capture reward (sparse, large)
+        - per-step distance shaping (PBRS when previous positions are available)
+        - difference-reward approximation for predators (helps credit assignment)
+        - adjacency bonus for surrounding the prey
+        - time penalty for prey (discourage stalling)
+        - obstacle penalty for stepping on obstacles
+        This implementation is defensive: if previous agent positions aren't available
+        (e.g. first step), PBRS contribution is zero.
         """
-        rewards = {}
-        catch_distance = 0             # same cell
-        obstacle_penalty = -5.0        # moderate penalty when on obstacle
-        catch_reward = 50.0            # large sparse reward for capture
-        distance_reward_scale = 1.5    # small per-step scale
-        prey_time_penalty = -0.01      # tiny per-step penalty for prey (encourage movement)
+        rewards: Dict[str, float] = {}
+
+        # --- hyperparams (tune these) ---
+        # BALANCED preset (recommended starting point)
+        catch_distance = 0
+        catch_reward = 600.0
+        obstacle_penalty = -5.0
+        prey_time_penalty = -0.02
+        time_penalty_predator = -0.005
+        distance_reward_scale = 0.5
+        pbrs_weight_start = 0.6
+        pbrs_anneal_steps = 50_000       # number of env steps to slowly zero PBRS
+        diff_reward_weight = 0.15
+        adjacency_bonus = 0.25
+        clip_min, clip_max = -1200.0, 1200.0
+        gamma = 0.95
+        lambda_dist = 1.0                    # scaling inside potential
+
+        # Defensive: compute current step count for annealing (if not present, treat as 0)
+        steps = int(getattr(self, "_episode_steps", 0))
+        pbrs_weight = pbrs_weight_start * max(0.0, 1.0 - (steps / float(max(1, pbrs_anneal_steps))))
 
         predators = [ag for ag in self.agents if ag.agent_type.startswith("predator")]
         preys = [ag for ag in self.agents if ag.agent_type.startswith("prey")]
 
-        # max euclidean distance on grid
+        # grid max euclidean distance
         max_dist = math.sqrt((self.size - 1) ** 2 + (self.size - 1) ** 2) or 1.0
 
-        for ag in self.agents:
-            reward = 0.0
+        # build quick lookup for current positions
+        cur_pos = {ag.agent_name: np.array(ag._agent_location, dtype=float) for ag in self.agents}
+        prev_pos_list = getattr(self, "_prev_agents_location", None)
+        prev_pos = None
+        if prev_pos_list:
+            # prev positions stored as list in same order as self.agents during reset/step
+            prev_pos = {ag.agent_name: np.array(pp, dtype=float) for ag, pp in zip(self.agents, prev_pos_list)}
 
+        # Precompute per-predator "closeness" to prey (higher => better for predator team)
+        # closeness = (max_dist - min_dist) / max_dist in [0..1]
+        predator_closeness = {}
+        for p in predators:
+            if preys:
+                dists = [float(np.linalg.norm(p._agent_location - q._agent_location)) for q in preys]
+                min_d = float(min(dists))
+                predator_closeness[p.agent_name] = (max_dist - min_d) / max_dist
+            else:
+                predator_closeness[p.agent_name] = 0.0
+
+        # team score used for difference reward approx
+        team_score = sum(predator_closeness.values()) if predators else 0.0
+
+        # For predators: precompute team scores without each predator for difference reward
+        team_score_without = {}
+        for p in predators:
+            s_without = sum(v for k, v in predator_closeness.items() if k != p.agent_name)
+            team_score_without[p.agent_name] = s_without
+
+        # Compute rewards per agent
+        for ag in self.agents:
+            r = 0.0
+
+            # --- Predator logic ---
             if ag.agent_type.startswith("predator"):
                 if preys:
-                    dists = [np.linalg.norm(ag._agent_location - p._agent_location) for p in preys]
+                    # closeness to nearest prey
+                    dists = [float(np.linalg.norm(ag._agent_location - q._agent_location)) for q in preys]
                     min_d = float(min(dists))
-                    norm = (max_dist - min_d) / max_dist  # closer -> larger
-                    reward += distance_reward_scale * norm
-                    if min_d <= catch_distance:
-                        reward += catch_reward
+                    norm_closeness = (max_dist - min_d) / max_dist  # 0..1
+                    # simple dense shaping (normalized)
+                    r += distance_reward_scale * norm_closeness
 
+                    # adjacency bonus (encourages surrounding / cooperating)
+                    # use Manhattan adjacency to encourage grid adjacency behaviour
+                    for q in preys:
+                        manh = int(np.sum(np.abs(ag._agent_location - q._agent_location)))
+                        if 0 < manh <= 1:
+                            r += adjacency_bonus
+                            break
+
+                    # capture
+                    if min_d <= catch_distance:
+                        r += catch_reward
+
+                    # difference reward approx (team contribution)
+                    # D_i ≈ team_score - team_score_without_i  (how much this predator adds to overall closeness)
+                    D_i = team_score - team_score_without.get(ag.agent_name, 0.0)
+                    r += diff_reward_weight * D_i
+
+                    # tiny per-step cost to discourage infinite wandering
+                    r += time_penalty_predator
+
+            # --- Prey logic ---
             elif ag.agent_type.startswith("prey"):
                 if predators:
-                    dists = [np.linalg.norm(ag._agent_location - p._agent_location) for p in predators]
+                    dists = [float(np.linalg.norm(ag._agent_location - p._agent_location)) for p in predators]
                     min_d = float(min(dists))
-                    norm = min_d / max_dist  # farther -> larger
-                    reward += distance_reward_scale * norm
+                    # farther -> larger reward for prey
+                    r += distance_reward_scale * (min_d / max_dist)
+                    # capture penalty
                     if min_d <= catch_distance:
-                        reward -= catch_reward
+                        r -= catch_reward
                 # small time penalty to discourage stalling
-                reward += prey_time_penalty
+                r += prey_time_penalty
 
-            # obstacle penalty (if exactly on an obstacle)
-            if any(np.array_equal(ag._agent_location, obs) for obs in self._obstacle_location):
-                reward += obstacle_penalty
+            # --- obstacle penalty ---
+            if getattr(self, "_obstacle_location", None):
+                if any(np.array_equal(ag._agent_location, obs) for obs in self._obstacle_location):
+                    r += obstacle_penalty
 
-            rewards[ag.agent_name] = float(reward)
+            # --- PBRS shaping based on previous state (if available) ---
+            # Potential per-agent: phi = -lambda_dist * (min_dist / max_dist)  (lower is better for predator)
+            pbrs = 0.0
+            if prev_pos is not None:
+                # current potential
+                if ag.agent_type.startswith("predator"):
+                    if preys:
+                        curr_min = min(float(np.linalg.norm(cur_pos[ag.agent_name] - np.array(q._agent_location))) for q in preys)
+                        phi_curr = -lambda_dist * (curr_min / max_dist)
+                    else:
+                        phi_curr = 0.0
+                elif ag.agent_type.startswith("prey"):
+                    if predators:
+                        curr_min = min(float(np.linalg.norm(cur_pos[ag.agent_name] - np.array(p._agent_location))) for p in predators)
+                        # for prey, larger distance is better -> flip sign so higher potential when farther
+                        phi_curr = +lambda_dist * (curr_min / max_dist)
+                    else:
+                        phi_curr = 0.0
+                else:
+                    phi_curr = 0.0
+
+                # previous potential (if we have previous position for that agent)
+                if ag.agent_name in prev_pos:
+                    if ag.agent_type.startswith("predator"):
+                        if preys:
+                            prev_min = min(float(np.linalg.norm(prev_pos[ag.agent_name] - np.array(q._agent_location))) for q in preys)
+                            phi_prev = -lambda_dist * (prev_min / max_dist)
+                        else:
+                            phi_prev = 0.0
+                    elif ag.agent_type.startswith("prey"):
+                        if predators:
+                            prev_min = min(float(np.linalg.norm(prev_pos[ag.agent_name] - np.array(p._agent_location))) for p in predators)
+                            phi_prev = +lambda_dist * (prev_min / max_dist)
+                        else:
+                            phi_prev = 0.0
+                    else:
+                        phi_prev = 0.0
+
+                    # shaping reward F = gamma * phi(curr) - phi(prev)
+                    pbrs = (gamma * phi_curr - phi_prev) * pbrs_weight
+                    r += pbrs
+
+            # --- final clipping and bookkeeping ---
+            # clip for numerical stability
+            r = float(np.clip(r, clip_min, clip_max))
+            rewards[ag.agent_name] = r
 
         return rewards
 
 
-    # -------------------------
-    # Step function
-    # -------------------------
+
     def step(self, action: Dict[str, int]) -> Dict[str, object]:
         """Apply actions for every agent and return a multi-agent dict.
 
-        Parameters
-        ----------
-        action : Dict[str,int]
-            Mapping from agent_name -> action index (0..4).
-
-        Returns
-        -------
-        Dict with keys:
-            - 'obs': observation dict
-            - 'reward': reward dict
-            - 'terminated': bool (episode-level)
-            - 'trunc': bool (episode-level)
-            - 'info': info dict
+        Behaviour flags (set on the env instance; defaults used if missing):
+        - self.allow_cell_sharing (bool, default True): allow multiple agents in same cell.
+        - self.block_agents_by_obstacles (bool, default False): treat obstacles as blocking (can't move onto them).
         """
+        # --- preserve previous positions for PBRS & diagnostics ---
+        self._prev_agents_location = [
+            pos.copy() if hasattr(pos, "copy") else np.array(pos, dtype=np.int32)
+            for pos in getattr(self, "_agents_location", [])
+        ]
+
+        # ensure an episode step counter exists (used for annealing shaping)
+        if not hasattr(self, "_episode_steps"):
+            self._episode_steps = 0
+
+        # Behaviour flags (default safe values)
+        allow_sharing = bool(getattr(self, "allow_cell_sharing", True))
+        block_by_obstacle = bool(getattr(self, "block_agents_by_obstacles", True))
+
         # Validate input
         if not isinstance(action, dict):
             raise ValueError("`action` must be a dict mapping agent_name -> action_idx")
 
-        for ag in self.agents:
-            # default noop if missing
-            a = action.get(ag.agent_name, 4)
-            steps = ag._get_info().get("speed", getattr(ag, "agent_speed", 1))
+        # Build current occupancy sets (tuples) from the tracked agent locations
+        agent_positions = {
+            ag.agent_name: tuple(np.array(getattr(ag, "_agent_location", ag._agent_location)).astype(int))
+            for ag in self.agents
+        }
+        occupied_by_agents = set(agent_positions.values())
 
-            # movement limited by stamina
-            if steps <= ag.stamina:
-                for _ in range(int(steps)):
-                    direction = ag._actions_to_directions.get(int(a), np.array([0, 0]))
-                    ag._agent_location = np.clip(ag._agent_location + direction, 0, self.size - 1)
-                # consume stamina
-                ag.stamina = max(0, ag.stamina - int(steps))
+        obstacle_positions = set(tuple(obs.astype(int)) for obs in getattr(self, "_obstacle_location", []))
+
+        # bookkeeping for diagnostics
+        self._last_step_sharing = False
+        self._last_collisions = []  # list of tuples (agent_name, target_pos, blocked_by)
+
+        # Process movements: each agent may move up to `steps` micro-steps (to account for speed).
+        working_positions = {ag.agent_name: np.array(ag._agent_location, dtype=int) for ag in self.agents}
+
+        # Determine maximum micro-steps to run (max speed among agents)
+        max_micro_steps = 0
+        agent_requested_steps = {}
+        for ag in self.agents:
+            steps = ag._get_info().get("speed", getattr(ag, "agent_speed", 1))
+            try:
+                steps = int(steps)
+            except Exception:
+                steps = 1
+            agent_requested_steps[ag.agent_name] = steps
+            if steps > max_micro_steps:
+                max_micro_steps = steps
+
+        # run micro-step loop
+        for micro in range(max_micro_steps):
+            # prepare a snapshot of occupied cells at the start of this micro-step
+            occupied_snapshot = set(tuple(pos) for pos in working_positions.values())
+
+            for ag in self.agents:
+                name = ag.agent_name
+                requested = agent_requested_steps.get(name, 1)
+                # only move if this agent still has micro-steps remaining
+                if micro >= requested:
+                    continue
+
+                # fetch action (default noop)
+                a = action.get(name, 4)
+                direction = ag._actions_to_directions.get(int(a), np.array([0, 0]))
+                # compute tentative new position
+                candidate = np.clip(working_positions[name] + direction, 0, self.size - 1).astype(int)
+                candidate_t = tuple(candidate)
+
+                blocked_by = None
+                blocked = False
+
+                # Check obstacle blocking if requested
+                if block_by_obstacle and (candidate_t in obstacle_positions):
+                    blocked = True
+                    blocked_by = "obstacle"
+
+                # Check agent blocking (only if sharing not allowed)
+                if (not allow_sharing) and (candidate_t in occupied_snapshot):
+                    # if the only occupant is this agent itself (i.e. moving zero), allow
+                    if candidate_t != tuple(working_positions[name]):
+                        blocked = True
+                        blocked_by = "agent"
+
+                if blocked:
+                    # don't update working_positions[name] (agent stays put)
+                    # record collision for diagnostics
+                    self._last_collisions.append((name, candidate_t, blocked_by))
+                    continue
+
+                # commit movement to working positions
+                occupied_snapshot.discard(tuple(working_positions[name]))  # free previous pos
+                working_positions[name] = candidate
+                occupied_snapshot.add(candidate_t)
+
+        # After micro-steps complete, apply the working positions to agents and update stamina
+        for ag in self.agents:
+            name = ag.agent_name
+            new_pos = working_positions[name]
+            ag._agent_location = new_pos.copy()
+            # consume stamina as before: if agent asked for steps <= stamina, consume; else they regain
+            requested = agent_requested_steps.get(name, 1)
+            if requested <= ag.stamina:
+                ag.stamina = max(0, ag.stamina - int(requested))
             else:
-                # cannot move full speed -> noop and regain a bit of stamina
-                direction = ag._actions_to_directions.get(4, np.array([0, 0]))
-                ag._agent_location = np.clip(ag._agent_location + direction, 0, self.size - 1)
+                # cannot move full speed -> noop behaviour was applied micro-step wise; regain small amount
                 ag.stamina = min(ag.stamina + 1, 100)
 
-    
+        # detect sharing: if multiple agents occupy same tuple position, flag it
+        pos_counts = {}
+        for ag in self.agents:
+            pos_t = tuple(ag._agent_location)
+            pos_counts[pos_t] = pos_counts.get(pos_t, 0) + 1
+        self._last_step_sharing = any(cnt > 1 for cnt in pos_counts.values())
+
+        # update tracked current agent positions (used next call as previous)
+        self._agents_location = [ag._agent_location.copy() for ag in self.agents]
+
+        # -------------------------
+        # CAPTURE DETECTION 
+        # -------------------------
+        # Reset per-step capture bookkeeping
+        self._captures_this_step = 0
+        self._captured_agents = []
+
+        # Map positions -> agents in that position
+        pos_to_agents: Dict[tuple, list] = {}
+        for ag in self.agents:
+            pos_t = tuple(np.array(ag._agent_location, dtype=int))
+            pos_to_agents.setdefault(pos_t, []).append(ag)
+
+        # For each occupied cell, if at least one predator AND at least one prey are present -> capture
+        for pos, agents_here in pos_to_agents.items():
+            predators_here = [ag for ag in agents_here if ag.agent_type.startswith("predator")]
+            preys_here = [ag for ag in agents_here if ag.agent_type.startswith("prey")]
+            if predators_here and preys_here:
+                # Count each prey captured individually. Change logic here if you prefer
+                # to count one capture per step or per cell.
+                for prey_ag in preys_here:
+                    self._captures_this_step += 1
+                    # record the prey and participating predators
+                    self._captured_agents.append(prey_ag.agent_name)
+                    for p in predators_here:
+                        self._captured_agents.append(p.agent_name)
+
+        # Update cumulative captures (per-episode)
+        self._captures_total = self._captures_total + self._captures_this_step
+
+        # increment step counter
+        self._episode_steps += 1
+
+        # build mdp return; terminate episode if a capture happened this step
+        terminated_flag = False # bool(self._captures_this_step > 0)
 
         agents_mdp = {
             "obs": self._get_obs(),
             "reward": self._get_reward(),
-            "terminated": False,
+            "terminated": terminated_flag,
             "trunc": False,
             "info": self._get_info(),
         }
@@ -306,6 +549,8 @@ class GridWorldEnv(gym.Env):
             self._render_frame()
 
         return agents_mdp
+
+
 
     # -------------------------
     # Rendering

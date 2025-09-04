@@ -69,12 +69,12 @@ def global_joint_state_index(
 
 def train(
     episodes: int = 5000,
-    max_steps: int = 250,
+    max_steps: int = 100,
     alpha: float = 0.1,
     gamma: float = 0.99,
     eps_start: float = 1.0,
     eps_end: float = 0.05,
-    eps_decay: float = 0.995,
+    eps_decay: float = 0.9,
     grid_size: int = 8,
     save_path: str = "baselines/IQL/iql_qs.npz",
     seed: int = 0,
@@ -265,8 +265,8 @@ def train(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Train IQL (tabular) predator-prey")
-    parser.add_argument("--episodes", type=int, default=25000)
-    parser.add_argument("--size", type=int, default=8)
+    parser.add_argument("--episodes", type=int, default=15000)
+    parser.add_argument("--size", type=int, default=2)
     parser.add_argument("--alpha", type=float, default=0.1)
     parser.add_argument("--gamma", type=float, default=0.9)
     parser.add_argument("--seed", type=int, default=0)
