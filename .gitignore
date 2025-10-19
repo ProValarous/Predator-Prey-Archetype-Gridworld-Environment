@@ -25,3 +25,11 @@ __pycache__/
 
 # wandb logs
 src/wandb/
+
+# npz tables
+src/baselines/CQL/centeral_cql_q_table.npz
+
+
+# logs
+src/baselines/CQL/logs/
+src/baselines/IQL/logs/
