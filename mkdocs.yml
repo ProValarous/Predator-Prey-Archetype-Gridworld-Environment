@@ -1,0 +1,10 @@
+site_name:  Predator–Prey Gridworld Environment
+site_description: A minimalist, discrete multi-agent predator-prey archytype environment.
+repo_url: https://github.com/ProValarous/Predator-Prey-Gridworld-Environment
+nav:
+  - Home: index.md
+  - Usage: usage.md
+
+theme:
+  name: material         # optional; requires `mkdocs-material` package
+  language: en

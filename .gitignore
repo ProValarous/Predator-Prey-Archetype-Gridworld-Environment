@@ -27,11 +27,13 @@ __pycache__/
 src/wandb/
 
 # npz tables
-src/baselines/CQL/centeral_cql_q_table.npz
+src/baselines/CQL/central_cql_q_table.npz
 src/baselines/IQL/predator_1/
 src/baselines/IQL/predator_2/
 src/baselines/IQL/prey_1/
 src/baselines/IQL/prey_2/
+src/baselines/IQL/prey/
+src/baselines/IQL/prey/
 
 
 
