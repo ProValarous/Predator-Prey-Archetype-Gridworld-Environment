@@ -1,0 +1,15 @@
+-r requirements.txt         # include runtime deps automatically
+
+black
+flake8
+pylint
+pre-commit
+
+# Docs
+mkdocs==1.5.1
+mkdocs-material==10.0.0
+
+
+# Logging
+wandb
+
