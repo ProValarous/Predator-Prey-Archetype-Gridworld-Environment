@@ -4,13 +4,14 @@ on:
   push:
     branches: [ main ]
 
+# Required top-level permissions so runner provides OIDC and can publish pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
 jobs:
-  build-deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -21,11 +22,25 @@ jobs:
         with:
           python-version: 3.12
 
-      - name: Install MkDocs
-        run: pip install mkdocs-material
+      - name: Install MkDocs + theme
+        run: |
+          python -m pip install --upgrade pip
+          pip install mkdocs mkdocs-material
 
       - name: Build site
-        run: mkdocs build
+        # mkdocs will generate the static site into ./site by default
+        run: mkdocs build --site-dir site
 
-      - name: Deploy
+      - name: Configure Pages
+        # configures repo for Pages; required step in the official flow
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        # upload the generated site directory for deployment
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: ./site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
