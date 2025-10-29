@@ -82,11 +82,11 @@ class Agent(gym.Env):
     def _action_to_direction(self) -> dict:
         """Map action indices to unit direction vectors (numpy arrays)."""
         return {
-            0: np.array([1, 0]),    # Right
-            1: np.array([0, 1]),    # Up
-            2: np.array([-1, 0]),   # Left
-            3: np.array([0, -1]),   # Down
-            4: np.array([0, 0]),    # Noop
+            0: np.array([1, 0]),  # Right
+            1: np.array([0, 1]),  # Up
+            2: np.array([-1, 0]),  # Left
+            3: np.array([0, -1]),  # Down
+            4: np.array([0, 0]),  # Noop
         }
 
     def _get_obs(self, global_obs: Optional[dict] = None) -> dict:
@@ -192,8 +192,8 @@ class Agent(gym.Env):
         # Base hues in HSV (range 0.0 - 1.0)
         base_hues = {
             "predator": 0.0 / 360.0,  # red
-            "prey": 120.0 / 360.0,    # green
-            "other": 240.0 / 360.0,   # blue
+            "prey": 120.0 / 360.0,  # green
+            "other": 240.0 / 360.0,  # blue
         }
         hue = base_hues.get(base_type.lower(), 0.0)
 
@@ -228,8 +228,9 @@ class Agent(gym.Env):
     # Shape helpers
     # -------------------------
     @staticmethod
-    def _star_points(center: Tuple[int, int], outer_r: float,
-                     inner_r: float, points: int = 5) -> List[Tuple[int, int]]:
+    def _star_points(
+        center: Tuple[int, int], outer_r: float, inner_r: float, points: int = 5
+    ) -> List[Tuple[int, int]]:
         """
         Compute polygon points for a star (useful for pygame.draw.polygon).
 
@@ -271,8 +272,9 @@ class Agent(gym.Env):
             self._font_cache[font_size] = pygame.font.SysFont(None, font_size)
         return self._font_cache[font_size]
 
-    def _render_label(self, canvas: pygame.Surface, center: Tuple[int, int],
-                      label: str, max_dim: int) -> None:
+    def _render_label(
+        self, canvas: pygame.Surface, center: Tuple[int, int], label: str, max_dim: int
+    ) -> None:
         """
         Draw a black label centered at `center` and scaled to fit within `max_dim`.
         This mutates the canvas (pygame Surface).
@@ -283,7 +285,9 @@ class Agent(gym.Env):
         surf = font.render(label, True, text_color)
 
         # shrink to fit if necessary
-        while (surf.get_width() > max_dim or surf.get_height() > max_dim) and font_size > 6:
+        while (
+            surf.get_width() > max_dim or surf.get_height() > max_dim
+        ) and font_size > 6:
             font_size -= 1
             font = self._get_font(font_size)
             surf = font.render(label, True, text_color)
@@ -332,10 +336,19 @@ class Agent(gym.Env):
             except TypeError:
                 pygame.draw.rect(canvas, color, rect)
         elif shape == "triangle":
-            pts = [(cx, cy - radius), (cx - radius, cy + radius), (cx + radius, cy + radius)]
+            pts = [
+                (cx, cy - radius),
+                (cx - radius, cy + radius),
+                (cx + radius, cy + radius),
+            ]
             pygame.draw.polygon(canvas, color, pts)
         elif shape == "diamond":
-            pts = [(cx, cy - radius), (cx - radius, cy), (cx, cy + radius), (cx + radius, cy)]
+            pts = [
+                (cx, cy - radius),
+                (cx - radius, cy),
+                (cx, cy + radius),
+                (cx + radius, cy),
+            ]
             pygame.draw.polygon(canvas, color, pts)
         elif shape == "star":
             outer_r = radius
@@ -356,7 +369,7 @@ class Agent(gym.Env):
             else:
                 label = full_label[:5].upper()
         else:
-            label = (base_type[:3].upper() if base_type else "A")
+            label = base_type[:3].upper() if base_type else "A"
 
         # Put label inside shape; size it relative to radius
         max_dim = int(radius * 1.6)

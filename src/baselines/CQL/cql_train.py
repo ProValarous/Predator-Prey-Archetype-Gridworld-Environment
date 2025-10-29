@@ -46,6 +46,7 @@ def setup_logging(level=logging.INFO):
         datefmt="%d-%m-%Y %H:%M:%S",
     )
 
+
 def joint_state_index(positions: List[Tuple[int, int]], grid_size: int) -> int:
     """Encode a list of (x,y) positions into a single integer index.
 
@@ -57,7 +58,7 @@ def joint_state_index(positions: List[Tuple[int, int]], grid_size: int) -> int:
     for cell_pos in positions:
         cell_index = int(cell_pos[0]) * grid_size + int(cell_pos[1])
         idx = idx * n_cells + cell_index
-    return int(idx)    
+    return int(idx)
 
 
 def make_agents(num_predators: int = 2, num_preys: int = 2) -> List[Agent]:
@@ -69,14 +70,20 @@ def make_agents(num_predators: int = 2, num_preys: int = 2) -> List[Agent]:
     for i in range(1, num_preys + 1):
         agents.append(Agent(agent_name=f"prey_{i}", agent_team=i, agent_type="prey"))
     for i in range(1, num_predators + 1):
-        agents.append(Agent(agent_name=f"predator_{i}", agent_team=i, agent_type="predator"))
+        agents.append(
+            Agent(agent_name=f"predator_{i}", agent_team=i, agent_type="predator")
+        )
     return agents
 
 
-def make_env_and_meta(agents: List[Agent], grid_size: int, seed: int) -> Tuple[GridWorldEnv, int, int]:
-    env = GridWorldEnv(agents=agents, render_mode=None, size=grid_size, perc_num_obstacle=10, seed=seed)
+def make_env_and_meta(
+    agents: List[Agent], grid_size: int, seed: int
+) -> Tuple[GridWorldEnv, int, int]:
+    env = GridWorldEnv(
+        agents=agents, render_mode=None, size=grid_size, perc_num_obstacle=10, seed=seed
+    )
     n_cells = grid_size * grid_size
-    
+
     # total joint states = n_cells ** n_agents (may be very large)
     n_states = n_cells ** len(agents)
     n_actions = env.action_space.n
@@ -134,12 +141,14 @@ def train(
     n_agents = len(agent_names)
 
     # Joint-action space size
-    n_joint_actions = n_actions ** n_agents
+    n_joint_actions = n_actions**n_agents
 
     # Central joint Q-table: shape (n_states, n_joint_actions)
     Q = init_joint_q_table(n_states, n_joint_actions)
 
-    save_path_Q = os.path.join(os.path.dirname(save_path) or ".", "central_cql_q_table.npz")
+    save_path_Q = os.path.join(
+        os.path.dirname(save_path) or ".", "central_cql_q_table.npz"
+    )
 
     eps = eps_start
 
@@ -184,13 +193,15 @@ def train(
             # --- Centralized action selection ---
             # ---- simultaneous policy for both agents (predator & prey) ----
             # reshape joint-Q into matrix [pred_action, prey_action]
-            q_matrix = Q[s].reshape(n_actions, n_actions)   # shape (pred_actions, prey_actions)
+            q_matrix = Q[s].reshape(
+                n_actions, n_actions
+            )  # shape (pred_actions, prey_actions)
 
             # expected values for predator actions (avg over prey actions)
-            q_vals_pred = q_matrix.mean(axis=1)   # shape (n_actions,)
+            q_vals_pred = q_matrix.mean(axis=1)  # shape (n_actions,)
 
             # expected values for prey actions (avg over predator actions)
-            q_vals_prey = q_matrix.mean(axis=0)   # shape (n_actions,)
+            q_vals_prey = q_matrix.mean(axis=0)  # shape (n_actions,)
 
             # predator epsilon-greedy
             if rng.random() < eps:
@@ -208,11 +219,12 @@ def train(
             joint_idx = joint_action_to_index(joint_action, n_actions)
 
             # split joint action to per-agent actions
-            actions = {agents[i].agent_name: int(joint_action[i]) for i in range(n_agents)}
+            actions = {
+                agents[i].agent_name: int(joint_action[i]) for i in range(n_agents)
+            }
 
             mgp = env.step(actions)
             next_obs, rewards = mgp["obs"], mgp["reward"]
-
 
             # # next state
             # pos_pred_next = next_obs[predator.agent_name]["local"]
@@ -264,10 +276,13 @@ def train(
                 current_potential_sum += current_pot[name]
                 next_potential_sum += next_pot[name]
 
-
             # update joint Q
             Q[s, joint_idx] += alpha * (
-                central_r + (gamma * next_potential_sum) - current_potential_sum + gamma * np.max(Q[s2]) - Q[s, joint_idx]
+                central_r
+                + (gamma * next_potential_sum)
+                - current_potential_sum
+                + gamma * np.max(Q[s2])
+                - Q[s, joint_idx]
             )
 
             if mgp.get("terminated", False):
@@ -293,18 +308,31 @@ def train(
         # per-agent total reward and running mean
         for ag in agents:
             # writer.add_scalar(f"episode/{ag.agent_name}/total_reward", float(total_reward_per_agent[ag.agent_name]), ep)
-            mean_reward_running = float(np.mean(rewards_per_ep[ag.agent_name][-window:])) if rewards_per_ep[ag.agent_name] else 0.0
+            mean_reward_running = (
+                float(np.mean(rewards_per_ep[ag.agent_name][-window:]))
+                if rewards_per_ep[ag.agent_name]
+                else 0.0
+            )
             writer.add_scalar(f"mean/{ag.agent_name}/reward", mean_reward_running, ep)
 
         # captures
         # writer.add_scalar("episode/captures", captures_this_episode, ep)
-        mean_captures_running = float(np.mean(captures_per_ep[-window:])) if captures_per_ep else 0.0
+        mean_captures_running = (
+            float(np.mean(captures_per_ep[-window:])) if captures_per_ep else 0.0
+        )
         writer.add_scalar("mean/captures", mean_captures_running, ep)
 
         # epsilon decay every 100 episodes
         if ep % 100 == 0:
             eps = max(eps_end, eps * eps_decay)
-            avg = {ag.agent_name: np.mean(rewards_per_ep[ag.agent_name][-100:]) if len(rewards_per_ep[ag.agent_name]) >= 1 else 0.0 for ag in agents}
+            avg = {
+                ag.agent_name: (
+                    np.mean(rewards_per_ep[ag.agent_name][-100:])
+                    if len(rewards_per_ep[ag.agent_name]) >= 1
+                    else 0.0
+                )
+                for ag in agents
+            }
             LOGGER.info(
                 "Ep %d | eps=%.3f | Predator avg reward(last100)=%.2f | Prey avg reward(last100)=%.2f | mean captures(last100)=%.2f",
                 ep,
@@ -324,7 +352,7 @@ def train(
     LOGGER.info("Training done. Final epsilon=%.3f", eps)
 
 
-def  parse_args():
+def parse_args():
     p = argparse.ArgumentParser("Train predator-prey (1 predator learns, prey fixed)")
     p.add_argument("--episodes", type=int, default=40000)
     p.add_argument("--size", type=int, default=5)
