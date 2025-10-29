@@ -1,9 +1,9 @@
 from multi_agent_package.agents import Agent
 
 
-agent1 = Agent("prey","Tom")
-agent2 = Agent("predator","Jerry")
-agent3 = Agent("judge","Spike")
+agent1 = Agent("prey", 0, "Tom")
+agent2 = Agent("predator", 1, "Jerry")
+agent3 = Agent("judge", 2, "Spike")
 agents = [agent1,agent2,agent3]
 
 for i in range(2):
