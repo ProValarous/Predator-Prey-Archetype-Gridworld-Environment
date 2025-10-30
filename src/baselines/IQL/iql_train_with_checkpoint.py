@@ -52,12 +52,12 @@ def setup_logging(level=logging.INFO):
     logging.basicConfig(
         level=level,
         format="[%(asctime)s] %(levelname)s - %(message)s",
-        datefmt="%d-%m-%Y %H:%M:%S"
+        datefmt="%d-%m-%Y %H:%M:%S",
     )
 
 
 def make_env_and_meta(
-        predator: Agent, prey: Agent, grid_size: int, seed: int
+    predator: Agent, prey: Agent, grid_size: int, seed: int
 ) -> Tuple[GridWorldEnv, int, int]:
     """
     Creates a GridWorld environment with a predator and prey agent, and returns the environment along with the number of possible states and actions.
@@ -74,7 +74,7 @@ def make_env_and_meta(
         render_mode=None,
         size=grid_size,
         perc_num_obstacle=10,
-        seed=seed
+        seed=seed,
     )
 
     # State space = predator (x,y) + prey (x,y)
@@ -91,7 +91,7 @@ def init_q_table(n_states: int, n_actions: int) -> np.ndarray:
 
 
 def epsilon_greedy_action(
-        q_row: np.ndarray, n_actions: int, rng: np.random.Generator, eps: float
+    q_row: np.ndarray, n_actions: int, rng: np.random.Generator, eps: float
 ) -> int:
     """
     Selects an action using the epsilon-greedy strategy.
@@ -132,16 +132,13 @@ def train(
 ):
     rng = np.random.default_rng(seed)
 
-    predator = Agent(
-        agent_name="predator", agent_team=1, agent_type="predator"
-    )
+    predator = Agent(agent_name="predator", agent_team=1, agent_type="predator")
     prey = Agent(agent_name="prey", agent_team=2, agent_type="prey")
 
     agents = [predator, prey]
 
     # prey is fixed: will always choose noop (action=4)
-    env, n_states, n_actions = make_env_and_meta(
-        predator, prey, grid_size, seed)
+    env, n_states, n_actions = make_env_and_meta(predator, prey, grid_size, seed)
 
     Q = {}
     save_path_Q = {}
@@ -157,11 +154,7 @@ def train(
     episode_lengths = []
 
     timestamp = time.strftime("%d-%m-%Y_%H-%M-%S")
-    log_dir = os.path.join(
-        os.path.dirname(save_path) or ".",
-        "logs",
-        timestamp
-    )
+    log_dir = os.path.join(os.path.dirname(save_path) or ".", "logs", timestamp)
     os.makedirs(log_dir, exist_ok=True)
     writer = SummaryWriter(log_dir=log_dir)
 
@@ -182,8 +175,8 @@ def train(
             prey_x, prey_y = int(pos_prey[0]), int(pos_prey[1])
 
             s = (
-                pred_x * grid_size ** 3
-                + pred_y * grid_size ** 2
+                pred_x * grid_size**3
+                + pred_y * grid_size**2
                 + prey_x * grid_size
                 + prey_y
             )
@@ -230,16 +223,18 @@ def train(
             pred_x2, pred_y2 = int(pos_pred_next[0]), int(pos_pred_next[1])
             prey_x2, prey_y2 = int(pos_prey_next[0]), int(pos_prey_next[1])
 
-            current_state = {predator.agent_name: pos_pred,
-                             prey.agent_name: pos_prey}
+            current_state = {predator.agent_name: pos_pred, prey.agent_name: pos_prey}
             next_state = {
                 predator.agent_name: pos_pred_next,
-                prey.agent_name: pos_prey_next}
+                prey.agent_name: pos_prey_next,
+            }
 
-            s2 = (pred_x2 * grid_size * grid_size * grid_size
-                  + pred_y2 * grid_size * grid_size
-                  + prey_x2 * grid_size
-                  + prey_y2)
+            s2 = (
+                pred_x2 * grid_size * grid_size * grid_size
+                + pred_y2 * grid_size * grid_size
+                + prey_x2 * grid_size
+                + prey_y2
+            )
 
             current_potential = env.potential_reward(current_state)
             next_potential = env.potential_reward(next_state)
@@ -254,14 +249,12 @@ def train(
 
             # update Q
             for ag in agents:
-                Q[ag.agent_name][s, a[ag.agent_name]] += (
-                    alpha * (
-                        r[ag.agent_name]
-                        + (gamma * next_potential[ag.agent_name])
-                        - current_potential[ag.agent_name]
-                        + gamma * np.max(Q[ag.agent_name][s2])
-                        - Q[ag.agent_name][s, a[ag.agent_name]]
-                    )
+                Q[ag.agent_name][s, a[ag.agent_name]] += alpha * (
+                    r[ag.agent_name]
+                    + (gamma * next_potential[ag.agent_name])
+                    - current_potential[ag.agent_name]
+                    + gamma * np.max(Q[ag.agent_name][s2])
+                    - Q[ag.agent_name][s, a[ag.agent_name]]
                 )
 
             if mgp.get("terminated", False):
@@ -299,11 +292,11 @@ def train(
                 if rewards_per_ep[ag.agent_name]
                 else 0.0
             )
-            writer.add_scalar(
-                f"mean/{ag.agent_name}/reward", mean_reward_running, ep)
+            writer.add_scalar(f"mean/{ag.agent_name}/reward", mean_reward_running, ep)
 
-        mean_captures_running = float(
-            np.mean(captures_per_ep[-window:])) if captures_per_ep else 0.0
+        mean_captures_running = (
+            float(np.mean(captures_per_ep[-window:])) if captures_per_ep else 0.0
+        )
         writer.add_scalar("episode/captures", captures_this_episode, ep)
         writer.add_scalar("mean/captures", mean_captures_running, ep)
 
@@ -322,7 +315,11 @@ def train(
             LOGGER.info(
                 "Ep %d | eps=%.3f | Predator avg reward(last100)=%.2f | "
                 "Prey avg reward(last100)=%.2f | mean captures(last100)=%.2f",
-                ep, eps, avg_pred, avg_prey, mean_captures_running
+                ep,
+                eps,
+                avg_pred,
+                avg_prey,
+                mean_captures_running,
             )
 
         # flush periodically
@@ -341,9 +338,7 @@ def parse_args():
     """
     Parses command-line arguments for training a predator-prey model
     """
-    p = argparse.ArgumentParser(
-        "Train predator-prey (1 predator learns, prey fixed)"
-    )
+    p = argparse.ArgumentParser("Train predator-prey (1 predator learns, prey fixed)")
     p.add_argument("--episodes", type=int, default=40000)
     p.add_argument("--size", type=int, default=8)
     p.add_argument("--alpha", type=float, default=0.25)

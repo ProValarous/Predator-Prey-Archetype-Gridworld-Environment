@@ -46,6 +46,7 @@ def setup_logging(level: int = logging.INFO) -> None:
 # Agent factory
 # ----------------------
 
+
 def build_agents() -> List[Agent]:
     """Create and return a list of Agent instances for the demo.
 
@@ -63,12 +64,13 @@ def build_agents() -> List[Agent]:
     agent201 = Agent("prey", 3, "PY201_Jerry")
     agent202 = Agent("predator", 1, "PD202_Stuart")
 
-    return [agent201, agent202,agent101, agent102]
+    return [agent201, agent202, agent101, agent102]
 
 
 # ----------------------
 # Utilities
 # ----------------------
+
 
 def assign_total_subteams(agents: List[Agent]) -> None:
     """Auto-detect total subteams per base type and set `agent.total_subteams`.
@@ -98,12 +100,22 @@ def assign_total_subteams(agents: List[Agent]) -> None:
 # ----------------------
 
 
-def random_policy(agents: List[Agent], obs: Dict[str, dict], rng: np.random.Generator, env: GridWorldEnv) -> Dict[str, int]:
+def random_policy(
+    agents: List[Agent],
+    obs: Dict[str, dict],
+    rng: np.random.Generator,
+    env: GridWorldEnv,
+) -> Dict[str, int]:
     """Return a random action for each agent using the environment action_space."""
     return {ag.agent_name: int(env.action_space.sample()) for ag in agents}
 
 
-def noop_policy(agents: List[Agent], obs: Dict[str, dict], rng: np.random.Generator, env: GridWorldEnv) -> Dict[str, int]:
+def noop_policy(
+    agents: List[Agent],
+    obs: Dict[str, dict],
+    rng: np.random.Generator,
+    env: GridWorldEnv,
+) -> Dict[str, int]:
     """Return a 'no-op' (4) action for each agent. Useful for debugging.
 
     Note: ensure action 4 is a valid no-op in your environment.
@@ -114,6 +126,7 @@ def noop_policy(agents: List[Agent], obs: Dict[str, dict], rng: np.random.Genera
 # ----------------------
 # Simulation runner
 # ----------------------
+
 
 def run_simulation(
     agents: List[Agent],
@@ -147,15 +160,23 @@ def run_simulation(
     """
     assign_total_subteams(agents)
 
-    env = GridWorldEnv(agents=agents, render_mode=render_mode, size=size, perc_num_obstacle=perc_num_obstacle, seed=seed)
+    env = GridWorldEnv(
+        agents=agents,
+        render_mode=render_mode,
+        size=size,
+        perc_num_obstacle=perc_num_obstacle,
+        seed=seed,
+    )
 
     obs, info = env.reset(seed=seed)
 
     for t in range(steps):
-        actions = {agents[0].agent_name: env.action_space.sample(),
-                        agents[1].agent_name: env.action_space.sample(),
-        agents[2].agent_name: env.action_space.sample(),
-        agents[3].agent_name: env.action_space.sample()}
+        actions = {
+            agents[0].agent_name: env.action_space.sample(),
+            agents[1].agent_name: env.action_space.sample(),
+            agents[2].agent_name: env.action_space.sample(),
+            agents[3].agent_name: env.action_space.sample(),
+        }
 
         mgp_tuple = env.step(actions)
 
@@ -193,14 +214,32 @@ def run_simulation(
 # CLI
 # ----------------------
 
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run GridWorldEnv demo")
-    parser.add_argument("--steps", type=int, default=100, help="Number of simulation steps")
+    parser.add_argument(
+        "--steps", type=int, default=100, help="Number of simulation steps"
+    )
     parser.add_argument("--size", type=int, default=8, help="Grid size (NxN)")
-    parser.add_argument("--obst", type=float, default=10.0, help="Percentage of obstacles")
-    parser.add_argument("--mode", type=str, default="human", choices=["human", "rgb_array"], help="Render mode")
-    parser.add_argument("--seed", type=int, default=0, help="RNG seed for reproducibility")
-    parser.add_argument("--pause", type=float, default=0.01, help="Pause between frames when running in human mode")
+    parser.add_argument(
+        "--obst", type=float, default=10.0, help="Percentage of obstacles"
+    )
+    parser.add_argument(
+        "--mode",
+        type=str,
+        default="human",
+        choices=["human", "rgb_array"],
+        help="Render mode",
+    )
+    parser.add_argument(
+        "--seed", type=int, default=0, help="RNG seed for reproducibility"
+    )
+    parser.add_argument(
+        "--pause",
+        type=float,
+        default=0.01,
+        help="Pause between frames when running in human mode",
+    )
     return parser.parse_args()
 
 

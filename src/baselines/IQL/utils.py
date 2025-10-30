@@ -1,3 +1,8 @@
+from typing import Any
+import sys
+import subprocess
+import json
+import time
 import os
 from typing import Dict, Tuple, Optional
 
@@ -6,12 +11,22 @@ import numpy as np
 
 from multi_agent_package.agents import Agent
 
+# TODO : create training configuration function here and import in iql_train2v2.py
 
 # ----------------------
 # Checkpoint utilities
 # ----------------------
 
-def save_checkpoint(path: str, Qs: Dict[str, np.ndarray], eps: float, ep: int, capture_count: int, prey_totals: list, pred_totals: list) -> None:
+
+def save_checkpoint(
+    path: str,
+    Qs: Dict[str, np.ndarray],
+    eps: float,
+    ep: int,
+    capture_count: int,
+    prey_totals: list,
+    pred_totals: list,
+) -> None:
     """Save Q-tables and lightweight metadata to an .npz checkpoint file.
 
     Qs are saved under keys prefixed with 'Q_'. Metadata are saved as small
@@ -56,18 +71,24 @@ def load_checkpoint(path: str) -> Tuple[Dict[str, np.ndarray], Dict]:
     # safe reads with defaults
     metadata["eps"] = float(data["eps"].tolist()) if "eps" in data.files else None
     metadata["ep"] = int(data["ep"].tolist()) if "ep" in data.files else None
-    metadata["capture_count"] = int(data["capture_count"].tolist()) if "capture_count" in data.files else 0
-    metadata["prey_totals"] = data["prey_totals"].tolist() if "prey_totals" in data.files else []
-    metadata["pred_totals"] = data["pred_totals"].tolist() if "pred_totals" in data.files else []
+    metadata["capture_count"] = (
+        int(data["capture_count"].tolist()) if "capture_count" in data.files else 0
+    )
+    metadata["prey_totals"] = (
+        data["prey_totals"].tolist() if "prey_totals" in data.files else []
+    )
+    metadata["pred_totals"] = (
+        data["pred_totals"].tolist() if "pred_totals" in data.files else []
+    )
 
     print(f"[checkpoint] loaded <- {path} (episodes so far: {metadata.get('ep')})")
     return Qs, metadata
 
 
-
 # ----------------------
 # Environment/Agent utilities
 # ----------------------
+
 
 def make_agents() -> Tuple[Agent, Agent]:
     prey = Agent("prey", 1, "prey_1")
@@ -113,3 +134,47 @@ def global_joint_state_index(
     dist_bin = int(min(max_dist, max(0, int(round(d)))))
 
     return a_idx * (max_dist + 1) + dist_bin
+
+
+# ----------------------
+# Training experiment folder functions
+# ----------------------
+
+
+def create_experiment_dir(
+    base: str = "experiments", name: str | None = None, params: dict | None = None
+) -> Tuple[str, str, str]:
+    """Create timestamped experiment folder and return (exp_dir, checkpoints_dir, logs_dir)."""
+    params = params or {}
+    now = time.strftime("%Y-%m-%d_%H-%M-%S")
+    safe_name = (name or "run").strip().replace(" ", "_")
+    exp_dir = os.path.join(base, f"{now}_{safe_name}")
+    checkpoints_dir = os.path.join(exp_dir, "checkpoints")
+    logs_dir = os.path.join(exp_dir, "logs")
+    os.makedirs(checkpoints_dir, exist_ok=True)
+    os.makedirs(logs_dir, exist_ok=True)
+
+    return exp_dir, checkpoints_dir, logs_dir
+
+
+def write_experiment_md(exp_dir: str, params: dict) -> None:
+    """Write a human-readable README.md describing the run"""
+    md_path = os.path.join(exp_dir, "README.md")
+    lines = [
+        f"# Experiment: {os.path.basename(exp_dir)}",
+        "",
+        f"- Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}",
+        "",
+        "## Command",
+        "```",
+        params.get("command", ""),
+        "```",
+        "",
+        "## Parameters",
+    ]
+    for k, v in params.items():
+        if k == "command":
+            continue
+        lines.append(f"- **{k}**: `{v}`")
+    with open(md_path, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(lines) + "\n")

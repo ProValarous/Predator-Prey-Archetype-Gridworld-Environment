@@ -40,8 +40,11 @@ def try_load_qs(file_path: str) -> Dict[str, np.ndarray]:
                 name = key[2:] if key.startswith("Q_") else key
                 qs[name] = arr.astype(np.float32)
         if not qs:
-            raise RuntimeError(f"No valid Q-table arrays found in '{file_path}'. Keys: {list(data.files)}")
+            raise RuntimeError(
+                f"No valid Q-table arrays found in '{file_path}'. Keys: {list(data.files)}"
+            )
         return qs
+
 
 def state_index_from_obs(obs: dict, predator: Agent, prey: Agent, size: int) -> int:
     """
@@ -54,12 +57,7 @@ def state_index_from_obs(obs: dict, predator: Agent, prey: Agent, size: int) -> 
     pred_x, pred_y = int(pos_pred[0]), int(pos_pred[1])
     prey_x, prey_y = int(pos_prey[0]), int(pos_prey[1])
 
-    return (
-        pred_x * size * size * size
-        + pred_y * size * size
-        + prey_x * size
-        + prey_y
-    )
+    return pred_x * size * size * size + pred_y * size * size + prey_x * size + prey_y
 
 
 def choose_action(agent: Agent, q_table: np.ndarray, s_idx: int) -> int:
@@ -83,7 +81,9 @@ def run_test(
 
     prey, predator = make_agents()
     agents = [prey, predator]
-    env = GridWorldEnv(agents=agents, render_mode="human", size=size, perc_num_obstacle=10)
+    env = GridWorldEnv(
+        agents=agents, render_mode="human", size=size, perc_num_obstacle=10
+    )
 
     try:
         for ep in range(1, episodes + 1):
@@ -112,7 +112,9 @@ def run_test(
                                 q_table = qs[k]
                                 break
                     if q_table is None:
-                        raise RuntimeError(f"No Q-table for agent '{ag.agent_name}'. Keys: {list(qs.keys())}")
+                        raise RuntimeError(
+                            f"No Q-table for agent '{ag.agent_name}'. Keys: {list(qs.keys())}"
+                        )
 
                     a = choose_action(ag, q_table, s_idx)
                     actions[ag.agent_name] = a
@@ -145,4 +147,10 @@ def parse_args() -> argparse.Namespace:
 if __name__ == "__main__":
     setup_logging()
     args = parse_args()
-    run_test(q_file=args.file, size=args.size, episodes=args.episodes, max_steps=args.max_steps, pause=args.pause)
+    run_test(
+        q_file=args.file,
+        size=args.size,
+        episodes=args.episodes,
+        max_steps=args.max_steps,
+        pause=args.pause,
+    )

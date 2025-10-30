@@ -1,5 +1,4 @@
-"""
-Updated multi-agent tester for tabular IQL Q-tables
+"""Updated multi-agent tester for tabular IQL Q-tables.
 
 Matches the coding style used by the trainer script in this project:
 - logging setup function
@@ -7,16 +6,22 @@ Matches the coding style used by the trainer script in this project:
 - simple, imperative control flow
 
 Features added compared to earlier tester:
-- Accepts a single combined .npz, multiple per-agent .npz files, or a directory (scanned recursively).
-- If a per-agent file is stored inside a per-agent folder (e.g. `predator_1/iql_q_table.npz`), the
-  loader will infer the agent name from the parent folder when necessary.
-- Falls back to random actions for agents missing a Q-table, and logs a warning.
+- Accepts a single combined .npz, multiple per-agent .npz files,
+    or a directory (scanned recursively).
+- If a per-agent file is stored inside a per-agent folder
+    (e.g. ``predator_1/iql_q_table.npz``), the loader will infer the
+    agent name from the parent folder when necessary.
+- Falls back to random actions for agents missing a Q-table and
+    logs a warning.
 
 Usage examples:
-  python test_iql_multiagent_updated.py --file baselines/IQL/all_qs.npz --size 6 --preys 2 --predators 2
-  python test_iql_multiagent_updated.py --q-files baselines/IQL/predator_1/iql_q_table.npz baselines/IQL/predator_2/iql_q_table.npz --size 6
-  python test_iql_multiagent_updated.py --q-dir baselines/IQL --size 6
-
+    cd src
+    python -m baselines.IQL.test_iql2v2.py --file baselines/IQL/all_qs.npz \\
+            --size 6 --preys 2 --predators 2
+    python -m baselines.IQL.test_iql2v2.py --q-files \\
+            baselines/IQL/predator_1/iql_q_table.npz \\
+            baselines/IQL/predator_2/iql_q_table.npz --size 6
+    python -m baselines.IQL.test_iql2v2.py --q-dir baselines/IQL --size 6
 """
 
 from __future__ import annotations
@@ -37,15 +42,19 @@ LOGGER = logging.getLogger("test_iql")
 
 
 def setup_logging(level: int = logging.INFO) -> None:
+    """Random docstring"""
     logging.basicConfig(level=level, format="[%(asctime)s] %(levelname)s - %(message)s")
 
 
-def make_agents(num_preys: int = 2, num_predators: int = 2) -> List[Agent]:
-    agents: List[Agent] = []
+def make_agents(num_preys: int = 2, num_predators: int = 2) -> Dict[str, Agent]:
+    """Random docstring"""
+    agents: Dict[str, Agent] = {}
     for i in range(1, num_preys + 1):
-        agents.append(Agent(agent_name=f"prey_{i}", agent_team=i, agent_type="prey"))
+        name = f"prey_{i}"
+        agents[name] = Agent(agent_name=name, agent_team=i, agent_type="prey")
     for i in range(1, num_predators + 1):
-        agents.append(Agent(agent_name=f"predator_{i}", agent_team=i, agent_type="predator"))
+        name = f"predator_{i}"
+        agents[name] = Agent(agent_name=name, agent_team=i, agent_type="predator")
     return agents
 
 
@@ -65,8 +74,12 @@ def joint_state_index(positions: List[Tuple[int, int]], grid_size: int) -> int:
 
 # ----------------- Q loading helpers -----------------
 
+
 def _extract_agent_name_from_filename(path: Path) -> str:
-    """Heuristic: extract agent name (e.g. 'prey_1') from filename stem or parent folder."""
+    """
+    Heuristic: extract agent name (e.g. 'prey_1')
+    from filename stem or parent folder.
+    """
     stem = path.stem.lower()
     for base in ("prey", "predator"):
         if base in stem:
@@ -98,10 +111,15 @@ def _load_qs_from_npz(path: Path) -> Dict[str, np.ndarray]:
     return qs
 
 
-def load_q_tables(single_file: Optional[str] = None, files: Optional[List[str]] = None, directory: Optional[str] = None) -> Dict[str, np.ndarray]:
-    """Load Q-tables from either a single combined .npz, a list of per-agent files, or a directory.
+def load_q_tables(
+    single_file: Optional[str] = None,
+    files: Optional[List[str]] = None,
+    directory: Optional[str] = None,
+) -> Dict[str, np.ndarray]:
+    """Load Q-tables from a single .npz, a list of per-agent files, or a dir.
 
-    Directory mode searches recursively and will infer agent names from file content or parent folder.
+    Directory mode searches recursively and will infer agent names from file
+    content or parent folder.
     """
     qs: Dict[str, np.ndarray] = {}
 
@@ -121,22 +139,29 @@ def load_q_tables(single_file: Optional[str] = None, files: Optional[List[str]] 
             if not p.exists():
                 LOGGER.warning("Q-file not found: %s (skipping)", f)
                 continue
-            loaded = _load_qs_from_npz(p)
+
+            try:
+                loaded = _load_qs_from_npz(p)
+            except Exception as exc:
+                LOGGER.warning("Failed loading %s: %s (skipping)", p, exc)
+                continue
+
             if loaded:
                 qs.update(loaded)
-            else:
-                # map first 2D array to a name derived from filename or parent folder
-                with np.load(str(p), allow_pickle=False) as data:
-                    found = False
-                    for key in data.files:
-                        arr = data[key]
-                        if arr.ndim == 2:
-                            agent_name = _extract_agent_name_from_filename(p)
-                            qs[agent_name] = arr.astype(np.float32)
-                            found = True
-                            break
-                    if not found:
-                        LOGGER.warning("No 2D array found in %s", f)
+                continue
+
+            # map first 2D array to name derived from filename or parent folder
+            with np.load(str(p), allow_pickle=False) as data:
+                found = False
+                for key in data.files:
+                    arr = data[key]
+                    if arr.ndim == 2:
+                        agent_name = _extract_agent_name_from_filename(p)
+                        qs[agent_name] = arr.astype(np.float32)
+                        found = True
+                        break
+                if not found:
+                    LOGGER.warning("No 2D array found in %s", f)
 
     # 3) directory: recursive scan
     if directory:
@@ -147,21 +172,22 @@ def load_q_tables(single_file: Optional[str] = None, files: Optional[List[str]] 
         for p in sorted(d.rglob("*.npz")):
             try:
                 loaded = _load_qs_from_npz(p)
-            except Exception as e:
-                LOGGER.warning("Failed loading %s: %s (skipping)", p, e)
+            except Exception as exc:
+                LOGGER.warning("Failed loading %s: %s (skipping)", p, exc)
                 continue
 
             if loaded:
                 qs.update(loaded)
-            else:
-                # fallback: map first 2D array to a name derived from filename/parent
-                with np.load(str(p), allow_pickle=False) as data:
-                    for key in data.files:
-                        arr = data[key]
-                        if arr.ndim == 2:
-                            agent_name = _extract_agent_name_from_filename(p)
-                            qs[agent_name] = arr.astype(np.float32)
-                            break
+                continue
+
+            # fallback: map first 2D array to name derived from filename/parent
+            with np.load(str(p), allow_pickle=False) as data:
+                for key in data.files:
+                    arr = data[key]
+                    if arr.ndim == 2:
+                        agent_name = _extract_agent_name_from_filename(p)
+                        qs[agent_name] = arr.astype(np.float32)
+                        break
 
     if not qs:
         raise RuntimeError("No Q-tables loaded from provided inputs.")
@@ -172,9 +198,19 @@ def load_q_tables(single_file: Optional[str] = None, files: Optional[List[str]] 
 
 # ---------------- action selection -----------------
 
-def choose_greedy_action_from_q(q_table: np.ndarray, s_idx: int, rng: np.random.Generator) -> int:
+
+def choose_greedy_action_from_q(
+    q_table: np.ndarray, s_idx: int, rng: np.random.Generator
+) -> int:
+    """Random docstring"""
+
     if s_idx < 0 or s_idx >= q_table.shape[0]:
-        LOGGER.warning("State index %d out of range for q_table with shape %s; choosing random action", s_idx, q_table.shape)
+        LOGGER.warning(
+            "State index %d out of range for q_table with shape %s; "
+            "choosing random action",
+            s_idx,
+            q_table.shape,
+        )
         return int(rng.integers(0, q_table.shape[1]))
     row = q_table[s_idx]
     best = float(np.max(row))
@@ -183,6 +219,7 @@ def choose_greedy_action_from_q(q_table: np.ndarray, s_idx: int, rng: np.random.
 
 
 # ---------------- runner -----------------
+
 
 def run_test(
     q_file: Optional[str] = None,
@@ -195,18 +232,23 @@ def run_test(
     max_steps: int = 250,
     pause: float = 0.05,
 ) -> None:
+    """Random docstring"""
+
     # load Qs (prefer explicit files > dir > single file)
     qs = load_q_tables(single_file=q_file, files=q_files, directory=q_dir)
 
-    agents = make_agents(num_preys=preys, num_predators=predators)
-    agent_names = [ag.agent_name for ag in agents]
+    agent_map = make_agents(num_preys=preys, num_predators=predators)
+    agent_names = list(agent_map.keys())
+    agents = list(agent_map.values())  # env still expects a list
 
-    env = GridWorldEnv(agents=agents, render_mode="human", size=size, perc_num_obstacle=10)
+    env = GridWorldEnv(
+        agents=agents, render_mode="human", size=size, perc_num_obstacle=10
+    )
     rng = np.random.default_rng(0)
 
     try:
         for ep in range(1, episodes + 1):
-            obs, info = env.reset()
+            obs, _ = env.reset()
             LOGGER.info("Test episode %d/%d", ep, episodes)
 
             for t in range(1, max_steps + 1):
@@ -220,15 +262,25 @@ def run_test(
                     if q_table is None:
                         # try alternate keys (case-insensitive)
                         for k in list(qs.keys()):
-                            if k.lower().endswith(ag.agent_name.lower()) or k.lower().startswith(ag.agent_name.lower()):
+                            k_lower = k.lower()
+                            name_lower = ag.agent_name.lower()
+                            ends_with = k_lower.endswith(name_lower)
+                            starts_with = k_lower.startswith(name_lower)
+                            if ends_with or starts_with:
                                 q_table = qs[k]
                                 break
 
                     if q_table is None:
-                        LOGGER.debug("No Q-table for %s: acting randomly", ag.agent_name)
-                        actions[ag.agent_name] = int(rng.integers(0, env.action_space.n))
+                        LOGGER.debug(
+                            "No Q-table for %s: acting randomly", ag.agent_name
+                        )
+                        actions[ag.agent_name] = int(
+                            rng.integers(0, env.action_space.n)
+                        )
                     else:
-                        actions[ag.agent_name] = choose_greedy_action_from_q(q_table, s_idx, rng)
+                        actions[ag.agent_name] = choose_greedy_action_from_q(
+                            q_table, s_idx, rng
+                        )
 
                 mgp = env.step(actions)
                 obs = mgp["obs"]
@@ -252,12 +304,28 @@ def run_test(
 
 # ---------------- CLI ----------------
 
+
 def parse_args() -> argparse.Namespace:
+    """Random docstring"""
+
     p = argparse.ArgumentParser("Test multi-agent IQL-trained Q-tables")
     group = p.add_mutually_exclusive_group(required=True)
-    group.add_argument("--file", type=str, help="Single .npz containing Q-tables for all agents")
-    group.add_argument("--q-files", type=str, nargs="+", help="List of per-agent .npz files (order not important)")
-    group.add_argument("--q-dir", type=str, help="Directory containing per-agent .npz files (searched recursively)")
+    group.add_argument(
+        "--file",
+        type=str,
+        help="Single .npz containing Q-tables for all agents",
+    )
+    group.add_argument(
+        "--q-files",
+        type=str,
+        nargs="+",
+        help="List of per-agent .npz files (order not important)",
+    )
+    group.add_argument(
+        "--q-dir",
+        type=str,
+        help="Directory containing per-agent .npz files (searched recursively)",
+    )
     p.add_argument("--size", type=int, default=8)
     p.add_argument("--preys", type=int, default=2)
     p.add_argument("--predators", type=int, default=2)
@@ -270,4 +338,14 @@ def parse_args() -> argparse.Namespace:
 if __name__ == "__main__":
     setup_logging()
     args = parse_args()
-    run_test(q_file=args.file, q_files=args.q_files, q_dir=args.q_dir, size=args.size, preys=args.preys, predators=args.predators, episodes=args.episodes, max_steps=args.max_steps, pause=args.pause)
+    run_test(
+        q_file=args.file,
+        q_files=args.q_files,
+        q_dir=args.q_dir,
+        size=args.size,
+        preys=args.preys,
+        predators=args.predators,
+        episodes=args.episodes,
+        max_steps=args.max_steps,
+        pause=args.pause,
+    )

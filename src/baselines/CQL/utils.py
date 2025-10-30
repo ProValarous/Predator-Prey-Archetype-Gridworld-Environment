@@ -11,7 +11,16 @@ from multi_agent_package.agents import Agent
 # Checkpoint utilities
 # ----------------------
 
-def save_checkpoint(path: str, Qs: Dict[str, np.ndarray], eps: float, ep: int, capture_count: int, prey_totals: list, pred_totals: list) -> None:
+
+def save_checkpoint(
+    path: str,
+    Qs: Dict[str, np.ndarray],
+    eps: float,
+    ep: int,
+    capture_count: int,
+    prey_totals: list,
+    pred_totals: list,
+) -> None:
     """Save Q-tables and lightweight metadata to an .npz checkpoint file.
 
     Qs are saved under keys prefixed with 'Q_'. Metadata are saved as small
@@ -56,18 +65,24 @@ def load_checkpoint(path: str) -> Tuple[Dict[str, np.ndarray], Dict]:
     # safe reads with defaults
     metadata["eps"] = float(data["eps"].tolist()) if "eps" in data.files else None
     metadata["ep"] = int(data["ep"].tolist()) if "ep" in data.files else None
-    metadata["capture_count"] = int(data["capture_count"].tolist()) if "capture_count" in data.files else 0
-    metadata["prey_totals"] = data["prey_totals"].tolist() if "prey_totals" in data.files else []
-    metadata["pred_totals"] = data["pred_totals"].tolist() if "pred_totals" in data.files else []
+    metadata["capture_count"] = (
+        int(data["capture_count"].tolist()) if "capture_count" in data.files else 0
+    )
+    metadata["prey_totals"] = (
+        data["prey_totals"].tolist() if "prey_totals" in data.files else []
+    )
+    metadata["pred_totals"] = (
+        data["pred_totals"].tolist() if "pred_totals" in data.files else []
+    )
 
     print(f"[checkpoint] loaded <- {path} (episodes so far: {metadata.get('ep')})")
     return Qs, metadata
 
 
-
 # ----------------------
 # Environment/Agent utilities
 # ----------------------
+
 
 def make_agents() -> Tuple[Agent, Agent]:
     prey = Agent("prey", 1, "prey_1")

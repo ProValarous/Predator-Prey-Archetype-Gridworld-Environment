@@ -46,9 +46,9 @@ def nice_name_from_folder(folder_name):
     """
     base = os.path.basename(folder_name).strip()
     # remove seconds and replace spaces/backslashes
-    base = re.sub(r'[:\s]+', '_', base)
+    base = re.sub(r"[:\s]+", "_", base)
     # simplify param patterns like lr=0.001 -> lr0.001
-    base = re.sub(r'([a-zA-Z]+)=([0-9eE\.\-]+)', r'\1\2', base)
+    base = re.sub(r"([a-zA-Z]+)=([0-9eE\.\-]+)", r"\1\2", base)
     # limit length
     if len(base) > 60:
         base = base[:60]
@@ -71,7 +71,9 @@ def load_run_config(run_dir):
                     with open(path, "r") as f:
                         return yaml.safe_load(f)
                 else:
-                    print("YAML config found but PyYAML not installed — skipping YAML load.")
+                    print(
+                        "YAML config found but PyYAML not installed — skipping YAML load."
+                    )
             except Exception as e:
                 print(f"Failed to parse config file {path}: {e}")
     return None
@@ -82,7 +84,9 @@ def sync_one_run(event_file, run_dir, project, entity, dry_run=False, exp_name=N
     if exp_name is None:
         exp_name = nice_name_from_folder(run_dir)
 
-    print(f"\n--> Preparing run for '{run_dir}' (event file: {os.path.basename(event_file)})")
+    print(
+        f"\n--> Preparing run for '{run_dir}' (event file: {os.path.basename(event_file)})"
+    )
     print(f"    will create W&B run name: '{exp_name}'")
 
     if dry_run:
@@ -90,7 +94,13 @@ def sync_one_run(event_file, run_dir, project, entity, dry_run=False, exp_name=N
         return
 
     # create wandb run
-    wandb.init(project=project, entity=entity, name=exp_name, reinit=True, sync_tensorboard=True)
+    wandb.init(
+        project=project,
+        entity=entity,
+        name=exp_name,
+        reinit=True,
+        sync_tensorboard=True,
+    )
 
     # try to set config if exists
     config = load_run_config(run_dir)
@@ -102,8 +112,9 @@ def sync_one_run(event_file, run_dir, project, entity, dry_run=False, exp_name=N
             print("    failed to set config:", e)
 
     # read TF event file
-    ea = event_accumulator.EventAccumulator(event_file,
-                                            size_guidance={"scalars": 0})  # load all scalars
+    ea = event_accumulator.EventAccumulator(
+        event_file, size_guidance={"scalars": 0}
+    )  # load all scalars
     ea.Reload()
 
     scalar_tags = ea.Tags().get("scalars", [])
@@ -158,7 +169,9 @@ def main(base_dir, project, entity=None, dry_run=False, pattern="*"):
 
     # find immediate subdirs (each expected to be an experiment folder). If there are tfevents also directly under base_dir,
     # optionally include them.
-    candidate_dirs = [d for d in glob.glob(os.path.join(base_dir, pattern)) if os.path.isdir(d)]
+    candidate_dirs = [
+        d for d in glob.glob(os.path.join(base_dir, pattern)) if os.path.isdir(d)
+    ]
     if not candidate_dirs:
         print("No experiment subdirectories found under:", base_dir)
         return
@@ -172,17 +185,35 @@ def main(base_dir, project, entity=None, dry_run=False, pattern="*"):
 
         # Try to make a nice experiment name from folder (optionally further parse params)
         exp_name = nice_name_from_folder(os.path.basename(run_dir))
-        sync_one_run(event_file, run_dir, project, entity, dry_run=dry_run, exp_name=exp_name)
+        sync_one_run(
+            event_file, run_dir, project, entity, dry_run=dry_run, exp_name=exp_name
+        )
 
-    print("\nDone. If you ran without --dry-run, check your W&B project for the new runs.")
+    print(
+        "\nDone. If you ran without --dry-run, check your W&B project for the new runs."
+    )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--base-dir", required=True, help="Parent folder containing experiment subfolders")
+    parser.add_argument(
+        "--base-dir",
+        required=True,
+        help="Parent folder containing experiment subfolders",
+    )
     parser.add_argument("--project", required=True, help="W&B project name")
     parser.add_argument("--entity", default=None, help="W&B entity (team/user)")
-    parser.add_argument("--dry-run", action="store_true", help="Don't upload, just print actions")
-    parser.add_argument("--pattern", default="*", help="Glob pattern for subfolders (default '*')")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Don't upload, just print actions"
+    )
+    parser.add_argument(
+        "--pattern", default="*", help="Glob pattern for subfolders (default '*')"
+    )
     args = parser.parse_args()
-    main(args.base_dir, args.project, entity=args.entity, dry_run=args.dry_run, pattern=args.pattern)
+    main(
+        args.base_dir,
+        args.project,
+        entity=args.entity,
+        dry_run=args.dry_run,
+        pattern=args.pattern,
+    )

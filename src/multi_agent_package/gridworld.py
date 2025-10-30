@@ -58,7 +58,9 @@ class GridWorldEnv(gym.Env):
         self.size = int(size)
         self.window_size = int(window_size)
         self.perc_num_obstacle = float(perc_num_obstacle)
-        self._num_obstacles = int((self.perc_num_obstacle / 100.0) * (self.size * self.size))
+        self._num_obstacles = int(
+            (self.perc_num_obstacle / 100.0) * (self.size * self.size)
+        )
 
         # RNG for reproducible placement
         self.rng: np.random.Generator = np.random.default_rng(seed)
@@ -84,10 +86,13 @@ class GridWorldEnv(gym.Env):
         self._obstacle_location: List[np.ndarray] = []
 
         # capture bookkeeping
-        self._captures_total: int = 0         # cumulative captures since last reset
-        self._captures_this_step: int = 0     # number of captures that happened in the current step
-        self._captured_agents: List[str] = [] # list of agent_names involved in last-step captures
-
+        self._captures_total: int = 0  # cumulative captures since last reset
+        self._captures_this_step: int = (
+            0  # number of captures that happened in the current step
+        )
+        self._captured_agents: List[str] = (
+            []
+        )  # list of agent_names involved in last-step captures
 
     # -------------------------
     # Spaces / observations
@@ -122,7 +127,9 @@ class GridWorldEnv(gym.Env):
 
             def _dist_func(agent1: Agent, agent2: Agent) -> int:
                 """Euclidean distance (rounded to int) between two agents."""
-                return int(np.linalg.norm(agent1._agent_location - agent2._agent_location))
+                return int(
+                    np.linalg.norm(agent1._agent_location - agent2._agent_location)
+                )
 
             # Distances to other agents
             for ag2 in self.agents:
@@ -134,16 +141,22 @@ class GridWorldEnv(gym.Env):
                 for idx, obstacle in enumerate(self._obstacle_location):
                     # obstacle expected as (x, y) np.ndarray or tuple
                     try:
-                        dist = int(np.linalg.norm(ag._agent_location - np.asarray(obstacle)))
+                        dist = int(
+                            np.linalg.norm(ag._agent_location - np.asarray(obstacle))
+                        )
                     except Exception:
                         ox, oy = obstacle  # fallback if needed
-                        dist = int(np.linalg.norm(ag._agent_location - np.array([ox, oy])))
+                        dist = int(
+                            np.linalg.norm(ag._agent_location - np.array([ox, oy]))
+                        )
                     obstacle_distances[f"obstacle_{idx}"] = dist
 
-            obs[ag.agent_name] = ag._get_obs({
-                "dist_agents": distances,
-                "dist_obstacles": obstacle_distances,
-            })
+            obs[ag.agent_name] = ag._get_obs(
+                {
+                    "dist_agents": distances,
+                    "dist_obstacles": obstacle_distances,
+                }
+            )
         return obs
 
     def _get_info(self) -> Dict[str, Dict]:
@@ -153,7 +166,12 @@ class GridWorldEnv(gym.Env):
     # -------------------------
     # Reset / initialization
     # -------------------------
-    def reset(self, seed: Optional[int] = None, options: Optional[dict] = None, start_location: str = "random") -> Tuple[Dict, Dict]:
+    def reset(
+        self,
+        seed: Optional[int] = None,
+        options: Optional[dict] = None,
+        start_location: str = "random",
+    ) -> Tuple[Dict, Dict]:
         """Reset environment and return (observation, info).
 
         Parameters
@@ -167,16 +185,15 @@ class GridWorldEnv(gym.Env):
             self.rng = np.random.default_rng(seed)
 
         self._agents_location = []
-    
+
         self._captures_total = 0
         self._captures_this_step = 0
         self._captured_agents = []
 
-
         # Assign unique start positions for agents by sampling without replacement
         all_positions = [(x, y) for x in range(self.size) for y in range(self.size)]
         self.rng.shuffle(all_positions)
-    
+
         for i, ag in enumerate(self.agents):
             pos = np.array(random.choice(all_positions), dtype=np.int32)
             ag._agent_location = pos.copy()
@@ -185,7 +202,9 @@ class GridWorldEnv(gym.Env):
             # print(f"Agent '{ag.agent_name}', start location: {ag._agent_location}")
 
         # Obstacles (avoid agent starts)
-        self._obstacle_location = self._initialize_obstacle(avoid=set((tuple(p) for p in self._agents_location)))
+        self._obstacle_location = self._initialize_obstacle(
+            avoid=set((tuple(p) for p in self._agents_location))
+        )
 
         observation = self._get_obs()
         info = self._get_info()
@@ -195,13 +214,20 @@ class GridWorldEnv(gym.Env):
 
         return observation, info
 
-    def _initialize_obstacle(self, avoid: Optional[set] = None) -> List[np.ndarray]: #fix randomness
+    def _initialize_obstacle(
+        self, avoid: Optional[set] = None
+    ) -> List[np.ndarray]:  # fix randomness
         """Place obstacles randomly on the grid, avoiding positions in `avoid`.
 
         Returns a list of coordinates (numpy arrays).
         """
         avoid = avoid or set()
-        cells = [(x, y) for x in range(self.size) for y in range(self.size) if (x, y) not in avoid]
+        cells = [
+            (x, y)
+            for x in range(self.size)
+            for y in range(self.size)
+            if (x, y) not in avoid
+        ]
         self.rng.shuffle(cells)
         chosen = cells[: max(0, min(len(cells), self._num_obstacles))]
         return [np.array(c, dtype=np.int32) for c in chosen]
@@ -209,10 +235,12 @@ class GridWorldEnv(gym.Env):
     # -------------------------
     # Potential-based reward shaping
     # -------------------------
-    def _distance_potential(self, agent_positions: Dict[str, tuple[int, int]], weight: float) -> Dict[str, float]:
+    def _distance_potential(
+        self, agent_positions: Dict[str, tuple[int, int]], weight: float
+    ) -> Dict[str, float]:
         """
         Computes distance-based potential rewards for each agent.
-        
+
         Args:
             agent_positions: Dict mapping agent_name -> (x, y) position.
             weight: Scaling factor for distance shaping.
@@ -228,31 +256,36 @@ class GridWorldEnv(gym.Env):
             return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
 
         # Separate predator and prey positions
-        predator_positions = [pos for name, pos in agent_positions.items() if name.startswith("predator")]
-        prey_positions = [pos for name, pos in agent_positions.items() if name.startswith("prey")]
+        predator_positions = [
+            pos for name, pos in agent_positions.items() if name.startswith("predator")
+        ]
+        prey_positions = [
+            pos for name, pos in agent_positions.items() if name.startswith("prey")
+        ]
 
         for name, pos in agent_positions.items():
             r = 0.0
             if name.startswith("predator"):
                 # Reward closer distance (negative shaping for being far)
                 if prey_positions:
-                    nearest_dist = min(manhattan_dist(pos, prey_pos) for prey_pos in prey_positions)
+                    nearest_dist = min(
+                        manhattan_dist(pos, prey_pos) for prey_pos in prey_positions
+                    )
                     r -= weight * nearest_dist
 
             elif name.startswith("prey"):
                 # Reward being farther away
                 if predator_positions:
-                    nearest_dist = min(manhattan_dist(pos, pred_pos) for pred_pos in predator_positions)
+                    nearest_dist = min(
+                        manhattan_dist(pos, pred_pos) for pred_pos in predator_positions
+                    )
                     r += weight * nearest_dist
 
             dist_potential[name] = r
 
         return dist_potential
 
-    
-    
-
-    def potential_reward(self, state) ->  Dict[str, float]:
+    def potential_reward(self, state) -> Dict[str, float]:
         """Calculate the Potential-Based Reward Shaping (PBRS) value for the obs.
 
         !!! obs: agent local positions only - 1 prey, 1 pred !!!
@@ -271,13 +304,12 @@ class GridWorldEnv(gym.Env):
         # Compute distance-based potential rewards
         dist_potential = self._distance_potential(state, weight=0.0)
 
-
         for ag in self.agents:
             pbrs_value[ag.agent_name] += dist_potential[ag.agent_name]
-                                                       
-        return pbrs_value                                           
 
-    def base_reward(self) -> Dict[str, float]: # name changed to base-reward
+        return pbrs_value
+
+    def base_reward(self) -> Dict[str, float]:  # name changed to base-reward
         """
         Computes the reward for each agent in the gridworld environment based on (states, not obs):
         1. Capture:
@@ -300,7 +332,9 @@ class GridWorldEnv(gym.Env):
         preys = [ag for ag in self.agents if ag.agent_type.startswith("prey")]
 
         captured_set = set(getattr(self, "_captured_agents", []))
-        obstacle_positions = set(tuple(obs.astype(int)) for obs in getattr(self, "_obstacle_location", []))
+        obstacle_positions = set(
+            tuple(obs.astype(int)) for obs in getattr(self, "_obstacle_location", [])
+        )
 
         def manhattan_dist(p1, p2):
             return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
@@ -324,10 +358,6 @@ class GridWorldEnv(gym.Env):
             rewards[ag.agent_name] = r
 
         return rewards
-        
-
-
-
 
     def step(self, action: Dict[str, int]) -> Dict[str, object]:
         """Apply actions for every agent and return a multi-agent dict.
@@ -356,19 +386,27 @@ class GridWorldEnv(gym.Env):
 
         # Build current occupancy sets (tuples) from the tracked agent locations
         agent_positions = {
-            ag.agent_name: tuple(np.array(getattr(ag, "_agent_location", ag._agent_location)).astype(int))
+            ag.agent_name: tuple(
+                np.array(getattr(ag, "_agent_location", ag._agent_location)).astype(int)
+            )
             for ag in self.agents
         }
         occupied_by_agents = set(agent_positions.values())
 
-        obstacle_positions = set(tuple(obs.astype(int)) for obs in getattr(self, "_obstacle_location", []))
+        obstacle_positions = set(
+            tuple(obs.astype(int)) for obs in getattr(self, "_obstacle_location", [])
+        )
 
         # bookkeeping for diagnostics
         self._last_step_sharing = False
-        self._last_collisions = []  # list of tuples (agent_name, target_pos, blocked_by)
+        self._last_collisions = (
+            []
+        )  # list of tuples (agent_name, target_pos, blocked_by)
 
         # Process movements: each agent may move up to `steps` micro-steps (to account for speed).
-        working_positions = {ag.agent_name: np.array(ag._agent_location, dtype=int) for ag in self.agents}
+        working_positions = {
+            ag.agent_name: np.array(ag._agent_location, dtype=int) for ag in self.agents
+        }
 
         # Determine maximum micro-steps to run (max speed among agents)
         max_micro_steps = 0
@@ -399,7 +437,9 @@ class GridWorldEnv(gym.Env):
                 a = action.get(name, 4)
                 direction = ag._actions_to_directions.get(int(a), np.array([0, 0]))
                 # compute tentative new position
-                candidate = np.clip(working_positions[name] + direction, 0, self.size - 1).astype(int)
+                candidate = np.clip(
+                    working_positions[name] + direction, 0, self.size - 1
+                ).astype(int)
                 candidate_t = tuple(candidate)
 
                 blocked_by = None
@@ -424,7 +464,9 @@ class GridWorldEnv(gym.Env):
                     continue
 
                 # commit movement to working positions
-                occupied_snapshot.discard(tuple(working_positions[name]))  # free previous pos
+                occupied_snapshot.discard(
+                    tuple(working_positions[name])
+                )  # free previous pos
                 working_positions[name] = candidate
                 occupied_snapshot.add(candidate_t)
 
@@ -452,7 +494,7 @@ class GridWorldEnv(gym.Env):
         self._agents_location = [ag._agent_location.copy() for ag in self.agents]
 
         # -------------------------
-        # CAPTURE DETECTION 
+        # CAPTURE DETECTION
         # -------------------------
         # Reset per-step capture bookkeeping
         self._captures_this_step = 0
@@ -466,7 +508,9 @@ class GridWorldEnv(gym.Env):
 
         # For each occupied cell, if at least one predator AND at least one prey are present -> capture
         for pos, agents_here in pos_to_agents.items():
-            predators_here = [ag for ag in agents_here if ag.agent_type.startswith("predator")]
+            predators_here = [
+                ag for ag in agents_here if ag.agent_type.startswith("predator")
+            ]
             preys_here = [ag for ag in agents_here if ag.agent_type.startswith("prey")]
             if predators_here and preys_here:
                 # Count each prey captured individually. Change logic here if you prefer
@@ -500,8 +544,6 @@ class GridWorldEnv(gym.Env):
 
         return agents_mdp
 
-
-
     # -------------------------
     # Rendering
     # -------------------------
@@ -528,7 +570,9 @@ class GridWorldEnv(gym.Env):
             ox = int((obs[0] + 0.5) * pix_square_size)
             oy = int((obs[1] + 0.5) * pix_square_size)
             r = max(2, int(pix_square_size / 4))
-            pygame.draw.rect(canvas, (50, 50, 50), pygame.Rect(ox - r, oy - r, r * 2, r * 2))
+            pygame.draw.rect(
+                canvas, (50, 50, 50), pygame.Rect(ox - r, oy - r, r * 2, r * 2)
+            )
 
         # Draw agents
         for ag in self.agents:
@@ -538,8 +582,12 @@ class GridWorldEnv(gym.Env):
         line_color = (0, 0, 0)
         for x in range(self.size + 1):
             pos = int(round(pix_square_size * x))
-            pygame.draw.line(canvas, line_color, (0, pos), (self.window_size, pos), width=1)
-            pygame.draw.line(canvas, line_color, (pos, 0), (pos, self.window_size), width=1)
+            pygame.draw.line(
+                canvas, line_color, (0, pos), (self.window_size, pos), width=1
+            )
+            pygame.draw.line(
+                canvas, line_color, (pos, 0), (pos, self.window_size), width=1
+            )
 
         if self.render_mode == "human":
             # Blit to window and update display

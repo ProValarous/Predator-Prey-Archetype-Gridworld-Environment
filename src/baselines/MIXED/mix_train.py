@@ -22,6 +22,7 @@ Usage example
 python mixed_trainer.py --predator-algo cql --prey-algo iql --episodes 20000 --size 6
 
 """
+
 from __future__ import annotations
 
 import argparse
@@ -47,6 +48,7 @@ LOGGER = logging.getLogger("mixed_trainer")
 
 
 # ----------------- utility helpers -----------------
+
 
 def setup_logging(level: int = logging.INFO) -> None:
     logging.basicConfig(
@@ -89,7 +91,9 @@ def estimate_table_bytes(n_states: int, n_joint_actions: int, dtype=np.float32) 
     return int(n_states) * int(n_joint_actions) * np.dtype(dtype).itemsize
 
 
-def init_joint_q_table(n_states: int, n_joint_actions: int, max_bytes: int | None = None) -> np.ndarray:
+def init_joint_q_table(
+    n_states: int, n_joint_actions: int, max_bytes: int | None = None
+) -> np.ndarray:
     needed = estimate_table_bytes(n_states, n_joint_actions)
     if max_bytes is not None and needed > max_bytes:
         raise MemoryError(
@@ -98,8 +102,12 @@ def init_joint_q_table(n_states: int, n_joint_actions: int, max_bytes: int | Non
     return np.zeros((n_states, n_joint_actions), dtype=np.float32)
 
 
-def init_q_tables(agent_names: List[str], n_states: int, n_actions: int) -> Dict[str, np.ndarray]:
-    return {name: np.zeros((n_states, n_actions), dtype=np.float32) for name in agent_names}
+def init_q_tables(
+    agent_names: List[str], n_states: int, n_actions: int
+) -> Dict[str, np.ndarray]:
+    return {
+        name: np.zeros((n_states, n_actions), dtype=np.float32) for name in agent_names
+    }
 
 
 def save_q_table(path: str, Q: np.ndarray) -> None:
@@ -108,7 +116,9 @@ def save_q_table(path: str, Q: np.ndarray) -> None:
     LOGGER.info("Saved Q-table -> %s", path)
 
 
-def epsilon_greedy_action(q_row: np.ndarray, n_actions: int, rng: np.random.Generator, eps: float) -> int:
+def epsilon_greedy_action(
+    q_row: np.ndarray, n_actions: int, rng: np.random.Generator, eps: float
+) -> int:
     if rng.random() < eps:
         return int(rng.integers(0, n_actions))
     return int(int(np.argmax(q_row)))
@@ -116,17 +126,24 @@ def epsilon_greedy_action(q_row: np.ndarray, n_actions: int, rng: np.random.Gene
 
 # ----------------- environment / agents -----------------
 
+
 def make_agents(num_predators: int = 2, num_preys: int = 2) -> List[Agent]:
     agents: List[Agent] = []
     for i in range(1, num_preys + 1):
         agents.append(Agent(agent_name=f"prey_{i}", agent_team=i, agent_type="prey"))
     for i in range(1, num_predators + 1):
-        agents.append(Agent(agent_name=f"predator_{i}", agent_team=i, agent_type="predator"))
+        agents.append(
+            Agent(agent_name=f"predator_{i}", agent_team=i, agent_type="predator")
+        )
     return agents
 
 
-def make_env_and_meta(agents: List[Agent], grid_size: int, seed: int) -> Tuple[GridWorldEnv, int, int]:
-    env = GridWorldEnv(agents=agents, render_mode=None, size=grid_size, perc_num_obstacle=10, seed=seed)
+def make_env_and_meta(
+    agents: List[Agent], grid_size: int, seed: int
+) -> Tuple[GridWorldEnv, int, int]:
+    env = GridWorldEnv(
+        agents=agents, render_mode=None, size=grid_size, perc_num_obstacle=10, seed=seed
+    )
     n_cells = grid_size * grid_size
     n_states = n_cells ** len(agents)
     n_actions = env.action_space.n
@@ -134,6 +151,7 @@ def make_env_and_meta(agents: List[Agent], grid_size: int, seed: int) -> Tuple[G
 
 
 # ----------------- mixed training -----------------
+
 
 def train(
     episodes: int = 5000,
@@ -172,26 +190,45 @@ def train(
 
     # Create IQL per-agent Q-tables for all agents that chose IQL
     iql_agent_names = [n for n, algo in agent_algo.items() if algo == "iql"]
-    Q_iql: Dict[str, np.ndarray] = init_q_tables(iql_agent_names, n_states, n_actions) if iql_agent_names else {}
+    Q_iql: Dict[str, np.ndarray] = (
+        init_q_tables(iql_agent_names, n_states, n_actions) if iql_agent_names else {}
+    )
 
     # For each team that chose CQL create a central Q-table that covers full joint-state
-    cql_groups = {g: group_agents[g] for g in ("prey", "predator") if (g == "prey" and prey_algo == "cql") or (g == "predator" and predator_algo == "cql")}
+    cql_groups = {
+        g: group_agents[g]
+        for g in ("prey", "predator")
+        if (g == "prey" and prey_algo == "cql")
+        or (g == "predator" and predator_algo == "cql")
+    }
     Q_cql: Dict[str, np.ndarray] = {}
     for group_name, names in cql_groups.items():
         n_group_actions = n_actions ** len(names)
         if max_table_bytes is None:
             # default 16 GiB limit per group
-            max_table_bytes_group = 16 * 1024 ** 3
+            max_table_bytes_group = 16 * 1024**3
         else:
             max_table_bytes_group = max_table_bytes
-        LOGGER.info("Allocating central Q for group '%s' (agents=%d, joint_actions=%d)", group_name, len(names), n_group_actions)
-        Q_cql[group_name] = init_joint_q_table(n_states, n_group_actions, max_bytes=max_table_bytes_group)
+        LOGGER.info(
+            "Allocating central Q for group '%s' (agents=%d, joint_actions=%d)",
+            group_name,
+            len(names),
+            n_group_actions,
+        )
+        Q_cql[group_name] = init_joint_q_table(
+            n_states, n_group_actions, max_bytes=max_table_bytes_group
+        )
 
     # Prepare save paths
     save_dir = os.path.dirname(save_path) or "."
-    save_paths = {name: os.path.join(save_dir, name, "iql_q_table.npz") for name in iql_agent_names}
+    save_paths = {
+        name: os.path.join(save_dir, name, "iql_q_table.npz")
+        for name in iql_agent_names
+    }
     for group_name in Q_cql.keys():
-        save_paths[f"central_{group_name}"] = os.path.join(save_dir, f"central_{group_name}_cql_q_table.npz")
+        save_paths[f"central_{group_name}"] = os.path.join(
+            save_dir, f"central_{group_name}_cql_q_table.npz"
+        )
 
     eps = eps_start
 
@@ -236,7 +273,9 @@ def train(
                 n_group_actions = flat_row.size
                 expected = math.prod(group_action_shapes[group_name])
                 if n_group_actions != expected:
-                    raise ValueError(f"Central Q row size mismatch for group {group_name}: {n_group_actions} != {expected}")
+                    raise ValueError(
+                        f"Central Q row size mismatch for group {group_name}: {n_group_actions} != {expected}"
+                    )
 
                 q_tensor = flat_row.reshape(group_action_shapes[group_name])
 
@@ -256,7 +295,9 @@ def train(
                     else:
                         row = np.asarray(q_vals_per_agent[i])
                         best = float(np.max(row))
-                        best_actions = np.flatnonzero(np.isclose(row, best)).astype(int).tolist()
+                        best_actions = (
+                            np.flatnonzero(np.isclose(row, best)).astype(int).tolist()
+                        )
                         a_i = int(rng.choice(best_actions))
                     chosen_actions_group.append(a_i)
                     actions[name] = a_i
@@ -289,7 +330,12 @@ def train(
                 r = float(rewards.get(name, 0.0))
                 total_reward[name] += r
                 # IQL update (same shaped TD used previously)
-                td_target = r + (gamma * float(np.max(Q_iql[name][s2]))) + (gamma * next_pot.get(name, 0.0)) - current_pot.get(name, 0.0)
+                td_target = (
+                    r
+                    + (gamma * float(np.max(Q_iql[name][s2])))
+                    + (gamma * next_pot.get(name, 0.0))
+                    - current_pot.get(name, 0.0)
+                )
                 td_error = td_target - Q_iql[name][s, actions[name]]
                 Q_iql[name][s, actions[name]] += alpha * td_error
 
@@ -312,7 +358,12 @@ def train(
 
                 Qg = Q_cql[group_name]
                 # TD target for central group (uses group's Q at s2)
-                td_target = central_r + (gamma * next_pot_sum) - current_pot_sum + gamma * np.max(Qg[s2])
+                td_target = (
+                    central_r
+                    + (gamma * next_pot_sum)
+                    - current_pot_sum
+                    + gamma * np.max(Qg[s2])
+                )
                 td_error = td_target - Qg[s, joint_idx]
                 Qg[s, joint_idx] += alpha * td_error
 
@@ -334,18 +385,37 @@ def train(
         writer.add_scalar("episode/captures", captures_this_episode, ep)
 
         for name in agent_names:
-            writer.add_scalar(f"episode/total_reward/{name}", float(total_reward[name]), ep)
-            mean_reward_running = float(np.mean(per_agent_rewards[name][-window:])) if per_agent_rewards[name] else 0.0
+            writer.add_scalar(
+                f"episode/total_reward/{name}", float(total_reward[name]), ep
+            )
+            mean_reward_running = (
+                float(np.mean(per_agent_rewards[name][-window:]))
+                if per_agent_rewards[name]
+                else 0.0
+            )
             writer.add_scalar(f"mean/{name}/reward", mean_reward_running, ep)
 
-        mean_captures_running = float(np.mean(captures_per_ep[-window:])) if captures_per_ep else 0.0
+        mean_captures_running = (
+            float(np.mean(captures_per_ep[-window:])) if captures_per_ep else 0.0
+        )
         writer.add_scalar("mean/captures", mean_captures_running, ep)
 
         # decay epsilon periodically
         if ep % 100 == 0:
             eps = max(eps_end, eps * eps_decay)
-            avg_str = ", ".join([f"{name}={np.mean(per_agent_rewards[name][-100:]):.2f}" for name in agent_names])
-            LOGGER.info("Ep %d | eps=%.3f | avg(last100) %s | mean captures(last100)=%.2f", ep, eps, avg_str, mean_captures_running)
+            avg_str = ", ".join(
+                [
+                    f"{name}={np.mean(per_agent_rewards[name][-100:]):.2f}"
+                    for name in agent_names
+                ]
+            )
+            LOGGER.info(
+                "Ep %d | eps=%.3f | avg(last100) %s | mean captures(last100)=%.2f",
+                ep,
+                eps,
+                avg_str,
+                mean_captures_running,
+            )
 
         # periodic flush & save
         if ep % 10 == 0:
@@ -370,6 +440,7 @@ def train(
 
 # ----------------- CLI -----------------
 
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser("Hybrid IQL/CQL trainer")
     p.add_argument("--episodes", type=int, default=50000)
@@ -380,16 +451,33 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--save-path", type=str, default="baselines/mixed/")
     p.add_argument("--predators", type=int, default=2)
     p.add_argument("--preys", type=int, default=2)
-    p.add_argument("--predator-algo", type=str, default="cql", choices=["iql", "cql"], help="Algorithm for predators")
-    p.add_argument("--prey-algo", type=str, default="iql", choices=["iql", "cql"], help="Algorithm for preys")
-    p.add_argument("--max-table-gb", type=float, default=16.0, help="Max allowed joint-Q memory in GiB before aborting (per central table)")
+    p.add_argument(
+        "--predator-algo",
+        type=str,
+        default="cql",
+        choices=["iql", "cql"],
+        help="Algorithm for predators",
+    )
+    p.add_argument(
+        "--prey-algo",
+        type=str,
+        default="iql",
+        choices=["iql", "cql"],
+        help="Algorithm for preys",
+    )
+    p.add_argument(
+        "--max-table-gb",
+        type=float,
+        default=16.0,
+        help="Max allowed joint-Q memory in GiB before aborting (per central table)",
+    )
     return p.parse_args()
 
 
 if __name__ == "__main__":
     setup_logging()
     args = parse_args()
-    max_table_bytes = int(args.max_table_gb * 1024 ** 3) if args.max_table_gb else None
+    max_table_bytes = int(args.max_table_gb * 1024**3) if args.max_table_gb else None
     try:
         if wandb is not None:
             try:

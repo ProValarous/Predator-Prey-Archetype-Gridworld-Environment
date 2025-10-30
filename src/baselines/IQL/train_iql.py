@@ -90,8 +90,9 @@ def train(
     for ag in agents:
         ag.total_subteams = 1
 
-    env = GridWorldEnv(agents=agents, render_mode=None,
-                       size=grid_size, perc_num_obstacle=10, seed=seed)
+    env = GridWorldEnv(
+        agents=agents, render_mode=None, size=grid_size, perc_num_obstacle=10, seed=seed
+    )
     rng = np.random.default_rng(seed)
 
     # n_cells for own position; distance bins determined by grid geometry
@@ -132,9 +133,7 @@ def train(
         obs, info = env.reset()
 
         # per-episode raw reward accumulators
-        ep_agent_totals: Dict[str, float] = {
-            ag.agent_name: 0.0 for ag in agents
-        }
+        ep_agent_totals: Dict[str, float] = {ag.agent_name: 0.0 for ag in agents}
 
         for t in range(max_steps):
             # Build state indices using obs[agent]['global']['dist_agents']
@@ -152,15 +151,16 @@ def train(
 
             # compute s_idx for each agent using distance provided in global
             for ag in agents:
-                other = next(
-                    o for o in agents if o.agent_name != ag.agent_name)
+                other = next(o for o in agents if o.agent_name != ag.agent_name)
                 # dist_agents dict is under obs[ag]['global']['dist_agents']
                 global_info = obs.get(ag.agent_name, {}).get("global", {})
-                dist_agents = global_info.get(
-                    "dist_agents", {}) if global_info is not None else {}
+                dist_agents = (
+                    global_info.get("dist_agents", {})
+                    if global_info is not None
+                    else {}
+                )
                 s_idx[ag.agent_name] = global_joint_state_index(
-                    pos_map[ag.agent_name], dist_agents,
-                    other.agent_name, grid_size
+                    pos_map[ag.agent_name], dist_agents, other.agent_name, grid_size
                 )
 
             # epsilon-greedy action selection
@@ -194,18 +194,18 @@ def train(
                 next_pos_map[ag.agent_name] = np.asarray(local, dtype=int)
 
             for ag in agents:
-                other = next(
-                    o for o in agents if o.agent_name != ag.agent_name)
-                global_info_next = next_obs.get(
-                    ag.agent_name, {}).get("global", {})
+                other = next(o for o in agents if o.agent_name != ag.agent_name)
+                global_info_next = next_obs.get(ag.agent_name, {}).get("global", {})
                 dist_agents_next = (
                     global_info_next.get("dist_agents", {})
                     if global_info_next is not None
                     else {}
                 )
                 s_next_idx[ag.agent_name] = global_joint_state_index(
-                    next_pos_map[ag.agent_name], dist_agents_next,
-                    other.agent_name, grid_size
+                    next_pos_map[ag.agent_name],
+                    dist_agents_next,
+                    other.agent_name,
+                    grid_size,
                 )
 
             # IQL updates (per-agent)
@@ -227,10 +227,16 @@ def train(
             obs = next_obs
 
         # episode finished: aggregate totals (by name heuristics)
-        ep_prey_total = sum(v for n, v in ep_agent_totals.items(
-        ) if "prey" in n.lower() or n.lower().startswith("py"))
-        ep_pred_total = sum(v for n, v in ep_agent_totals.items(
-        ) if "predator" in n.lower() or n.lower().startswith("pd"))
+        ep_prey_total = sum(
+            v
+            for n, v in ep_agent_totals.items()
+            if "prey" in n.lower() or n.lower().startswith("py")
+        )
+        ep_pred_total = sum(
+            v
+            for n, v in ep_agent_totals.items()
+            if "predator" in n.lower() or n.lower().startswith("pd")
+        )
 
         prey_episode_totals.append(ep_prey_total)
         predator_episode_totals.append(ep_pred_total)
@@ -240,10 +246,10 @@ def train(
             eps = max(eps_end, eps * eps_decay)
 
         # running stats
-        mean_prey = float(np.mean(prey_episode_totals)
-                          ) if prey_episode_totals else 0.0
-        mean_pred = float(np.mean(predator_episode_totals)
-                          ) if predator_episode_totals else 0.0
+        mean_prey = float(np.mean(prey_episode_totals)) if prey_episode_totals else 0.0
+        mean_pred = (
+            float(np.mean(predator_episode_totals)) if predator_episode_totals else 0.0
+        )
         mean_diff = abs(mean_pred - mean_prey)
 
         # log to TensorBoard
@@ -269,13 +275,13 @@ def train(
     print(
         f"Training finished. Saved Qs to '{save_path}'. "
         f"Total captures: {capture_count}"
-        )
+    )
 
     # Final summary
-    mean_prey = float(np.mean(prey_episode_totals)
-                      ) if prey_episode_totals else 0.0
-    mean_pred = float(np.mean(predator_episode_totals)
-                      ) if predator_episode_totals else 0.0
+    mean_prey = float(np.mean(prey_episode_totals)) if prey_episode_totals else 0.0
+    mean_pred = (
+        float(np.mean(predator_episode_totals)) if predator_episode_totals else 0.0
+    )
     mean_diff = mean_pred - mean_prey
     total_prey_reward = float(np.sum(prey_episode_totals))
     total_pred_reward = float(np.sum(predator_episode_totals))
@@ -284,9 +290,7 @@ def train(
     # replaced 2 spaces with tab character
     print(f"\tEpisodes run: {episodes}")
     print(f"\tTotal prey reward (sum over episodes): {total_prey_reward: .3f}")
-    print(
-        f"\tTotal predator reward (sum over episodes): {total_pred_reward: .3f}"
-    )
+    print(f"\tTotal predator reward (sum over episodes): {total_pred_reward: .3f}")
     print(f"\tMean prey reward per episode: {mean_prey: .3f}")
     print(f"\tMean predator reward per episode: {mean_pred: .3f}")
     print(f"\tMean difference (predator - prey): {mean_diff: .3f}")

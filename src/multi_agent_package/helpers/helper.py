@@ -5,17 +5,12 @@ def print_action(action):
     Args:
         action (dict): Dictionary mapping agent names to action indices.
     """
-    num_to_dir = {
-        0: 'UP',
-        1: 'DOWN',
-        2: 'RIGHT',
-        3: 'LEFT',
-        4: 'NOOP'
-    }
+    num_to_dir = {0: "UP", 1: "DOWN", 2: "RIGHT", 3: "LEFT", 4: "NOOP"}
     for ag in action:
         act = action[ag]
-        direction = num_to_dir.get(act, 'UNKNOWN')
+        direction = num_to_dir.get(act, "UNKNOWN")
         print(f"{ag}'s action : {direction} ({act})")
+
 
 def print_mgp_info(mgp_info, episode, current_state, action):
     """
@@ -38,8 +33,8 @@ def print_mgp_info(mgp_info, episode, current_state, action):
 
     for key in mgp_info:
         print(f">>> {key}:")
-        if key == 'obs':
-            for agent, obs in mgp_info['obs'].items():
+        if key == "obs":
+            for agent, obs in mgp_info["obs"].items():
                 print(f"{agent} : {obs}")
         else:
             print(mgp_info[key])

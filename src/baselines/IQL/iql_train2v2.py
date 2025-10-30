@@ -1,24 +1,26 @@
 """
-Tabular IQL trainer for multi-agent predator-prey (now supports 2 predators + 2 preys)
+Tabular IQL trainer for multi-agent predator-prey
+(supports 2 predators + 2 preys).
 
-Notes:
- - This keeps the same overall structure you provided but generalizes to N agents.
- - State encoding: concatenates each agent's cell index (x*G + y) as digits in base `n_cells`.
-   This preserves the single-index tabular Q approach but note that state-count grows as
-   (n_cells) ** n_agents — this becomes large quickly (memory/time). Use small grids.
- - Each agent has its own Q-table (separate independent learners).
- - TensorBoard logging records:
-     - episode/length
-     - episode/captures
-     - episode/total_reward/<agent_name>
-     - mean/<agent_name>/reward  (running mean, window=100)
- - Periodic checkpointing: saves per-agent Qs every 1000 episodes.
+This module implements independent Q-learning (IQL) with a tabular
+state-action representation. Each agent maintains its own Q-table.
+The joint state is encoded by concatenating each agent's cell index
+(x * G + y) as digits in base n_cells. The number of states grows as
+(n_cells) ** n_agents and can become very large; use small grids.
+
+Features
+- Per-agent Q-tables (independent learners)
+- Epsilon-greedy exploration
+- Optional potential-based shaping if the environment provides
+    potential_reward
+- TensorBoard and wandb logging for episode metrics
+- Periodic checkpointing of per-agent Q-tables
 
 Usage
------
-python iql_train_4agents.py --episodes 20000 --size 6
-
+    cd src
+    python -m baselines.IQL.iql_train2v2 --episodes 20000 --size 6
 """
+
 from __future__ import annotations
 
 import argparse
@@ -33,6 +35,8 @@ import wandb
 
 from multi_agent_package.gridworld import GridWorldEnv
 from multi_agent_package.agents import Agent
+
+from .utils import create_experiment_dir, write_experiment_md
 
 LOGGER = logging.getLogger("iql_trainer")
 
@@ -67,39 +71,79 @@ def joint_state_index(positions: List[Tuple[int, int]], grid_size: int) -> int:
 
 
 def make_agents(num_predators: int = 2, num_preys: int = 2) -> List[Agent]:
-    """Create a list of Agent objects: num_preys prey and num_predators predator.
+    """
+    Create a list of Agent objects: num_preys prey and num_predators predator.
 
     Agent naming convention: prey_1, prey_2, predator_1, predator_2, ...
     """
     agents: List[Agent] = []
     for i in range(1, num_preys + 1):
-        agents.append(Agent(agent_name=f"prey_{i}", agent_team=i, agent_type="prey"))
+        agents.append(
+            Agent(
+                agent_name=f"prey_{i}",
+                agent_team=i,
+                agent_type="prey",
+            )
+        )
     for i in range(1, num_predators + 1):
-        agents.append(Agent(agent_name=f"predator_{i}", agent_team=i, agent_type="predator"))
+        agents.append(
+            Agent(agent_name=f"predator_{i}", agent_team=i, agent_type="predator")
+        )
     return agents
 
 
-def make_env_and_meta(agents: List[Agent], grid_size: int, seed: int) -> Tuple[GridWorldEnv, int, int]:
-    env = GridWorldEnv(agents=agents, render_mode=None, size=grid_size, perc_num_obstacle=10, seed=seed)
+def make_env_and_meta(
+    agents: List[Agent], grid_size: int, seed: int
+) -> Tuple[GridWorldEnv, int, int]:
+    """Create the GridWorld env and return (env, n_states, n_actions).
+
+    n_states is the joint state space size: (grid_size * grid_size) ** n_agents
+    """
+    env = GridWorldEnv(
+        agents=agents,
+        render_mode=None,
+        size=grid_size,
+        perc_num_obstacle=10,
+        seed=seed,
+    )
+
     n_cells = grid_size * grid_size
-    
-    # total joint states = n_cells ** n_agents (may be very large)
     n_states = n_cells ** len(agents)
     n_actions = env.action_space.n
+
     return env, n_states, n_actions
 
 
-def init_q_tables(agent_names: List[str], n_states: int, n_actions: int) -> Dict[str, np.ndarray]:
-    return {name: np.zeros((n_states, n_actions), dtype=np.float32) for name in agent_names}
+def init_q_tables(
+    agent_names: List[str],
+    n_states: int,
+    n_actions: int,
+) -> Dict[str, np.ndarray]:
+    """Initialize per-agent Q-tables
+
+    Each Q-table is a zero-initialized array of shape (n_states, n_actions)
+    """
+    q_tables: Dict[str, np.ndarray] = {}
+    for name in agent_names:
+        q_tables[name] = np.zeros((n_states, n_actions), dtype=np.float32)
+    return q_tables
 
 
-def epsilon_greedy_action(q_row: np.ndarray, n_actions: int, rng: np.random.Generator, eps: float) -> int:
+def epsilon_greedy_action(
+    q_row: np.ndarray, n_actions: int, rng: np.random.Generator, eps: float
+) -> int:
+    """
+    Returns a random action based on the value of epsilon
+    """
     if rng.random() < eps:
         return int(rng.integers(0, n_actions))
     return int(int(np.argmax(q_row)))
 
 
 def save_q_table(path: str, Q: np.ndarray) -> None:
+    """
+    Exports Q table as an .npz file
+    """
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     np.savez(path, Q=Q)
     LOGGER.info("Saved Q-table -> %s", path)
@@ -131,7 +175,10 @@ def train(
     Qs = init_q_tables(agent_names, n_states, n_actions)
 
     # Prepare save paths per agent
-    save_path_Q = {name: os.path.join(os.path.dirname(save_path) or ".", name, "iql_q_table.npz") for name in agent_names}
+    save_path_Q = {
+        name: os.path.join(os.path.dirname(save_path) or ".", name, "iql_q_table.npz")
+        for name in agent_names
+    }
 
     eps = eps_start
 
@@ -141,9 +188,36 @@ def train(
     episode_lengths: List[int] = []
 
     timestamp = time.strftime("%d-%m-%Y_%H-%M-%S")
-    log_dir = os.path.join(os.path.dirname(save_path) or ".", "logs", timestamp)
+
+    # create an experiment folder (checkpoints + logs) and use it
+    exp_dir, checkpoints_dir, logs_dir = create_experiment_dir(
+        base=os.path.dirname(save_path) or ".", name="iql_run"
+    )
+
+    # write a short README.md describing this run
+    params = {
+        "command": f"python -m baselines.IQL.iql_train2v2\
+                    --size {grid_size} --episodes {episodes}",
+        "seed": seed,
+        "alpha": alpha,
+        "gamma": gamma,
+        "eps_start": eps_start,
+        "eps_end": eps_end,
+        "eps_decay": eps_decay,
+        "num_predators": num_predators,
+        "num_preys": num_preys,
+    }
+    write_experiment_md(exp_dir, params)
+
+    log_dir = os.path.join(logs_dir, timestamp)
     os.makedirs(log_dir, exist_ok=True)
     writer = SummaryWriter(log_dir=log_dir)
+
+    # prepare per-agent checkpoint paths under the experiment checkpoints dir
+    save_path_Q = {
+        name: os.path.join(checkpoints_dir, name, "iql_q_table.npz")
+        for name in agent_names
+    }
 
     window = 100
 
@@ -155,7 +229,8 @@ def train(
         ep_len = max_steps
 
         for t in range(max_steps):
-            # build ordered positions list matching agent order used to create Qs
+            # build ordered positions list matching agent order
+            # used to create Qs
             positions = [tuple(obs[name]["local"]) for name in agent_names]
             s = joint_state_index(positions, grid_size)
 
@@ -172,28 +247,36 @@ def train(
             next_obs, rewards = mgp["obs"], mgp["reward"]
 
             # accumulate rewards and prepare next-state index
-            next_positions = [tuple(next_obs[name]["local"]) for name in agent_names]
+            next_positions = []
+            for name in agent_names:
+                next_positions.append(tuple(next_obs[name]["local"]))
             s2 = joint_state_index(next_positions, grid_size)
 
-
-            # potential shaping if env provides potential_reward (defensive)
-            try:
-                current_state = {n: obs[n]["local"] for n in agent_names}
-                next_state = {n: next_obs[n]["local"] for n in agent_names}
-                current_pot = env.potential_reward(current_state)
-                next_pot = env.potential_reward(next_state)
-            except Exception:
-                current_pot = 0.0
-                next_pot = 0.0
+            # potential shaping
+            # use dicts; fall back to zero per-agent if not provided
+            current_state = {n: obs[n]["local"] for n in agent_names}
+            next_state = {n: next_obs[n]["local"] for n in agent_names}
+            potential_fn = getattr(env, "potential_reward", None)
+            if callable(potential_fn):
+                current_pot = potential_fn(current_state)
+                next_pot = potential_fn(next_state)
+            else:
+                current_pot = {n: 0.0 for n in agent_names}
+                next_pot = {n: 0.0 for n in agent_names}
 
             for name in agent_names:
                 r = rewards[name]
                 total_reward[name] += r
 
                 # Q update (IQL)
-                Qs[name][s, chosen_actions[name]] += alpha * (
-                    r + (gamma * next_pot[name]) - current_pot[name] + gamma * float(np.max(Qs[name][s2])) - Qs[name][s, chosen_actions[name]]
+                current_q = Qs[name][s, chosen_actions[name]]
+                next_q_max = float(np.max(Qs[name][s2]))
+                target = (
+                    r + gamma * next_pot[name] - current_pot[name] + gamma * next_q_max
                 )
+                Qs[name][s, chosen_actions[name]] = Qs[name][
+                    s, chosen_actions[name]
+                ] + alpha * (target - current_q)
 
             if mgp.get("terminated", False):
                 ep_len = t + 1
@@ -204,7 +287,11 @@ def train(
         # episode bookkeeping
         for name in agent_names:
             per_agent_rewards[name].append(total_reward[name])
-            # writer.add_scalar(f"episode/total_reward/{name}", total_reward[name], ep)
+            # writer.add_scalar(
+            #   f"episode/total_reward/{name}",
+            #   total_reward[name],
+            #   ep
+            # )
 
         episode_lengths.append(ep_len)
 
@@ -217,17 +304,34 @@ def train(
 
         # running means per-agent
         for name in agent_names:
-            mean_reward_running = float(np.mean(per_agent_rewards[name][-window:])) if per_agent_rewards[name] else 0.0
+            if per_agent_rewards[name]:
+                mean_reward_running = float(np.mean(per_agent_rewards[name][-window:]))
+            else:
+                mean_reward_running = 0.0
             writer.add_scalar(f"mean/{name}/reward", mean_reward_running, ep)
 
-        mean_captures_running = float(np.mean(captures_per_ep[-window:])) if captures_per_ep else 0.0
+        if captures_per_ep:
+            mean_captures_running = float(np.mean(captures_per_ep[-window:]))
+        else:
+            mean_captures_running = 0.0
+
         writer.add_scalar("mean/captures", mean_captures_running, ep)
 
         # decay epsilon periodically
         if ep % 100 == 0:
             eps = max(eps_end, eps * eps_decay)
-            avg_str = ", ".join([f"{name}={np.mean(per_agent_rewards[name][-100:]):.2f}" for name in agent_names])
-            LOGGER.info("Ep %d | eps=%.3f | avg(last100) %s | mean captures(last100)=%.2f", ep, eps, avg_str, mean_captures_running)
+            avg_str = ", ".join(
+                f"{name}={np.mean(per_agent_rewards[name][-100:]):.2f}"
+                for name in agent_names
+            )
+
+            LOGGER.info(
+                "Ep %d | eps=%.3f | avg(last100) %s | " "mean captures(last100)=%.2f",
+                ep,
+                eps,
+                avg_str,
+                mean_captures_running,
+            )
 
         # periodic flush & save
         if ep % 10 == 0:
@@ -245,6 +349,7 @@ def train(
 
 
 # ---------------- CLI ----------------
+
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser("Train multi-agent IQL tabular")
