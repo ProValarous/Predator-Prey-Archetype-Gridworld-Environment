@@ -125,7 +125,7 @@ If you use this environment in your research, teaching, or project, please cite 
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the Apache-2.0 license.
 
 ---
 
