@@ -12,14 +12,15 @@ Design notes
   agents) encoded exactly like in the original trainers (base-n_cells digits).
   This keeps the effect of other agents' positions visible to all learners.
 - IQL agents keep per-agent Q tables indexed by full joint-state s.
-- For each team that chose CQL we allocate a central Q over the full joint-state
-  but joint-actions only cover that team's agents.
+- For each team that chose CQL we allocate a central Q over the full
+  joint-state but joint-actions only cover that team's agents.
 - Updates and action selection follow the previous scripts' logic with shaping
   fallback and epsilon-greedy behaviour.
 
 Usage example
 --------------
-python mixed_trainer.py --predator-algo cql --prey-algo iql --episodes 20000 --size 6
+python mixed_trainer.py --predator-algo cql --prey-algo iql\
+                        --episodes 20000 --size 6
 
 """
 
@@ -97,7 +98,8 @@ def init_joint_q_table(
     needed = estimate_table_bytes(n_states, n_joint_actions)
     if max_bytes is not None and needed > max_bytes:
         raise MemoryError(
-            f"Joint Q-table requires {needed/(1024**3):.2f} GiB > allowed {max_bytes/(1024**3):.2f} GiB"
+            f"Joint Q-table requires {needed / (1024**3):.2f} GiB "
+            f"> allowed {max_bytes / (1024**3):.2f} GiB"
         )
     return np.zeros((n_states, n_joint_actions), dtype=np.float32)
 
@@ -190,11 +192,17 @@ def train(
 
     # Create IQL per-agent Q-tables for all agents that chose IQL
     iql_agent_names = [n for n, algo in agent_algo.items() if algo == "iql"]
-    Q_iql: Dict[str, np.ndarray] = (
-        init_q_tables(iql_agent_names, n_states, n_actions) if iql_agent_names else {}
-    )
+    if iql_agent_names:
+        Q_iql: Dict[str, np.ndarray] = init_q_tables(
+            iql_agent_names,
+            n_states,
+            n_actions,
+        )
+    else:
+        Q_iql: Dict[str, np.ndarray] = {}
 
-    # For each team that chose CQL create a central Q-table that covers full joint-state
+    # For each team that chose CQL create a central Q-table
+    # that covers full joint-state
     cql_groups = {
         g: group_agents[g]
         for g in ("prey", "predator")
@@ -210,7 +218,7 @@ def train(
         else:
             max_table_bytes_group = max_table_bytes
         LOGGER.info(
-            "Allocating central Q for group '%s' (agents=%d, joint_actions=%d)",
+            "Allocating central Q for group '%s' " "(agents=%d, joint_actions=%d)",
             group_name,
             len(names),
             n_group_actions,
@@ -233,7 +241,9 @@ def train(
     eps = eps_start
 
     # bookkeeping
-    per_agent_rewards: Dict[str, List[float]] = {name: [] for name in agent_names}
+    per_agent_rewards: Dict[str, List[float]] = {}
+    for name in agent_names:
+        per_agent_rewards[name] = []
     captures_per_ep: List[int] = []
     episode_lengths: List[int] = []
 
@@ -274,12 +284,14 @@ def train(
                 expected = math.prod(group_action_shapes[group_name])
                 if n_group_actions != expected:
                     raise ValueError(
-                        f"Central Q row size mismatch for group {group_name}: {n_group_actions} != {expected}"
+                        f"Central Q row size mismatch for group {group_name}:"
+                        f" {n_group_actions} != {expected}"
                     )
 
                 q_tensor = flat_row.reshape(group_action_shapes[group_name])
 
-                # compute marginal per-agent action-values by averaging over other axes
+                # compute marginal per-agent action-values by
+                # averaging over other axes
                 q_vals_per_agent: List[np.ndarray] = []
                 n_group_agents = len(names)
                 for i in range(n_group_agents):
@@ -302,7 +314,8 @@ def train(
                     chosen_actions_group.append(a_i)
                     actions[name] = a_i
 
-            # As a final safety (shouldn't happen), ensure actions provided for all agents
+            # As a final safety (shouldn't happen), ensure
+            # actions provided for all agents
             for name in agent_names:
                 if name not in actions:
                     # fallback to random
@@ -395,9 +408,10 @@ def train(
             )
             writer.add_scalar(f"mean/{name}/reward", mean_reward_running, ep)
 
-        mean_captures_running = (
-            float(np.mean(captures_per_ep[-window:])) if captures_per_ep else 0.0
-        )
+        if captures_per_ep:
+            mean_captures_running = float(np.mean(captures_per_ep[-window:]))
+        else:
+            mean_captures_running = 0.0
         writer.add_scalar("mean/captures", mean_captures_running, ep)
 
         # decay epsilon periodically
@@ -410,7 +424,7 @@ def train(
                 ]
             )
             LOGGER.info(
-                "Ep %d | eps=%.3f | avg(last100) %s | mean captures(last100)=%.2f",
+                "Ep %d | eps=%.3f | avg(last100) %s | " "mean captures(last100)=%.2f",
                 ep,
                 eps,
                 avg_str,
@@ -469,7 +483,7 @@ def parse_args() -> argparse.Namespace:
         "--max-table-gb",
         type=float,
         default=16.0,
-        help="Max allowed joint-Q memory in GiB before aborting (per central table)",
+        help="Max allowed joint-Q memory in GiB " "before aborting (per central table)",
     )
     return p.parse_args()
 
@@ -477,7 +491,10 @@ def parse_args() -> argparse.Namespace:
 if __name__ == "__main__":
     setup_logging()
     args = parse_args()
-    max_table_bytes = int(args.max_table_gb * 1024**3) if args.max_table_gb else None
+    if args.max_table_gb:
+        max_table_bytes = int(args.max_table_gb * 1024**3)
+    else:
+        max_table_bytes = None
     try:
         if wandb is not None:
             try:
