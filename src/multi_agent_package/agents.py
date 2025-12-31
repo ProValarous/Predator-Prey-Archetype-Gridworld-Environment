@@ -34,35 +34,6 @@ class Agent(gym.Env):
     """
     A simple agent class for a multi-agent GridWorld environment.
 
-    Attributes
-    ----------
-    agent_type : str
-        Base type (e.g., "predator", "prey", "other").
-    agent_team : Union[str, int]
-        Subteam identifier. Can be an int (e.g., 3) or string like "predator_3".
-    agent_name : str
-        Human-readable name / unique id for the agent.
-    agent_speed : int
-        Movement speed. Predator=1, Prey=3, Other=1.
-    stamina : int
-        Energy resource (default: 10).
-    action_space : gymnasium.spaces.Discrete
-        Discrete action space with 5 actions.
-
-    Notes
-    -----
-    - Rendering is implemented using pygame primitives.
-    - The class provides helper methods to select colors and shapes per subteam.
-    - Actions: 0=Right, 1=Up, 2=Left, 3=Down, 4=Noop
-
-    Examples
-    --------
-    >>> agent = Agent("predator", "predator_1", "Hunter")
-    >>> agent.agent_speed
-    1
-    >>> agent.action_space
-    Discrete(5)
-
     See Also
     --------
     GridWorldEnv : The environment that manages multiple Agent instances.

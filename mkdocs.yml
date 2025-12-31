@@ -1,10 +1,70 @@
-site_name:  Predator–Prey Gridworld Environment
-site_description: A minimalist, discrete multi-agent predator-prey archytype environment.
+site_name: Predator-Prey Gridworld Environment
+site_description: A minimalist multi-agent predator-prey environment for MARL research.
+site_url: https://provalarous.github.io/Predator-Prey-Gridworld-Environment/
 repo_url: https://github.com/ProValarous/Predator-Prey-Gridworld-Environment
+repo_name: ProValarous/Predator-Prey-Gridworld-Environment
+
 nav:
   - Home: index.md
-  - Usage: usage.md
+  - Getting Started:
+    - Usage: usage.md
+  - Concepts:
+    - Agents: agents.md
+  - API Reference:
+    - Agent Class: api/agents.md
+  - Contributing: contributing.md
 
 theme:
-  name: material         # optional; requires `mkdocs-material` package
+  name: material
   language: en
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: numpy
+            show_source: true
+            show_root_heading: true
+            heading_level: 2
+            members_order: source
+            show_signature_annotations: true
+            separate_signature: true
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html

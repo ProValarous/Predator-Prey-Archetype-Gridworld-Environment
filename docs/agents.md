@@ -65,14 +65,17 @@ agent2 = Agent("predator", "predator_2", "P2")
 # Numeric string
 agent3 = Agent("prey", "3", "R3")
 ```
+
 | Format | Example | Parsed As |
-| :--- | :--- | :--- |
+|--------|---------|-----------|
 | Integer | `3` | Subteam 3 |
 | String | `"predator_2"` | Type: predator, Subteam: 2 |
 | Numeric string | `"2"` | Subteam 2 |
 
 ## Action Space
+
 Each agent can perform 5 discrete actions:
+
 | Action | Code | Direction Vector |
 | :--- | :--- | :--- |
 | Right | 0 | [1, 0] |
@@ -91,15 +94,17 @@ direction = agent._actions_to_directions[0]  # array([1, 0]) = Right
 
 ### Action Diagram
 
-        Up (1)
-          ↑
-          |
-Left (2) ←-·-→ Right (0)
-          |
-          ↓
-       Down (3)
-       
-      Noop (4) = Stay in place
+```text
+      Up (1)
+        ^
+        |
+Left (2) <---> Right (0)
+        |
+        v
+      Down (3)
+
+Noop (4) = Stay in place
+```
 
 
 ## Agent Properties 
@@ -109,7 +114,7 @@ Left (2) ←-·-→ Right (0)
 | Property | Type | Description | Example |
 | :--- | :--- | :--- | :--- |
 | `agent_type` | `str` | Role of the agent | `"predator"` |
-| `agent_team` | `str | int` | Team/subteam identifier | `"predator_1"` |
+| `agent_team` | `str` or  `int` | Team/subteam identifier | `"predator_1"` |
 | `agent_name` | `str` | Unique display name | `"Hunter"` |
 
 ### Gameplay properties 
@@ -120,4 +125,115 @@ Left (2) ←-·-→ Right (0)
 | `stamina` | `int` | Energy resource | 10 |
 | `_agent_location` | `np.ndarray` | Current `[x, y]` position | `[0, 0]` |
 
-<!-- ## Getting Age -->
+## Getting Agent information
+
+```python 
+# Get current observation
+obs = agent._get_obs()
+print(obs["local"])  # array([x, y])
+
+# Get agent metadata
+info = agent._get_info()
+print(info)
+# {
+#     "name": "Hunter",
+#     "type": "predator",
+#     "team": "predator_1",
+#     "speed": 1,
+#     "stamina": 10
+# }
+```
+
+### Rendering 
+Agents are rendered with distinct colors and shapes for visual identification.
+
+### Colors by Type 
+| Agent Type | Base Hue | Color Family |
+| :--- | :--- | :--- |
+| Predator | 0° | Reds |
+| Prey | 120° | Greens |
+| Other | 240° | Blues |
+
+Subteams within the same type get different saturation/brightness levels.
+
+```python 
+# Get agent's RGB color
+r, g, b = agent.get_agent_color()
+print(f"RGB: ({r}, {g}, {b})")
+```
+
+### Shapes by Subteam
+
+Shapes cycle based on subteam ID:
+| Subteam ID | Shape |
+| :--- | :--- |
+| 1 | Circle |
+| 2 | Square |
+| 3 | Triangle |
+| 4 | Star |
+| 5 | Diamond |
+| 6+ | Cycles back to Circle |
+
+## Multi-Agent Setup 
+### Creating Multiple Agents 
+```python 
+from multi_agent_package.agents import Agent
+
+# Create predator team
+predators = [
+    Agent("predator", "predator_1", "Hunter1"),
+    Agent("predator", "predator_2", "Hunter2"),
+]
+
+# Create prey team
+prey = [
+    Agent("prey", "prey_1", "Runner1"),
+    Agent("prey", "prey_2", "Runner2"),
+]
+
+# Combine for environment
+all_agents = predators + prey
+```
+
+### 2v2 Configuration example 
+```python 
+from multi_agent_package.agents import Agent
+from multi_agent_package.gridworld import GridWorldEnv
+
+# Create agents
+agents = [
+    Agent("predator", "predator_1", "P1"),
+    Agent("predator", "predator_2", "P2"),
+    Agent("prey", "prey_1", "R1"),
+    Agent("prey", "prey_2", "R2"),
+]
+
+# Create environment
+env = GridWorldEnv(agents=agents, size=10, render_mode="human")
+
+# Run simulation
+obs, info = env.reset()
+for _ in range(100):
+    actions = {agent.agent_name: agent.action_space.sample() for agent in agents}
+    obs, rewards, done, truncated, info = env.step(actions)
+    if done:
+        break
+```
+
+---
+
+## Summary
+
+| Concept | Key Points |
+|---------|------------|
+| **Types** | predator (slow), prey (fast), other (custom) |
+| **Teams** | Used for color/shape differentiation |
+| **Actions** | 5 discrete: Right, Up, Left, Down, Noop |
+| **Observations** | Local position + optional global state |
+| **Rendering** | Color by type, shape by subteam |
+
+---
+
+## API Reference
+
+For complete method documentation, see [Agent API Reference](api/agents.md).
