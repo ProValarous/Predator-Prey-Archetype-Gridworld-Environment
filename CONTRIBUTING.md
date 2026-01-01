@@ -35,7 +35,6 @@ This repository follows a **layered architecture**:
 | Layer           | Purpose                        | Who edits it       |
 | --------------- | ------------------------------ | ------------------ |
 | `core/`         | Environment & agent primitives | ❌ Maintainers only |
-| `agents/`       | Agent behavior implementations | ❌ Maintainers only |
 | `observations/` | Observation logic              | ✅ Students         |
 | `rewards/`      | Reward logic                   | ✅ Students         |
 | `configs/`      | Experiment definitions (YAML)  | ✅ Students         |
