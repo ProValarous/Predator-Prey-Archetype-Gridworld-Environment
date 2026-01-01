@@ -319,6 +319,17 @@ class GridWorldEnv(gym.Env):
         for ag in self.agents:
             ag._draw_agent(canvas, pix)
 
+        # Draw grid lines (thin black)
+        line_color = (0, 0, 0)
+        for x in range(self.size + 1):
+            pos = int(round(pix * x))
+            pygame.draw.line(
+                canvas, line_color, (0, pos), (self.window_size, pos), width=1
+            )
+            pygame.draw.line(
+                canvas, line_color, (pos, 0), (pos, self.window_size), width=1
+            )
+
         if self.render_mode == "human":
             self.window.blit(canvas, canvas.get_rect())
             pygame.display.update()

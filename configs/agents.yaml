@@ -1,12 +1,12 @@
 agents:
   predators:
-    count: 20
+    count: 3
     base_type: predator
     speed: 1
     stamina: 10
 
   preys:
-    count: 1
+    count: 3
     base_type: prey
     speed: 3
     stamina: 15
