@@ -15,29 +15,37 @@
   </a>
 </p>
 
-  (Work-In-Progress) A minimalist, discrete multi-agent predator-prey archytype environment.
+A **discrete, grid-based multi-agent predator–prey environment** designed as a controlled research testbed for studying coordination, pursuit–evasion, and emergent behavior in Multi-Agent Reinforcement Learning (MARL).
 
-<h3> Early Environment SnapShot</h3>
-<img src="miscellenous/imgs/game_snap_v2.png" alt="Early Environment SnapShot" width="400"/>
+<h3>Current Rendering Prototype</h3>
+<img src="miscellenous/imgs/game_snap_v2.png" alt="Gridworld Rendering Snapshot" width="400"/>
 
 ---
 
 ## Overview
 
-This repository provides a **discrete, grid-based predator-prey simulation environment** designed to support controlled, interpretable, and reproducible experiments in MARL. The environment models classic predator-prey dynamics where multiple agents (predators and prey) interact and learn in a bounded grid world.
+This repository provides a **research-oriented, interpretable GridWorld environment** for multi-agent predator–prey dynamics. It is explicitly designed to support **controlled experimentation**, **reproducibility**, and **undergraduate-accessible research workflows**.
 
-It is research-oriented, multi-agent GridWorld environment designed for undergraduate-accessible Multi-Agent Reinforcement Learning (MARL) experimentation with strong guarantees on reproducibility, extensibility, and scientific rigor.
+The environment serves as a **synthetic laboratory** for studying:
+- coordination and competition
+- pursuit–evasion dynamics
+- constraint-induced coupling (speed, stamina)
+- partial observability and information asymmetry
 
-This repository provides a controlled synthetic laboratory for studying coordination, pursuit–evasion, and emergent behavior under constraints such as speed, stamina, and partial observability—without requiring students to modify environment internals.
+Crucially, students and contributors **do not modify environment internals**. Instead, they extend behavior through **well-defined plug-in interfaces** for rewards and observations.
 
-Key goals of this framework:
+### Design Goals
 
-* Facilitate **mechanistic understanding** of MARL behavior
-* Support **reproducible research** and **ablation studies**
-* Provide an **accessible learning tool** for students and new researchers
+- Enable **mechanistic understanding** of MARL algorithms
+- Support **reproducible experiments and ablation studies**
+- Provide an **educationally safe research codebase** for undergraduates
+- Enforce clean separation between environment dynamics and learning logic
 
 ---
-📁 Repository Structure
+
+## Repository Structure
+
+```text
 Predator-Prey-Archetype-Gridworld-Environment/
 ├── src/
 │   └── multi_agent_package/
@@ -48,14 +56,14 @@ Predator-Prey-Archetype-Gridworld-Environment/
 │       │   └── __init__.py
 │       │
 │       ├── observations/            # 👁️ OBSERVATION PLUG-INS (STUDENTS)
-│       │   ├── base.py              # Observation interface / contract
+│       │   ├── base.py              # Observation contract
 │       │   ├── default.py           # Full-information observation
 │       │   ├── local_only.py        # Self-only observation
 │       │   ├── local_radius.py      # Partial observability example
 │       │   └── README.md
 │       │
 │       ├── rewards/                 # 🎯 REWARD PLUG-INS (STUDENTS)
-│       │   ├── base.py              # Reward interface / contract
+│       │   ├── base.py              # Reward contract
 │       │   ├── base_reward.py       # Canonical capture-based reward
 │       │   ├── predator_distance.py # Distance-based shaping example
 │       │   ├── survival_reward.py   # Survival-based reward example
@@ -81,160 +89,152 @@ Predator-Prey-Archetype-Gridworld-Environment/
 │   ├── observations.yaml            # Observation selection
 │   └── experiment.yaml              # Experiment glue
 │
-├── CONTRIBUTING.md                  # 🚨 CONTRIBUTOR RULES
+├── CONTRIBUTING.md                  # 🚨 Contributor rules
+├── CODE_OF_CONDUCT.md
+├── LICENSE
 ├── README.md
 └── pyproject.toml / setup.cfg
+````
+
 ---
+
 ## Features
 
 ### Fully Interpretable
 
-* **State and action spaces are fully enumerable and transparent**, making it easy to track agent behavior, transitions, and environment evolution step-by-step.
+All environment state, transitions, and rewards are **explicitly represented and enumerable**. There are no hidden simulators or opaque physics engines, making learning dynamics easy to inspect and debug.
 
-### Modular and Customizable
+### Modular by Construction
 
-* **Variables and reward structures can be modified in isolation**, enabling controlled experimentation.
-* Easily change grid size, agent behavior, episode length, reward schemes, terminal conditions, etc.
+Reward functions and observation schemes are **plug-ins**, not hard-coded logic. This allows controlled experimentation without modifying core environment behavior.
 
-### Built for Rigorous Experimentation
+### Reproducibility First
 
-* **Reproducible ablation experiments** are supported by design.
-* Codebase encourages transparency, logging, and clear interpretation of learning dynamics.
+An experiment is fully determined by:
+
+* YAML configuration files
+* explicit random seeds
+* registered observation and reward implementations
+
+Runs using identical configurations must produce identical outcomes. Contributions violating this assumption will be rejected.
 
 ### Education-Ready
 
-* **Simplified structure** and clean API make it beginner-friendly.
-* Excellent for undergraduates or early-stage researchers to explore MARL concepts without the overhead of complex simulator frameworks.
+The codebase enforces **clean boundaries** between infrastructure and experimentation, mirroring how real research codebases operate while remaining accessible to undergraduate contributors.
 
 ---
 
 ## Use Cases
 
-* Studying **emergent cooperation and competition**
+* Studying emergent cooperation and competition
 * Benchmarking MARL algorithms in a clean, discrete setting
-* Analyzing **credit assignment**, **multi-agent exploration**, and **policy coordination**
+* Analyzing credit assignment and coordination failures
 * Teaching reinforcement learning and agent-based modeling
 
 ---
 
 ## Environment Dynamics
 
-* Agents: Can be initialized as `predator`, `prey`, or any custom role
-* Gridworld: 2D discrete space with obstacle-free navigation
-* Actions: {UP, DOWN, LEFT, RIGHT, STAY}
-* Rewards: Configurable, including custom interaction-based incentives
-* Terminal conditions: Catching prey, timeouts, or customizable rules
+* **Agents**: predator, prey, or custom roles
+* **World**: discrete 2D grid with obstacles
+* **Actions**: up, down, left, right, stay
+* **Rewards**: fully configurable via plug-ins
+* **Termination**: capture events, timeouts, or user-defined conditions
 
 ---
 
 ## Getting Started
 
-⚙️ Installation
-1️⃣ Create a virtual environment
+### Installation
+
+Create and activate a virtual environment:
+
+```bash
 python -m venv .venv
 source .venv/bin/activate     # Linux / macOS
 .venv\Scripts\activate        # Windows
+```
 
-2️⃣ Install the package (editable mode)
+Install in editable mode:
+
+```bash
 pip install -e .
+```
 
+This correctly registers `multi_agent_package` using the `src/` layout.
 
-This registers multi_agent_package correctly using the src/ layout.
+---
 
-▶️ Running an Experiment
+### Running an Experiment
 
-All experiments must be launched from the repository root.
+All experiments must be launched **from the repository root**:
 
+```bash
 python -m multi_agent_package.scripts.run_from_config
-
+```
 
 This command:
 
-Loads YAML files from configs/
+* loads YAML configuration files from `configs/`
+* constructs agents and environment
+* registers reward and observation plug-ins
+* runs a rollout (optionally rendered)
 
-Constructs agents and environment
+> Note: Running this command from `src/` or any subdirectory will result in import or missing-config errors. This is expected behavior due to the `src/` layout.
 
-Registers observation and reward plug-ins
+---
 
-Resets the environment
-
-Executes a rollout (optionally rendered)
-
-🖥️ Rendering
+### Rendering
 
 Rendering follows Gymnasium conventions and is explicitly controlled.
 
-Enable rendering in configs/env.yaml:
+Enable rendering in `configs/env.yaml`:
 
+```yaml
 env:
   render_mode: human
+```
 
+Rendering is deterministic, safe for headless execution, and isolated from environment logic.
 
-Rendering is:
+---
 
-deterministic,
+## For Undergraduate Contributors
 
-safe for headless runs,
+You are encouraged to:
 
-and isolated from environment logic.
+* implement new reward functions
+* design observation schemes
+* reproduce experiments with modified parameters
+* perform ablations and report metrics
 
-🧪 Reproducibility
+You are **not expected** to:
 
-An experiment is fully determined by:
+* modify environment internals
+* change transition dynamics
+* debug rendering or seeding logic
 
-YAML configuration files
-
-explicit random seeds
-
-registered observation and reward logic
-
-If two runs use the same configs, they must produce identical results.
-
-Any contribution that violates this assumption will be rejected.
-
-👩‍🎓 For Undergraduate Contributors
-
-You are expected to:
-
-implement new reward functions,
-
-design observation schemes,
-
-run controlled experiments,
-
-perform ablations,
-
-and report clear metrics.
-
-You are not expected to:
-
-modify environment internals,
-
-touch transition logic,
-
-or debug rendering pipelines.
-
-This mirrors how real research codebases operate.
+This separation reflects how real MARL research infrastructure is structured.
 
 ---
 
 ## Contributing
 
-We welcome contributions that improve the clarity, utility, or extensibility of the environment. If you have ideas for enhancements, fixes, or new features, please open an issue or submit a pull request.
+Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before submitting issues or pull requests. Contributions should prioritize clarity, reproducibility, and pedagogical value.
 
 ---
 
 ## Citation
 
-If you use this environment in your research, teaching, or project, please cite it using the following BibTeX:
+If you use this environment in research or teaching, please cite:
 
 ```bibtex
 @misc{predatorpreygridworld,
-  author       = {Ahmed Atif and others},
-  title        = {Predator-Prey Gridworld Environment},
+  author       = {Ahmed Atif and contributors},
+  title        = {Predator–Prey Gridworld Environment},
   year         = {2025},
-  howpublished = {\url{https://github.com/ProValarous/Predator-Prey-Gridworld-Environment}},
-  note         = {A discrete testbed for studying Multi-Agent Reinforcement Learning dynamics.}
+  howpublished = {\url{https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment}},
+  note         = {A discrete testbed for studying Multi-Agent Reinforcement Learning dynamics}
 }
 ```
 
@@ -242,16 +242,19 @@ If you use this environment in your research, teaching, or project, please cite 
 
 ## License
 
-This project is licensed under the Apache-2.0 license.
+This project is licensed under the **Apache License 2.0**.
 
 ---
 
 ## Contact
 
-For any questions, issues, or collaborations, please reach out via the [GitHub repository](https://github.com/ProValarous/Predator-Prey-Gridworld-Environment/issues).
+Questions, issues, and discussions should be raised via the GitHub issue tracker.
 
 ---
 
 ## Acknowledgements
 
-This project draws inspiration from classic RL environments and aims to provide a more transparent, MARL-specific framework. Contributions from the community are deeply appreciated!
+This project is inspired by classic reinforcement learning environments and is shaped by the goal of making MARL research accessible, interpretable, and reproducible for students and researchers alike.
+
+```
+
