@@ -88,7 +88,8 @@ Steps:
 3. Register it in `reward_registry.py`
 4. Reference it **only via YAML**
 
-✔️ Good
+✔️ This is Good
+
 ❌ Editing `GridWorldEnv.base_reward`
 
 ---
@@ -109,6 +110,7 @@ Steps:
 4. Register in `observation_registry.py`
 
 ✔️ Local radius obs
+
 ❌ Reading `env._agents_location`
 
 ---
