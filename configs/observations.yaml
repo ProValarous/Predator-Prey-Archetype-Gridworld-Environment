@@ -1,0 +1,12 @@
+observations:
+  type: local_radius            # registry key
+  params:
+    radius: 3                   # Manhattan distance
+    include_obstacles: true
+    include_agents: true
+
+  per_agent:
+    predator:
+      radius: 4                 # predators see further
+    prey:
+      radius: 2                 # prey are more blind

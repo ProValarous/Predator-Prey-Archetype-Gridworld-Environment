@@ -1,0 +1,15 @@
+experiment:
+  name: predator_prey_baseline
+  description: >
+    Tabular IQL baseline in a partially observable predator–prey gridworld.
+
+  env_config: env.yaml
+  agent_config: agents.yaml
+  observation_config: observations.yaml
+  reward_config: rewards.yaml
+
+  runtime:
+    episodes: 2000
+    log_interval: 50
+    save_video: false
+    output_dir: experiments/predator_prey_baseline

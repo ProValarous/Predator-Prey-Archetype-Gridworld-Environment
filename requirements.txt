@@ -8,3 +8,4 @@ tensorboard
 black
 flake8
 pylint
+pyyaml

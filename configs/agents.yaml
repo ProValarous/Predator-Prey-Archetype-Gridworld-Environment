@@ -1,0 +1,16 @@
+agents:
+  predators:
+    count: 20
+    base_type: predator
+    speed: 1
+    stamina: 10
+
+  preys:
+    count: 1
+    base_type: prey
+    speed: 3
+    stamina: 15
+
+  naming:
+    predator_prefix: predator
+    prey_prefix: prey
