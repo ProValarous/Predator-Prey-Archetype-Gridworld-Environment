@@ -48,3 +48,7 @@ src/baselines/MIXED/prey_2/
 src/baselines/CQL/logs/
 src/baselines/IQL/logs/
 src/baselines/MIXED/logs/
+
+
+# mkdocs 
+site/

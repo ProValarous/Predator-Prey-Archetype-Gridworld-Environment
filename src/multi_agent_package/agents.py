@@ -4,11 +4,6 @@ Agent module for the Predator-Prey Gridworld Environment.
 This module defines the :class:`Agent` class, which represents individual
 agents (predators, prey, or custom types) in a multi-agent GridWorld.
 
-Classes
--------
-Agent
-    A multi-agent GridWorld agent with customizable type, team, and rendering.
-
 Example
 -------
 >>> from multi_agent_package.agents import Agent
@@ -32,7 +27,87 @@ import colorsys
 
 class Agent(gym.Env):
     """
-    A simple agent class for a multi-agent GridWorld environment.
+    A multi-agent GridWorld agent with customizable type, team, and rendering.
+
+    This class represents an individual agent in the Predator-Prey GridWorld
+    environment. Each agent has a type (predator/prey/other), belongs to a
+    team/subteam, and can be rendered with distinct colors and shapes.
+
+    The class extends ``gymnasium.Env`` to maintain compatibility with
+    standard RL interfaces, though the primary stepping logic is handled
+    by the parent :class:`GridWorldEnv`.
+
+    Attributes
+    ----------
+    agent_type : str
+        Base role of the agent:
+
+        - ``"predator"``: Hunter role, speed=1
+        - ``"prey"``: Evader role, speed=3
+        - ``"other"``: Custom role, speed=1
+
+    agent_team : Union[str, int]
+        Team/subteam identifier used for grouping and color differentiation.
+        Accepts multiple formats:
+
+        - Integer: ``3`` → subteam 3
+        - String with underscore: ``"predator_2"`` → type "predator", subteam 2
+        - Numeric string: ``"2"`` → subteam 2
+
+    agent_name : str
+        Human-readable unique identifier. Used in logging, observations,
+        and rendered labels.
+
+    agent_speed : int
+        Movement speed multiplier. Set automatically based on ``agent_type``:
+
+        - Predator: 1
+        - Prey: 3
+        - Other: 1
+
+    stamina : int
+        Energy resource for the agent (default: 10). Available for
+        extended game mechanics.
+
+    action_space : gymnasium.spaces.Discrete
+        Discrete action space with 5 actions:
+
+        - 0: Right ``[+1, 0]``
+        - 1: Up ``[0, +1]``
+        - 2: Left ``[-1, 0]``
+        - 3: Down ``[0, -1]``
+        - 4: Noop ``[0, 0]``
+
+    total_subteams : int
+        Number of subteams for color spacing calculations (default: 5).
+
+    Notes
+    -----
+    - Rendering uses pygame primitives with HSV-based color generation.
+    - Shapes cycle through: circle, square, triangle, star, diamond.
+    - Font rendering is cached to avoid recreation overhead each frame.
+
+    Examples
+    --------
+    Create a predator agent:
+
+    >>> agent = Agent("predator", "predator_1", "Hunter")
+    >>> agent.agent_speed
+    1
+    >>> agent.action_space
+    Discrete(5)
+
+    Create a prey agent:
+
+    >>> prey = Agent("prey", "prey_2", "Runner")
+    >>> prey.agent_speed
+    3
+
+    Get agent color:
+
+    >>> r, g, b = agent.get_agent_color()
+    >>> r > g  # Red-dominant for predators
+    True
 
     See Also
     --------
@@ -43,40 +118,82 @@ class Agent(gym.Env):
 
     def __init__(self, agent_type: str, agent_team, agent_name: str):
         """
-        A simple agent class for a multi-agent GridWorld environment.
+        Initialize an Agent instance.
 
-        Attributes
+        Creates a new agent with the specified type, team, and name.
+        Speed is automatically set based on agent type.
+
+        Parameters
         ----------
         agent_type : str
-            Base type (e.g., "predator", "prey", "other").
-        agent_team : Union[str, int]
-            Subteam identifier. Can be an int (e.g., 3) or string like "predator_3".
-        agent_name : str
-            Human-readable name / unique id for the agent.
-        agent_speed : int
-            Movement speed. Predator=1, Prey=3, Other=1.
-        stamina : int
-            Energy resource (default: 10).
-        action_space : gymnasium.spaces.Discrete
-            Discrete action space with 5 actions.
+            Base role for the agent. Determines speed and color:
 
-        Notes
-        -----
-        - Rendering is implemented using pygame primitives.
-        - The class provides helper methods to select colors and shapes per subteam.
-        - Actions: 0=Right, 1=Up, 2=Left, 3=Down, 4=Noop
+            - ``"predator"``: Hunter role, speed=1, red color family
+            - ``"prey"``: Evader role, speed=3, green color family
+            - ``"other"``: Custom role, speed=1, blue color family
+
+        agent_team : Union[str, int]
+            Team/subteam identifier. Determines color variation and shape
+            within the same agent type. Accepted formats:
+
+            - ``int``: Direct subteam ID (e.g., ``3``)
+            - ``str``: Format ``"type_id"`` (e.g., ``"predator_2"``)
+            - ``str``: Numeric string (e.g., ``"2"``)
+
+        agent_name : str
+            Unique display name for the agent. Used in:
+
+            - Observation dictionaries (as identifier)
+            - Info dictionaries (metadata)
+            - Rendered labels on the agent shape
+            - Logging and debugging
+
+        Raises
+        ------
+        None
+            This method does not raise exceptions. Invalid agent types
+            default to ``"other"`` behavior with speed=1.
 
         Examples
         --------
-        >>> agent = Agent("predator", "predator_1", "Hunter")
-        >>> agent.agent_speed
+        Create a predator:
+
+        >>> predator = Agent("predator", "predator_1", "Hunter")
+        >>> predator.agent_type
+        'predator'
+        >>> predator.agent_speed
         1
-        >>> agent.action_space
-        Discrete(5)
+
+        Create a prey with integer team:
+
+        >>> prey = Agent("prey", 2, "Runner")
+        >>> prey.agent_team
+        2
+        >>> prey.agent_speed
+        3
+
+        Create a custom agent:
+
+        >>> other = Agent("other", "observer_1", "Watcher")
+        >>> other.agent_speed
+        1
+
+        Notes
+        -----
+        The following attributes are initialized:
+
+        - ``agent_speed``: Set based on ``agent_type``
+        - ``stamina``: Set to 10
+        - ``action_space``: ``Discrete(5)``
+        - ``_agent_location``: ``[0, 0]``
+        - ``_start_location``: ``[0, 0]``
+        - ``total_subteams``: 5 (for color spacing)
 
         See Also
         --------
-        GridWorldEnv : The environment that manages multiple Agent instances.
+        _get_info : Get agent metadata as dictionary.
+        _get_obs : Get agent observation.
+        get_agent_color : Get RGB color based on type and team.
         """
         self.agent_type: str = agent_type
         self.agent_team = agent_team
@@ -112,11 +229,34 @@ class Agent(gym.Env):
     # Basic helpers / spaces
     # -------------------------
     def _make_action_space(self) -> spaces.Discrete:
-        """Return discrete action space (5 actions)."""
+        """
+        Create the discrete action space.
+
+        Returns
+        -------
+        gymnasium.spaces.Discrete
+            Discrete space with 5 actions.
+
+        Notes
+        -----
+        Actions: 0=Right, 1=Up, 2=Left, 3=Down, 4=Noop.
+        """
         return spaces.Discrete(5)
 
     def _action_to_direction(self) -> dict:
-        """Map action indices to unit direction vectors (numpy arrays)."""
+        """
+        Map action indices to direction vectors.
+
+        Returns
+        -------
+        dict
+            Mapping of action index to numpy direction vector.
+
+        Examples
+        --------
+        >>> agent._actions_to_directions[0]
+        array([1, 0])  # Right
+        """
         return {
             0: np.array([1, 0]),  # Right
             1: np.array([0, 1]),  # Up
@@ -187,14 +327,26 @@ class Agent(gym.Env):
     # -------------------------
     def _parse_team(self) -> Tuple[str, int]:
         """
-        Parse `self.agent_team` (or fallback to `self.agent_type`) and return:
-        (base_type, sub_id)
+        Parse team identifier into base type and subteam ID.
 
-        Acceptable formats:
-          - agent_team = 3                -> base_type from agent_type, sub_id = 3
-          - agent_team = "predator_2"     -> base_type = "predator", sub_id = 2
-          - agent_team = "2"              -> sub_id = 2, base_type from agent_type
-          - otherwise sub_id defaults to 1
+        Returns
+        -------
+        tuple of (str, int)
+            ``(base_type, sub_id)`` where sub_id >= 1.
+
+        Notes
+        -----
+        Parsing rules:
+
+        - Integer ``3`` → ``(agent_type, 3)``
+        - String ``"predator_2"`` → ``("predator", 2)``
+        - Numeric string ``"2"`` → ``(agent_type, 2)``
+
+        Examples
+        --------
+        >>> agent = Agent("predator", "predator_2", "P1")
+        >>> agent._parse_team()
+        ('predator', 2)
         """
         # Preferred: parse from self.agent_team if provided
         team_val = self.agent_team
@@ -239,27 +391,26 @@ class Agent(gym.Env):
         """
         Compute RGB color based on agent type and subteam.
 
-        Colors use HSV color space:
-
-        - Predator: Red hue (0°)
-        - Prey: Green hue (120°)
-        - Other: Blue hue (240°)
-
         Parameters
         ----------
         agent_team : str or int, optional
-            Override team for color calculation. If None, uses self.agent_team.
+            Override team for color calculation.
 
         Returns
         -------
         tuple of (int, int, int)
             RGB values in range [0, 255].
 
+        Notes
+        -----
+        Color mapping: predator=red, prey=green, other=blue.
+        Subteams get varied saturation/brightness.
+
         Examples
         --------
         >>> predator = Agent("predator", "predator_1", "P1")
         >>> r, g, b = predator.get_agent_color()
-        >>> r > g  # Red-dominant for predators
+        >>> r > g  # Red-dominant
         True
         """
         # Decide which team string to parse
@@ -318,15 +469,29 @@ class Agent(gym.Env):
         center: Tuple[int, int], outer_r: float, inner_r: float, points: int = 5
     ) -> List[Tuple[int, int]]:
         """
-        Compute polygon points for a star (useful for pygame.draw.polygon).
+        Compute polygon vertices for a star shape.
 
         Parameters
         ----------
-        center : (x, y)
+        center : tuple of (int, int)
+            Center coordinates (x, y) in pixels.
         outer_r : float
+            Radius to outer points.
         inner_r : float
-        points : int
-            Number of star points (default 5).
+            Radius to inner points.
+        points : int, default=5
+            Number of star points.
+
+        Returns
+        -------
+        list of tuple of (int, int)
+            Vertices for pygame.draw.polygon.
+
+        Examples
+        --------
+        >>> pts = Agent._star_points((100, 100), 20, 10, 5)
+        >>> len(pts)
+        10
         """
         cx, cy = center
         pts: List[Tuple[int, int]] = []
@@ -342,9 +507,28 @@ class Agent(gym.Env):
 
     def _shape_for_subteam(self, sub_id: int) -> str:
         """
-        Deterministic mapping from subteam id to a shape.
+        Get shape name for a subteam ID.
 
-        Cycles through: circle, square, triangle, star, diamond.
+        Parameters
+        ----------
+        sub_id : int
+            Subteam identifier (1-indexed).
+
+        Returns
+        -------
+        str
+            Shape: ``"circle"``, ``"square"``, ``"triangle"``, ``"star"``, or ``"diamond"``.
+
+        Notes
+        -----
+        Shapes cycle: 1=circle, 2=square, 3=triangle, 4=star, 5=diamond, 6=circle...
+
+        Examples
+        --------
+        >>> agent._shape_for_subteam(1)
+        'circle'
+        >>> agent._shape_for_subteam(4)
+        'star'
         """
         shapes = ["circle", "square", "triangle", "star", "diamond"]
         return shapes[(sub_id - 1) % len(shapes)]
@@ -353,7 +537,23 @@ class Agent(gym.Env):
     # Rendering
     # -------------------------
     def _get_font(self, font_size: int) -> pygame.font.Font:
-        """Return a cached pygame font instance for given size (or create one)."""
+        """
+        Get a cached pygame font instance.
+
+        Parameters
+        ----------
+        font_size : int
+            Font size in points.
+
+        Returns
+        -------
+        pygame.font.Font
+            Cached font instance.
+
+        Notes
+        -----
+        Fonts are cached to avoid recreation overhead during rendering.
+        """
         if font_size not in self._font_cache:
             self._font_cache[font_size] = pygame.font.SysFont(None, font_size)
         return self._font_cache[font_size]
@@ -362,8 +562,22 @@ class Agent(gym.Env):
         self, canvas: pygame.Surface, center: Tuple[int, int], label: str, max_dim: int
     ) -> None:
         """
-        Draw a black label centered at `center` and scaled to fit within `max_dim`.
-        This mutates the canvas (pygame Surface).
+        Render a text label centered at the given position.
+
+        Parameters
+        ----------
+        canvas : pygame.Surface
+            Surface to draw on.
+        center : tuple of (int, int)
+            Center position (x, y) for the label.
+        label : str
+            Text to render.
+        max_dim : int
+            Maximum dimension; font shrinks to fit.
+
+        Notes
+        -----
+        Mutates the canvas by blitting text onto it.
         """
         text_color = (0, 0, 0)
         font_size = max(8, int(max_dim * 0.5))  # heuristic start size
@@ -383,18 +597,20 @@ class Agent(gym.Env):
 
     def _draw_agent(self, canvas: pygame.Surface, pix_square_size: float) -> None:
         """
-        Draw the agent on a pygame canvas.
+            Draw the agent on a pygame canvas.
 
-        Parameters
-        ----------
-        canvas : pygame.Surface
-            Surface to draw on.
-        pix_square_size : float
-            Size of one grid cell in pixels.
+            Parameters
+            ----------
+            canvas : pygame.Surface
+                Surface to draw on.
+            pix_square_size : float
+                Size of one grid cell in pixels.
 
-        Notes
+            Notes
         -----
-        Draws a colored shape (based on subteam) with a centered label.
+        Draws a colored shape (based on type/subteam) with a centered label.
+        Shape is determined by :meth:`_shape_for_subteam`.
+        Color is determined by :meth:`get_agent_color`.
         """
         # Ensure pygame font system is ready
         if not pygame.font.get_init():
