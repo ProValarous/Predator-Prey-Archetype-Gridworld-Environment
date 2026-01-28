@@ -1,6 +1,9 @@
 # Ignore VS Code settings
 .vscode/
 
+
+site/
+
 # Ignore Python virtual environments
 marl-project-venv2/
 venv/

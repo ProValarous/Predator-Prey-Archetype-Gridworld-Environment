@@ -1,7 +1,7 @@
 site_name: Predator-Prey Gridworld Environment
 site_description: A minimalist multi-agent predator-prey environment for MARL research.
-site_url: https://provalarous.github.io/Predator-Prey-Gridworld-Environment/
-repo_url: https://github.com/ProValarous/Predator-Prey-Gridworld-Environment
+site_url: https://provalarous.github.io/Predator-Prey-Archetype-Gridworld-Environment/
+repo_url: https://provalarous.github.io/Predator-Prey-Archetype-Gridworld-Environment/
 repo_name: ProValarous/Predator-Prey-Gridworld-Environment
 
 nav:
@@ -10,9 +10,14 @@ nav:
     - Usage: usage.md
   - Concepts:
     - Agents: agents.md
+    - Environment: environment.md
+    - Observation: observations.md
   - API Reference:
     - Agent Class: api/agents.md
+    - GridWorldEnv: api/gridworld.md
   - Contributing: contributing.md
+  - Code of Conduct: CODE_OF_CONDUCT.md
+  - Tutorial: tutorial.md
 
 theme:
   name: material

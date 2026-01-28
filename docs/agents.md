@@ -148,6 +148,7 @@ print(info)
 Agents are rendered with distinct colors and shapes for visual identification.
 
 ### Colors by Type 
+
 | Agent Type | Base Hue | Color Family |
 | :--- | :--- | :--- |
 | Predator | 0° | Reds |
@@ -165,6 +166,7 @@ print(f"RGB: ({r}, {g}, {b})")
 ### Shapes by Subteam
 
 Shapes cycle based on subteam ID:
+
 | Subteam ID | Shape |
 | :--- | :--- |
 | 1 | Circle |

@@ -1,56 +1,93 @@
-# Predator–Prey Gridworld Environment
+# 🐾 Predator–Prey Gridworld Environment
 
-*(Work In Progress — a minimalist, discrete multi-agent predator–prey archetype environment.)*  
-This site documents the repository, usage examples, API overview, experiments and contribution guidelines. The project aims to provide a small, interpretable gridworld for rigorous Multi-Agent Reinforcement Learning (MARL) research and teaching. :contentReference[oaicite:1]{index=1}
 
----
+[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](contributing.md)
+[![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-enforced-orange.svg)](CODE_OF_CONDUCT.md)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/ProValarous/Predator-Prey-Gridworld-Environment/blob/main/LICENSE)
 
-## Why this environment?
+A **discrete, grid-based multi-agent predator–prey environment** designed as a controlled research testbed for studying coordination, pursuit–evasion, and emergent behavior in Multi-Agent Reinforcement Learning (MARL).
 
-- **Interpretable & Discrete** — state and action spaces are fully enumerable, which makes it easy to inspect transitions and behaviours step-by-step.  
-- **Modular & Configurable** — grid size, reward shaping, agent roles, and terminal conditions are easy to change for controlled ablation studies.  
-- **Education & Research Friendly** — small surface area to learn MARL concepts, reproduce experiments, and run controlled benchmarks.
-
----
-
-## Quick links
-
-- **Home / Quickstart** — `home.md` (Quick usage & examples)  
-- **API Reference** — (auto-generated pages, see `docs/api/`)  
-- **Tutorials & Examples** — `docs/tutorials/` (example experiments and recipes)  
-- **Contributing** — see `CONTRIBUTING.md` in repository. :contentReference[oaicite:2]{index=2}
+<h3>Early Environment Snapshot</h3>
+<img src="assets/images/game_snap_v2.png" alt="Early Environment Snapshot" width="400"/>
 
 ---
 
-## Snapshot / Demo
+## Overview
 
-> A small snapshot of the environment (rendering) is included in the repository README. Refer to the visual to see the discrete grid layout and agents’ positions. :contentReference[oaicite:3]{index=3}
+This framework provides a **discrete, grid-based simulation** designed to support controlled, interpretable, and reproducible experiments in MARL. It models classic predator-prey dynamics where multiple agents interact and learn in a bounded grid world.
 
----
+Key goals:
 
-## Design principles
-
-1. **Simplicity first** — avoid heavy simulator complexity so experiments are reproducible and fast.  
-2. **Transparent rewards** — reward functions are isolated so their effects in multi-agent credit assignment can be studied.  
-3. **Deterministic baseline** — seedable RNG and deterministic stepping for reproducible runs.  
-4. **Minimal dependencies** — works with standard Python tooling to lower the entry barrier.
+* Facilitate **mechanistic understanding** of MARL behavior.
+* Support **reproducible research** and ablation studies.
+* Provide an **accessible learning tool** for students and new researchers.
 
 ---
 
-## Roadmap
+## Features
 
-Planned additions (short to mid term):
+### 🔍 Fully Interpretable
+**State and action spaces are fully enumerable and transparent**, making it easy to track agent behavior, transitions, and environment evolution step-by-step.
 
-- More sample experiments and benchmarking scripts (benchmarks/).  
-- Integration with standard MARL libraries (training scripts compatible with RLlib / Stable Baselines).  
-- Visualization tools for trajectories, heatmaps and credit assignment.  
-- CI smoke-tests for environment determinism and API stability.
+### 🧩 Modular and Customizable
+**Variables and reward structures can be modified in isolation**, enabling controlled experimentation. Easily change grid size, agent behavior, episode length, reward schemes, and terminal conditions.
+
+### 🧪 Built for Rigorous Experimentation
+**Reproducible ablation experiments** are supported by design. The codebase encourages transparency, logging, and clear interpretation of learning dynamics.
 
 ---
+
+## Quick Start
+
+### Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment.git
+cd Predator-Prey-Archetype-Gridworld-Environment
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+### Minimal Example
+```python
+from multi_agent_package.gridworld import GridWorldEnv
+from multi_agent_package.agents import Agent
+
+# Define agents (type, team, name)
+predator = Agent("predator", "predator_1", "Hunter")
+prey = Agent("prey", "prey_1", "Runner")
+
+# Create environment
+env = GridWorldEnv(
+    agents=[predator, prey],
+    size=8,
+    render_mode="human"
+)
+
+# Run a single episode
+obs, info = env.reset(seed=42)
+done = False
+
+while not done:
+    actions = {
+        "Hunter": env.action_space.sample(),
+        "Runner": env.action_space.sample()
+    }
+    result = env.step(actions)
+    done = result["done"]
+
+env.close()
+```
 
 ## Citation
 
-If you use this environment in research or teaching, please cite:
+If you use this environment in your research, teaching, or project, please cite it using the following BibTeX:
 
 ```bibtex
 @misc{predatorpreygridworld,
@@ -60,3 +97,8 @@ If you use this environment in research or teaching, please cite:
   howpublished = {\url{https://github.com/ProValarous/Predator-Prey-Gridworld-Environment}},
   note         = {A discrete testbed for studying Multi-Agent Reinforcement Learning dynamics.}
 }
+```
+
+## License
+
+This project is licensed under the [Apache-2.0 License](https://github.com/ProValarous/Predator-Prey-Gridworld-Environment/blob/main/LICENSE).
