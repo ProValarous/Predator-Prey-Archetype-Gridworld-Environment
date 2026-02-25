@@ -12,6 +12,7 @@ nav:
     - Agents: agents.md
     - Environment: environment.md
     - Observation: observations.md
+    - Baselines Architecture: baselines_architecture.md
   - API Reference:
     - Agent Class: api/agents.md
     - GridWorldEnv: api/gridworld.md
