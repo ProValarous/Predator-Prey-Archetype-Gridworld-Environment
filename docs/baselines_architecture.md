@@ -13,6 +13,24 @@ This document defines an **opinionated architecture** for a baseline learning pa
 
 ---
 
+## Does this integrate cleanly with the current `multi_agent_package`?
+
+**Yes — if the adapter exactly follows the current API contracts in your codebase.**
+
+### Current environment facts the baseline must respect
+
+- Environment construction is done with `GridWorldEnv(...)` plus `build_agents(...)` patterns already used in `scripts/run_from_config.py`.
+- Observation and reward plugins are resolved via existing registries:
+  - `get_observation_builder(name, **params)`
+  - `get_reward_function(name, weight=..., **params)`
+- `env.reset()` returns `(obs, info)`.
+- `env.step(actions)` currently returns a **dict** with keys:
+  - `obs`, `reward`, `terminated`, `trunc`, `info`
+
+The baseline package must adapt to these interfaces rather than expecting Gymnasium tuple-style step outputs.
+
+---
+
 ## Recommended Repository Layout
 
 ```text
@@ -81,7 +99,7 @@ src/
 
 - Keeps all learning logic under `src/baselines/`.
 - Prevents accidental core coupling by forcing access through `env_adapter/`.
-- Makes adding future algorithms (e.g., SAC, QMIX variants) additive rather than refactor-heavy.
+- Makes adding future algorithms additive rather than refactor-heavy.
 
 ---
 
@@ -89,26 +107,34 @@ src/
 
 ## 1) Adapter boundary (required)
 
-Both IQL and CQL should only interact with the environment via a **small adapter protocol**:
+Both IQL and CQL should only interact with the environment via a small adapter protocol:
 
-- `reset(seed) -> ObsDict`
-- `step(ActionDict) -> (ObsDict, RewardDict, DoneDict, InfoDict)`
+- `reset(seed) -> (obs_dict, info_dict)`
+- `step(action_dict) -> StepBatch`
 - `get_agent_ids() -> list[str]`
-- `get_action_space(agent_id)`
-- `get_observation_space(agent_id)`
+- `sample_random_action(agent_id) -> int`
+- `get_action_n(agent_id) -> int`
 
-No algorithm code should import `multi_agent_package.core.*` directly.
+Where `StepBatch` is normalized by adapter as:
+
+- `obs: dict[str, object]`
+- `reward: dict[str, float]`
+- `terminated: bool`
+- `truncated: bool`
+- `info: dict[str, object]`
+
+This normalization hides the environment’s current dict-style step return so algorithms stay stable if wrapper details evolve.
 
 ## 2) Observation/reward usage through environment configuration
 
 The baseline package should not construct concrete observation/reward classes itself.
 Instead, it should:
 
-1. Load environment YAML.
-2. Pass observation/reward names to environment script/factory path already backed by registry.
-3. Receive resolved observations/rewards from environment outputs.
+1. Load environment YAML files.
+2. Reuse the same registry resolution path (`get_observation_builder`, `get_reward_function`) used by existing scripts.
+3. Receive already-resolved observations/rewards from the environment.
 
-This ensures algorithm code remains agnostic to whether observation is `default`, `local_radius`, or future plugins.
+This keeps algorithm code agnostic to concrete plugin implementations.
 
 ## 3) Single-agent and multi-agent compatibility
 
@@ -117,7 +143,7 @@ Implement a shared `AgentBatchView` abstraction:
 - **Single-agent mode**: selects one controlled agent and masks others.
 - **Multi-agent mode**: shared trainer loop with per-agent buffers or parameter sharing strategy from config.
 
-Avoid separate bespoke training loops for each mode; use one orchestrator with mode flags.
+Avoid separate bespoke training loops; use one orchestrator with mode flags.
 
 ---
 
@@ -125,9 +151,9 @@ Avoid separate bespoke training loops for each mode; use one orchestrator with m
 
 ## What to do
 
-Use **two registries**, each in its own package boundary:
+Use two registries, each in its own boundary:
 
-1. Environment registries (already existing): observation and reward plugin lookup.
+1. Environment registries (existing): observation and reward plugin lookup.
 2. Baseline algorithm registry (new): maps algorithm key (`"iql"`, `"cql"`) to trainer factory.
 
 ## What not to do
@@ -145,10 +171,11 @@ The top-level launcher should read one experiment YAML and orchestrate in this o
 
 1. Parse and validate config schema.
 2. Set global seeds (python, numpy, torch, env).
-3. Build environment through adapter using env config (which resolves registries internally).
-4. Instantiate algorithm from baseline algorithm registry.
-5. Run train/eval loop.
-6. Persist artifacts:
+3. Build agents + environment via adapter.
+4. Resolve observation/reward plugins through existing environment registry functions.
+5. Instantiate algorithm from baseline algorithm registry.
+6. Run train/eval loop.
+7. Persist artifacts:
    - resolved config snapshot
    - git commit hash
    - seeds used
@@ -163,10 +190,7 @@ experiment:
   total_env_steps: 500000
 
 environment:
-  env_config_path: configs/env.yaml
-  agents_config_path: configs/agents.yaml
-  rewards_config_path: configs/rewards.yaml
-  observations_config_path: configs/observations.yaml
+  config_dir: configs
 
 baseline:
   algorithm: iql    # or cql
@@ -181,7 +205,7 @@ runtime:
   checkpoint_interval: 10000
 ```
 
-Algorithm swap is then exactly one line (`baseline.algorithm`).
+Algorithm swap is one line: `baseline.algorithm`.
 
 ---
 
@@ -189,56 +213,49 @@ Algorithm swap is then exactly one line (`baseline.algorithm`).
 
 To keep research-grade determinism, enforce:
 
-- **Strict seed plumbing**: one experiment seed expanded deterministically into env seed + dataloader seed + eval seed.
-- **Config immutability at runtime**: dump fully resolved config file next to outputs.
-- **Version pinning**: capture package versions and commit SHA in every run metadata.
-- **Deterministic evaluation mode**: fixed seeds, fixed episode count, no exploration noise.
-- **Registry resolution logging**: log which observation/reward plugin names resolved to which classes.
+- Strict seed plumbing: one experiment seed expanded deterministically into env seed + dataloader seed + eval seed.
+- Config immutability at runtime: dump fully resolved config next to outputs.
+- Version capture: package versions and commit SHA in every run metadata.
+- Deterministic evaluation mode: fixed seeds, fixed episode count, no exploration noise.
+- Registry resolution logging: exact observation/reward plugin names selected per run.
 
 ---
 
 ## High-Risk Failure Modes to Avoid
 
-1. **Hidden torch import in environment package**
+1. Hidden torch import in environment package
    - Violates optional dependency boundary.
-   - Symptom: `import multi_agent_package` fails without torch.
-
-2. **Direct import of environment internals from algorithms**
-   - Couples trainers to core dynamics and breaks immutability expectations.
-
-3. **Dual registry copies for observations/rewards**
-   - Creates silent mismatches when one registry updates and the other does not.
-
-4. **Algorithm-dependent environment behavior**
-   - Any branching like `if algorithm == "cql": env.foo = ...` is a design smell and should be rejected.
-
-5. **Non-serialized run state**
-   - If seed/config/commit are not captured, results are not reproducible.
-
-6. **Implicit defaults in code that override YAML**
-   - Leads to “same config, different run” outcomes.
-
-7. **Per-script bespoke launch paths**
-   - Multiple entry points with different setup logic silently break parity across experiments.
+2. Direct import of `multi_agent_package.core.*` from algorithms
+   - Couples trainers to immutable internals.
+3. Dual registry copies for observations/rewards
+   - Creates silent drift.
+4. Algorithm-dependent environment behavior
+   - Any `if algorithm == ...` branch that mutates env behavior is a design bug.
+5. Non-serialized run state
+   - Missing seed/config/commit makes results non-reproducible.
+6. Implicit code defaults overriding YAML
+   - Produces “same config, different run.”
+7. Multiple divergent launch scripts
+   - Setup mismatch silently breaks experiment parity.
 
 ---
 
 ## Explicitly Bad Ideas (Reject These)
 
-- Putting trainer classes under `multi_agent_package/scripts/`.
-- Allowing baselines to mutate env objects beyond standard API calls.
-- Building environment plugins inside baseline package and bypassing env registries.
-- Auto-discovering algorithms via dynamic imports with side effects.
-- Hard-coding IQL/CQL branches in runner logic instead of registry-based factories.
+- Putting trainers under `multi_agent_package/scripts/`.
+- Letting baselines mutate env internals beyond public API calls.
+- Re-implementing observation/reward plugin systems inside baselines.
+- Auto-discovering algorithms via import side effects.
+- Hard-coding IQL/CQL branches in runner logic instead of algorithm registry factories.
 
 ---
 
 ## Practical Next Steps
 
 1. Keep environment package untouched.
-2. Replace current ad hoc baseline scripts with the directory contract above.
-3. Introduce `baselines.algorithms.registry` and a single YAML-driven runner.
+2. Replace ad hoc baseline scripts with this directory contract.
+3. Implement `baselines.algorithms.registry` and one YAML-driven runner.
 4. Add reproducibility tests (seed repeatability + config parity).
-5. Keep baseline dependency extras isolated (e.g., `pip install .[baselines]`).
+5. Keep baseline dependencies optional (e.g., extras: `.[baselines]`).
 
-This yields a clean research codebase: immutable environment, optional learning package, and reproducible configuration-driven experiments.
+This gives a real research-codebase separation: immutable environment, optional learning package, and reproducible config-driven experiments.
