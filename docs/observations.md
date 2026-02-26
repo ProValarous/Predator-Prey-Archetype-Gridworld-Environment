@@ -4,13 +4,15 @@
 
 The Observations module defines how agents perceive the environment state at each timestep. Observations are constructed via classes that inherit **ObservationBuilder** class as the base abstract class. The desired class is selected at runtime through YAML configuration and a registry pattern.
 
-The module supports three observation modes:
+The module supports five observation modes:
 
-| Mode | Observability | Description |
-|------|---------------|-------------|
-| **Default** | Full | All agents see all other agents and obstacles |
-| **LocalOnly** | Minimal | Agents see only their own position |
-| **LocalRadius** | Partial | Agents see entities within a Manhattan distance threshold |
+| Mode | Observability | Frame | Description |
+|------|---------------|-------|-------------|
+| **Default** | Full | Mixed | Scalar distances to all agents and obstacles |
+| **LocalOnly** | Minimal | Absolute | Agent's own position only |
+| **LocalRadius** | Partial | Hybrid | Entities within Manhattan radius (relative positions) |
+| **Absolute** | Full | World | All positions in grid coordinates |
+| **Relative** | Full | Egocentric | All positions relative to agent (agent at origin) |
 
 Observation builders are **read-only**—they query environment state but do not modify it.
 
@@ -40,6 +42,8 @@ _OBSERVATION_REGISTRY: Dict[str, Type[ObservationBuilder]] = {
     "default": DefaultObservation,
     "local_only": LocalOnlyObservation,
     "local_radius": LocalRadiusObservation,
+    "absolute": AbsoluteObservation,
+    "relative": RelativeObservation,
 }
 ```
 
@@ -211,6 +215,162 @@ distance = abs(x1 - x2) + abs(y1 - y2)
 - Manhattan distance is appropriate for grid-based movement
 - Radius is symmetric in all directions
 - Relative positions are computed as (target - observer)
+
+
+## AbsoluteObservation
+Location: multi_agent_package/observations/absolute.py
+
+Purpose: Provides full observability with world coordinates. All entity positions are expressed in global grid coordinates.
+
+| Parameter | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `include_agents` | `bool` | `True` | Include other agents |
+| `include_obstacles` | `bool` | `True` | Include obstacles |
+| `distance_type` | `str` | `"euclidean"` | `"euclidean"` or `"manhattan"` |
+
+### Output Structure 
+```python
+{
+    "agent_name": {
+        "local": {
+            "pos": np.array([x, y]),      # ABSOLUTE world position
+            "type": "predator",
+            "team": "predator_1",
+            "speed": 1,
+        },
+        "agents": {
+            "other_agent_name": {
+                "pos": np.array([x, y]),  # ABSOLUTE world position
+                "dist": float,             # Distance to agent
+                "type": "prey",
+                "team": "prey_1",
+            }
+        },
+        "obstacles": {
+            "obstacle_0": {
+                "pos": np.array([x, y]),  # ABSOLUTE world position
+                "dist": float,
+            }
+        }
+    }
+}
+```
+### Example
+```text
+Grid (7x7):
+- Predator P at [2, 3]
+- Prey R at [5, 1]
+- Obstacle at [3, 3]
+
+Output for P:
+{
+    "predator_1": {
+        "local": {
+            "pos": np.array([2, 3]),     # P's world position
+            "type": "predator",
+            "speed": 1,
+        },
+        "agents": {
+            "prey_1": {
+                "pos": np.array([5, 1]), # R's world position
+                "dist": 5.0,
+                "type": "prey",
+            }
+        },
+        "obstacles": {
+            "obstacle_0": {
+                "pos": np.array([3, 3]), # Obstacle world position
+                "dist": 1.0,
+            }
+        }
+    }
+}
+```
+
+## RelativeObservation
+
+Location: multi_agent_package/observations/relative.py
+
+| Parameter | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `include_agents` | `bool` | `True` | Include other agents |
+| `include_obstacles` | `bool` | `True` | Include obstacles |
+| `include_walls` | `bool` | `False` | Include wall distances |
+| `distance_type` | `str` | `"manhattan"` | `"euclidean"` or `"manhattan"` |
+
+### Output Structure
+```python
+{
+    "agent_name": {
+        "local": {
+            "pos": np.array([0, 0]),      # ALWAYS origin
+            "type": "predator",
+            "team": "predator_1",
+            "speed": 1,
+        },
+        "agents": {
+            "other_agent_name": {
+                "rel_pos": np.array([dx, dy]),  # RELATIVE offset
+                "dist": int,                     # Distance
+                "type": "prey",
+                "team": "prey_1",
+            }
+        },
+        "obstacles": {
+            "obstacle_0": {
+                "rel_pos": np.array([dx, dy]),  # RELATIVE offset
+                "dist": int,
+            }
+        },
+        "walls": {                              # If include_walls=True
+            "left": int,
+            "right": int,
+            "up": int,
+            "down": int,
+        }
+    }
+}
+```
+
+### Example
+
+```text
+Grid (7x7):
+- Predator P at [2, 3]
+- Prey R at [5, 1]
+- Obstacle at [3, 3]
+
+Output for P:
+{
+    "predator_1": {
+        "local": {
+            "pos": np.array([0, 0]),          # P is always at origin
+            "type": "predator",
+            "speed": 1,
+        },
+        "agents": {
+            "prey_1": {
+                "rel_pos": np.array([3, -2]), # R relative to P: [5,1] - [2,3]
+                "dist": 5,                     # |3| + |-2| = 5 (manhattan)
+                "type": "prey",
+            }
+        },
+        "obstacles": {
+            "obstacle_0": {
+                "rel_pos": np.array([1, 0]),  # Obstacle relative to P
+                "dist": 1,
+            }
+        },
+        "walls": {
+            "left": 2,                        # P is 2 cells from left edge
+            "right": 4,                       # P is 4 cells from right edge
+            "up": 3,                          # P is 3 cells from top
+            "down": 3,                        # P is 3 cells from bottom
+        }
+    }
+}
+```
+
 
 ---
 
