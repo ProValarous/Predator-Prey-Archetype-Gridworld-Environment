@@ -49,7 +49,7 @@ def load_all_configs(config_dir: str = "configs") -> dict:
         "agents": load_yaml(base / "agents.yaml"),
         "observations": load_yaml(base / "observations.yaml"),
         "rewards": load_yaml(base / "rewards.yaml"),
-        "experiment": load_yaml(base / "experiment.yaml"),
+        "experiment": load_yaml(base / "dqn_experiment.yaml"),
     }
 
 

@@ -1,0 +1,48 @@
+algorithm:
+
+  name: dqn
+
+  params:
+
+    # ── Network architecture ──────────────────────────────────
+    # Sizes of hidden layers in the MLP.
+    # [128, 128] = two hidden layers of 128 units each.
+    # Increase for more expressive power, decrease to train faster.
+    hidden_units: [128, 128]
+
+    # ── DQN variant flags ─────────────────────────────────────
+    # true  → Dueling Double DQN (recommended)
+    # false → switch off individually for ablations
+    use_double:  true   # Double DQN update rule
+    use_dueling: true   # Dueling V + A network heads
+
+    # ── Optimiser ─────────────────────────────────────────────
+    lr: 0.001           # Adam learning rate
+
+    # ── RL hyperparameters ────────────────────────────────────
+    gamma: 0.99         # discount factor
+
+    # ── Exploration schedule ──────────────────────────────────
+    epsilon:       1.0  # starting exploration rate (fully random)
+    epsilon_decay: 0.995 # multiplied by epsilon each episode
+    min_epsilon:   0.01  # exploration floor
+
+    # ── Replay buffer ─────────────────────────────────────────
+    buffer_capacity: 50000   # max transitions stored
+    batch_size:      64      # transitions sampled per update
+
+    # ── Target network ────────────────────────────────────────
+    # Hard sync every N gradient steps.
+    # Lower = more stable but slower to propagate updates.
+    target_update_freq: 100
+
+    # ── Training loop ─────────────────────────────────────────
+    episodes:  5000
+    max_steps: 200
+
+    # ── Reproducibility ───────────────────────────────────────
+    seed: 0
+
+    # ── Device ────────────────────────────────────────────────
+    # "cpu" or "cuda" — DQN.device is set from this string
+    device: "cpu"
