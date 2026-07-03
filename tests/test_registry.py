@@ -1,7 +1,8 @@
 """
-Tests for observation registry and reward registry.
+Tests for observation registry, reward registry, and action registry.
 """
 
+import numpy as np
 import pytest
 
 from multi_agent_package.registry.observation_registry import (
@@ -141,6 +142,7 @@ class TestAlgorithmRegistry:
         algos = list_algorithms()
         assert "iql" in algos
         assert "cql" in algos
+        assert "dqn" in algos
         assert "mixed" in algos
 
     def test_get_returns_class(self):
@@ -148,13 +150,88 @@ class TestAlgorithmRegistry:
         from baselines.registry.algorithm_registry import get
         from baselines.IQL.iql import IQL
         from baselines.CQL.cql import CQL
+        from baselines.DQN.dqn import DQN
         from baselines.MIXED.mix_train import MixedTrainer
 
         assert get("iql") is IQL
         assert get("cql") is CQL
+        assert get("dqn") is DQN
         assert get("mixed") is MixedTrainer
 
     def test_unknown_algorithm_raises_value_error(self):
         from baselines.registry.algorithm_registry import get
         with pytest.raises(ValueError):
             get("nonexistent_algo")
+
+
+# ------------------------------------------------------------------
+# Action registry
+# ------------------------------------------------------------------
+
+class TestActionRegistry:
+    def test_discrete_5_registered(self):
+        from multi_agent_package.registry.action_registry import get_action_space
+        sp = get_action_space("discrete_5")
+        assert sp is not None
+
+    def test_speed_discrete_5_registered(self):
+        from multi_agent_package.registry.action_registry import get_action_space
+        sp = get_action_space("speed_discrete_5")
+        assert sp is not None
+
+    def test_speed_discrete_5_has_to_moves(self):
+        from multi_agent_package.registry.action_registry import get_action_space
+        sp = get_action_space("speed_discrete_5")
+        assert hasattr(sp, "to_moves") and callable(sp.to_moves)
+
+    def test_unknown_action_space_raises_key_error(self):
+        from multi_agent_package.registry.action_registry import get_action_space
+        with pytest.raises(KeyError):
+            get_action_space("nonexistent_action")
+
+
+# ------------------------------------------------------------------
+# SpeedDiscreteActionSpace unit tests
+# ------------------------------------------------------------------
+
+class TestSpeedDiscreteActionSpace:
+    def _make(self):
+        from multi_agent_package.actions.speed_discrete import SpeedDiscreteActionSpace
+        return SpeedDiscreteActionSpace()
+
+    def test_is_subclass_of_discrete_action_space(self):
+        from multi_agent_package.actions.discrete_actions import DiscreteActionSpace
+        sp = self._make()
+        assert isinstance(sp, DiscreteActionSpace)
+
+    def test_noop_returns_empty_list(self):
+        sp = self._make()
+        assert sp.to_moves(4, 3, 9999) == []
+
+    def test_full_speed_when_stamina_sufficient(self):
+        sp = self._make()
+        moves = sp.to_moves(0, 3, 9999)
+        assert len(moves) == 3
+
+    def test_stamina_caps_moves_below_speed(self):
+        sp = self._make()
+        moves = sp.to_moves(0, 3, 2)
+        assert len(moves) == 2
+
+    def test_zero_stamina_returns_empty_list(self):
+        sp = self._make()
+        assert sp.to_moves(0, 3, 0) == []
+
+    def test_direction_vectors_are_correct(self):
+        sp = self._make()
+        moves = sp.to_moves(0, 2, 9999)  # action 0 = RIGHT = [1, 0]
+        assert all(np.array_equal(m, np.array([1, 0])) for m in moves)
+
+    def test_speed_1_returns_one_move(self):
+        sp = self._make()
+        assert len(sp.to_moves(1, 1, 9999)) == 1
+
+    def test_all_non_noop_actions_return_moves(self):
+        sp = self._make()
+        for action in range(4):  # 0-3 are movement actions
+            assert len(sp.to_moves(action, 2, 9999)) == 2

@@ -1,0 +1,11 @@
+agents:
+  predators:
+    count: 1
+    base_type: predator
+    speed: 1              # equal speed baseline: both agents move 1 cell per logical step
+    stamina: 9999
+  preys:
+    count: 1
+    base_type: prey
+    speed: 1
+    stamina: 9999

@@ -1,0 +1,16 @@
+agents:
+  predators:
+    count: 1
+    base_type: predator
+    speed: 2              # predator moves 2 cells per logical step via SpeedWrapper
+    stamina: 9999
+
+  preys:
+    count: 1
+    base_type: prey
+    speed: 1              # prey moves 1 cell per step; predator's 2x speed advantage enables consistent capture
+    stamina: 9999
+
+  naming:
+    predator_prefix: predator
+    prey_prefix: prey

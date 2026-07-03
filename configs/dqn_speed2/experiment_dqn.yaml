@@ -1,0 +1,25 @@
+experiment:
+  algorithm:
+    name: dqn
+    params:
+      alpha: 0.001                   # learning rate for Adam
+      gamma: 0.99                    # discount factor
+      epsilon: 1.0                   # start fully random
+      epsilon_decay: 0.998           # slowed: reaches ~0.02 floor at ~1900 episodes so both agents explore together longer
+      min_epsilon: 0.05              # floor for exploration
+      action_dim: 5                  # discrete_5 action space
+
+      # 1v1: only 1 other agent possible, up to 5 closest obstacles
+      # obs_dim is auto-computed: 2 + 1*5 + 5*3 = 22  (5 per agent: rel_x, rel_y, dist, is_prey, speed)
+      max_other_agents: 1
+      max_visible_obstacles: 5
+
+      batch_size: 32
+      buffer_size: 10000
+      target_update_interval: 100
+
+      hidden_layers: [64, 64]
+      episodes: 2000
+      seed: 42
+      device: "cpu"
+      curves_path: "training_curves_speed2.csv"   # speed=2 (predator 2x faster than prey)

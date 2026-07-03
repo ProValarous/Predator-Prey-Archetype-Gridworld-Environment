@@ -1,0 +1,6 @@
+observations:
+  type: local_radius
+  params:
+    include_agents: true
+    include_obstacles: true
+    radius: 8             # on a 10x10 grid, radius 8 ensures agents are nearly always visible

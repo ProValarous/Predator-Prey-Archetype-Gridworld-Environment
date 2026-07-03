@@ -2,10 +2,12 @@ from typing import Dict, Type
 
 from multi_agent_package.actions.base import ActionSpace
 from multi_agent_package.actions.discrete_actions import DiscreteActionSpace
+from multi_agent_package.actions.speed_discrete import SpeedDiscreteActionSpace
 
 
 _ACTION_REGISTRY: Dict[str, Type[ActionSpace]] = {
     "discrete_5": DiscreteActionSpace,
+    "speed_discrete_5": SpeedDiscreteActionSpace,
 }
 
 

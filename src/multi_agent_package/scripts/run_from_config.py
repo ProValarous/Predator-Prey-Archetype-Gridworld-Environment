@@ -20,6 +20,7 @@ from baselines.registry import get as get_algorithm
 
 from multi_agent_package.core.gridworld import GridWorldEnv
 from multi_agent_package.core.agent import Agent
+from multi_agent_package.wrappers.speed import SpeedWrapper
 from multi_agent_package.registry import (
     get_observation_builder,
     get_reward_function,
@@ -95,7 +96,7 @@ def build_agents(agent_cfg: dict):
 # Environment Builder
 # -------------------------------------------------
 
-def build_environment(configs: dict) -> GridWorldEnv:
+def build_environment(configs: dict):
     env_cfg = configs["env"]
     agent_cfg = configs["agents"]
     obs_cfg = configs["observations"]
@@ -138,8 +139,11 @@ def build_environment(configs: dict) -> GridWorldEnv:
     # -----------------------------
     reward_fns = []
 
-    if reward_cfg["rewards"]["base"]["enabled"]:
-        reward_fns.append(get_reward_function("base"))
+    # Note: env.step() already calls self.base_reward() internally every step.
+    # Adding BaseReward here as well would double-count it, so base.enabled is
+    # treated as informational (documents intent) but not wired as a plugin.
+    # Only shaping rewards go through the plugin chain.
+    _ = reward_cfg["rewards"]["base"]["enabled"]  # validate key exists in YAML
 
     for r in reward_cfg["rewards"].get("shaping", []):
         reward_fns.append(
@@ -169,7 +173,9 @@ def build_environment(configs: dict) -> GridWorldEnv:
 
     env.action_space_plugin = get_action_space(action_type, **action_params)
 
-    return env
+    # wrap the environment so agent_speed from agents.yaml actually affects movement;
+    # SpeedWrapper is a no-op when all agents have speed=1 (fast path bypasses sub-stepping)
+    return SpeedWrapper(env)
 
 
 # -------------------------------------------------

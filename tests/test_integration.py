@@ -22,7 +22,7 @@ class TestLoadAllConfigs:
     def test_loads_five_sections(self):
         from multi_agent_package.scripts.run_from_config import load_all_configs
         configs = load_all_configs()
-        assert set(configs.keys()) == {"env", "agents", "observations", "rewards", "experiment"}
+        assert set(configs.keys()) == {"env", "agents", "observations", "rewards", "actions", "experiment"}
 
     def test_env_section_has_size(self):
         from multi_agent_package.scripts.run_from_config import load_all_configs
@@ -70,6 +70,11 @@ class TestLoadAllConfigs:
         configs = load_all_configs(experiment_file="experiment_mixed.yaml")
         assert configs["experiment"]["experiment"]["algorithm"]["name"] == "mixed"
 
+    def test_dqn_experiment_file(self):
+        from multi_agent_package.scripts.run_from_config import load_all_configs
+        configs = load_all_configs(experiment_file="experiment_dqn.yaml")
+        assert configs["experiment"]["experiment"]["algorithm"]["name"] == "dqn"
+
 
 # ------------------------------------------------------------------
 # build_agents
@@ -112,10 +117,13 @@ class TestBuildEnvironment:
         configs["env"]["env"]["render_mode"] = None
         return build_environment(configs)
 
-    def test_returns_gridworld_env(self):
-        from multi_agent_package.core.gridworld import GridWorldEnv
+    def test_returns_env_with_correct_interface(self):
+        # build_environment now returns a SpeedWrapper around GridWorldEnv;
+        # verify the returned object exposes the GridWorldEnv interface via proxy
         env = self._load_and_build()
-        assert isinstance(env, GridWorldEnv)
+        assert hasattr(env, "agents")
+        assert hasattr(env, "reset")
+        assert hasattr(env, "step")
 
     def test_observation_builder_attached(self):
         env = self._load_and_build()
@@ -211,3 +219,134 @@ class TestEndToEndMixed:
         # At least one table must be populated
         all_tables = list(algo._iql_tables.values()) + list(algo._cql_tables.values())
         assert any(len(t) > 0 for t in all_tables)
+
+
+# ------------------------------------------------------------------
+# End-to-end training: DQN (3v3, default config)
+# ------------------------------------------------------------------
+
+class TestEndToEndDQN:
+    def test_dqn_trains_without_error(self):
+        from multi_agent_package.scripts.run_from_config import load_all_configs, build_environment
+        import baselines
+        from baselines.DQN.dqn import DQN
+
+        configs = load_all_configs(experiment_file="experiment_dqn.yaml")
+        configs["env"]["env"]["render_mode"] = None
+        env = build_environment(configs)
+
+        params = configs["experiment"]["experiment"]["algorithm"].get("params", {})
+        params["episodes"] = 3
+        params["curves_path"] = None  # no file output during tests
+
+        algo = DQN(env, params)
+        algo.train()
+
+        assert all(len(buffer) > 0 for buffer in algo.replay_buffers.values())
+
+
+# ------------------------------------------------------------------
+# End-to-end training: DQN (1v1 config)
+# ------------------------------------------------------------------
+
+class TestEndToEndDQN1v1:
+    def test_dqn_1v1_config_loads(self):
+        from multi_agent_package.scripts.run_from_config import load_all_configs
+        configs = load_all_configs(
+            config_dir="configs/dqn_1v1",
+            experiment_file="experiment_dqn.yaml",
+        )
+        assert configs["agents"]["agents"]["predators"]["count"] == 1
+        assert configs["agents"]["agents"]["preys"]["count"] == 1
+        assert configs["experiment"]["experiment"]["algorithm"]["name"] == "dqn"
+        assert configs["experiment"]["experiment"]["algorithm"]["params"]["max_other_agents"] == 1
+
+    def test_dqn_1v1_trains_without_error(self):
+        from multi_agent_package.scripts.run_from_config import load_all_configs, build_environment
+        import baselines
+        from baselines.DQN.dqn import DQN
+
+        configs = load_all_configs(
+            config_dir="configs/dqn_1v1",
+            experiment_file="experiment_dqn.yaml",
+        )
+        configs["env"]["env"]["render_mode"] = None
+        env = build_environment(configs)
+
+        params = configs["experiment"]["experiment"]["algorithm"].get("params", {})
+        params["episodes"] = 3
+        params["curves_path"] = None  # no file output during tests
+
+        algo = DQN(env, params)
+        assert algo.obs_dim == 2 + 1 * 5 + 5 * 3  # = 22 for max_other_agents=1, max_visible_obstacles=5 (5 per agent: rel_x, rel_y, dist, is_prey, speed)
+        algo.train()
+
+        assert len(algo.agent_ids) == 2  # 1 predator + 1 prey
+        assert all(len(buffer) > 0 for buffer in algo.replay_buffers.values())
+
+
+# ------------------------------------------------------------------
+# SpeedWrapper stamina and sub-step behaviour
+# ------------------------------------------------------------------
+
+class TestSpeedWrapper:
+    def _make_wrapped(self, pred_speed=2, pred_stamina=9999, prey_speed=1, prey_stamina=9999):
+        from multi_agent_package.core.agent import Agent
+        from multi_agent_package.core.gridworld import GridWorldEnv
+        from multi_agent_package.observations.local_only import LocalOnlyObservation
+        from multi_agent_package.wrappers.speed import SpeedWrapper
+
+        agents = [
+            Agent(agent_type="predator", agent_team="pred", agent_name="pred_1"),
+            Agent(agent_type="prey",     agent_team="prey", agent_name="prey_1"),
+        ]
+        agents[0].agent_speed = pred_speed
+        agents[0].stamina     = pred_stamina
+        agents[1].agent_speed = prey_speed
+        agents[1].stamina     = prey_stamina
+
+        env = GridWorldEnv(agents=agents, size=5, perc_num_obstacle=0, render_mode=None, seed=0)
+        env.observation_builder = LocalOnlyObservation().build
+        return SpeedWrapper(env)
+
+    def test_max_stamina_read_from_agent(self):
+        wrapped = self._make_wrapped(pred_stamina=50, prey_stamina=80)
+        assert wrapped._max_stamina["pred_1"] == 50
+        assert wrapped._max_stamina["prey_1"] == 80
+
+    def test_stamina_restored_on_reset(self):
+        wrapped = self._make_wrapped(pred_speed=3, pred_stamina=10)
+        wrapped.reset()
+        wrapped._stamina["pred_1"] = 0      # drain it
+        wrapped.reset()
+        assert wrapped._stamina["pred_1"] == 10
+
+    def test_stamina_depletes_by_speed_each_step(self):
+        wrapped = self._make_wrapped(pred_speed=3, pred_stamina=9999)
+        wrapped.reset()
+        before = wrapped._stamina["pred_1"]
+        wrapped.step({"pred_1": 0, "prey_1": 4})   # pred moves, prey NOOPs
+        # predator took 3 sub-steps → 3 stamina deducted
+        assert wrapped._stamina["pred_1"] == before - 3
+
+    def test_noop_costs_zero_stamina(self):
+        wrapped = self._make_wrapped(pred_speed=3, pred_stamina=9999)
+        wrapped.reset()
+        before = wrapped._stamina["pred_1"]
+        wrapped.step({"pred_1": 4, "prey_1": 4})   # both NOOP
+        assert wrapped._stamina["pred_1"] == before
+
+    def test_stamina_cap_limits_sub_steps(self):
+        # with stamina=2 and speed=3, predator gets only 2 sub-steps
+        from multi_agent_package.actions.speed_discrete import SpeedDiscreteActionSpace
+        sp = SpeedDiscreteActionSpace()
+        assert len(sp.to_moves(0, speed=3, stamina=2)) == 2
+
+    def test_speed1_fast_path_no_stamina_deduction(self):
+        wrapped = self._make_wrapped(pred_speed=1, pred_stamina=9999, prey_speed=1, prey_stamina=9999)
+        assert wrapped._max_speed == 1
+        wrapped.reset()
+        before = wrapped._stamina["pred_1"]
+        wrapped.step({"pred_1": 0, "prey_1": 4})
+        # fast path bypasses sub-step loop entirely; stamina unchanged
+        assert wrapped._stamina["pred_1"] == before

@@ -39,6 +39,7 @@ class LocalRadiusObservation(ObservationBuilder):
                             "rel_pos": (ox - ax, oy - ay),
                             "dist": d,
                             "type": other.agent_type,
+                            "speed": other.agent_speed,
                         }
 
             if include_obstacles:

@@ -1,0 +1,14 @@
+rewards:
+  base:
+    enabled: true
+
+  shaping:
+    # dense per-step reward for predator: reward = -weight * manhattan_distance_to_nearest_prey
+    # closer = less negative = incentive to move toward prey every step
+    # survival reward removed: it caused prey to converge on evasion faster than predator
+    # could converge on chase, leading to asymmetric learning failure
+    - name: predator_distance
+      weight: 0.5
+
+  normalization:
+    enabled: false
