@@ -133,6 +133,7 @@ def build_environment(configs: dict) -> GridWorldEnv:
     )
 
     env.observation_builder = observation_builder.build
+    env.observation_encoder = observation_builder.encode
 
     # -----------------------------
     # Attach Reward Wrapper(s)

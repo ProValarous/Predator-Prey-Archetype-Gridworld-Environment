@@ -202,3 +202,45 @@ class TestLocalRadiusObservation:
         obs = builder.build(env)
         for aid, o in obs.items():
             assert len(o["visible_agents"]) == 0
+
+    def test_encode_is_numeric_and_fixed_length(self):
+        obs = self.builder.build(self.env)
+        encoded_lengths = set()
+
+        for o in obs.values():
+            encoded = self.builder.encode(o, self.env)
+            assert isinstance(encoded, np.ndarray)
+            assert encoded.dtype == np.float32
+            assert encoded.ndim == 1
+            assert np.isfinite(encoded).all()
+            encoded_lengths.add(encoded.shape[0])
+
+        assert len(encoded_lengths) == 1
+
+
+class TestObservationEncoding:
+    @pytest.mark.parametrize(
+        "builder_cls,builder_kwargs,env_size",
+        [
+            (DefaultObservation, {}, 6),
+            (LocalOnlyObservation, {}, 6),
+            (AbsoluteObservation, {}, 6),
+            (RelativeObservation, {}, 6),
+            (LocalRadiusObservation, {"radius": 3}, 8),
+        ],
+    )
+    def test_encode_returns_numeric_vectors(self, builder_cls, builder_kwargs, env_size):
+        env = make_env(size=env_size)
+        builder = builder_cls(**builder_kwargs)
+        obs = builder.build(env)
+
+        lengths = set()
+        for agent_obs in obs.values():
+            encoded = builder.encode(agent_obs, env)
+            assert isinstance(encoded, np.ndarray)
+            assert encoded.dtype == np.float32
+            assert encoded.ndim == 1
+            assert np.isfinite(encoded).all()
+            lengths.add(encoded.shape[0])
+
+        assert len(lengths) == 1

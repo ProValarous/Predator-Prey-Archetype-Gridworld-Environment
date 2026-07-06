@@ -21,7 +21,9 @@ def make_env(seed=42):
         Agent(agent_type="prey", agent_team="prey_1", agent_name="prey_1"),
     ]
     env = GridWorldEnv(agents=agents, size=5, perc_num_obstacle=0, render_mode=None, seed=seed)
-    env.observation_builder = get_observation_builder("default").build
+    observation_builder = get_observation_builder("default")
+    env.observation_builder = observation_builder.build
+    env.observation_encoder = observation_builder.encode
     env.reward_fn = lambda env_instance: get_reward_function("base").compute(env_instance)
     env.action_space_plugin = get_action_space("discrete_5")
     return env
@@ -94,6 +96,15 @@ class TestDQNActionSelection:
         best_action = int(np.argmax(q_values.detach().cpu().numpy()[0]))
         actions = algo.select_actions(obs)
         assert actions["pred_1"] == best_action
+
+    def test_encoder_produces_numeric_vector(self):
+        env = make_env()
+        algo = DQN(env, base_config())
+        obs, _ = env.reset()
+        encoded = algo._encode_observation(obs["pred_1"])
+        assert encoded.dtype == np.float32
+        assert encoded.ndim == 1
+        assert encoded.shape[0] == algo.state_dim
 
 
 class TestDQNTraining:

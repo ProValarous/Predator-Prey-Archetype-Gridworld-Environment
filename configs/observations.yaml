@@ -1,3 +1,4 @@
+# configs/observations.yaml
 observations:
-  type: default
+  type: local_only
   params: {}

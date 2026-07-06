@@ -49,6 +49,7 @@ def build_testbed_environment(render_mode=None):
 
     observation_builder = get_observation_builder("default")
     env.observation_builder = observation_builder.build
+    env.observation_encoder = observation_builder.encode
 
     def combined_reward(env_instance):
         total = {ag.agent_name: 0.0 for ag in env_instance.agents}

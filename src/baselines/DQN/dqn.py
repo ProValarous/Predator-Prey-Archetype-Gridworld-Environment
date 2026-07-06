@@ -95,9 +95,15 @@ class DQN(BaseAlgorithm):
         self.rng = np.random.default_rng(config.get("seed", None))
 
         self.action_dim = self._infer_action_dim()
+        self.observation_encoder = getattr(self.env, "observation_encoder", None)
+        if self.observation_encoder is None:
+            raise ValueError(
+                "Environment is missing observation_encoder. Attach an observation builder "
+                "and its encode method before constructing DQN."
+            )
         initial_obs, _ = self.env.reset()
         self.agent_ids = list(initial_obs.keys())
-        self.state_dim = self._flatten_observation(initial_obs[self.agent_ids[0]]).shape[0]
+        self.state_dim = self._encode_observation(initial_obs[self.agent_ids[0]]).shape[0]
 
         self._build_learners()
 
@@ -143,31 +149,9 @@ class DQN(BaseAlgorithm):
             return int(action_space.n_actions)
         return int(self.env.action_space.n)
 
-    def _flatten_observation(self, obs) -> np.ndarray:
-        values: List[float] = []
-
-        def _collect(item):
-            if item is None:
-                return
-            if isinstance(item, dict):
-                for key in sorted(item.keys()):
-                    _collect(item[key])
-                return
-            if isinstance(item, (list, tuple)):
-                for value in item:
-                    _collect(value)
-                return
-            if hasattr(item, "tolist"):
-                converted = item.tolist()
-                if isinstance(converted, (list, tuple)):
-                    _collect(converted)
-                else:
-                    values.append(float(converted))
-                return
-            values.append(float(item))
-
-        _collect(obs)
-        return np.asarray(values, dtype=np.float32)
+    def _encode_observation(self, obs) -> np.ndarray:
+        encoded = self.observation_encoder(obs, self.env)
+        return np.asarray(encoded, dtype=np.float32).reshape(-1)
 
     def _validate_state_shape(self, agent_id: str, state: np.ndarray) -> None:
         if state.shape[0] != self.state_dim:
@@ -178,7 +162,7 @@ class DQN(BaseAlgorithm):
             )
 
     def _obs_to_tensor(self, obs) -> torch.Tensor:
-        return torch.from_numpy(self._flatten_observation(obs)).float().unsqueeze(0).to(self.device)
+        return torch.from_numpy(self._encode_observation(obs)).float().unsqueeze(0).to(self.device)
 
     def _sync_target(self, agent_id: str) -> None:
         self.target_networks[agent_id].load_state_dict(self.policy_networks[agent_id].state_dict())
@@ -239,8 +223,8 @@ class DQN(BaseAlgorithm):
                 done = bool(step_out["terminated"] or step_out["truncated"])
 
                 for agent_id in self.agent_ids:
-                    state = self._flatten_observation(observations[agent_id])
-                    next_state = self._flatten_observation(next_observations[agent_id])
+                    state = self._encode_observation(observations[agent_id])
+                    next_state = self._encode_observation(next_observations[agent_id])
                     self._validate_state_shape(agent_id, state)
                     self._validate_state_shape(agent_id, next_state)
                     transition = Transition(

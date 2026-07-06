@@ -4,8 +4,10 @@ Relative observation builder.
 All positions relative to observing agent. Agent is always at origin.
 """
 
-import numpy as np
 from typing import Dict, Any
+
+import numpy as np
+
 from multi_agent_package.observations.base import ObservationBuilder
 
 
@@ -93,3 +95,55 @@ class RelativeObservation(ObservationBuilder):
             obs[ag.agent_name] = agent_obs
 
         return obs
+
+    def encode(self, observation: dict, env) -> np.ndarray:
+        include_agents = bool(self.params.get("include_agents", True))
+        include_obstacles = bool(self.params.get("include_obstacles", True))
+        include_walls = bool(self.params.get("include_walls", False))
+
+        values = []
+        local = observation.get("local", {})
+        values.extend(self._vector(local.get("pos", [0.0, 0.0])).tolist())
+        values.append(float(self._agent_type_id(local.get("type"))))
+        team_base, team_index = self._team_features(local.get("team"))
+        values.append(float(team_base))
+        values.append(float(team_index))
+        values.append(float(local.get("speed", 0.0)))
+
+        agents_obs = observation.get("agents", {}) if include_agents else {}
+        max_agents = max(0, len(env.agents) - 1)
+        for name in sorted(agents_obs.keys()):
+            entry = agents_obs[name]
+            values.extend(self._vector(entry.get("rel_pos", [0.0, 0.0])).tolist())
+            values.append(float(entry.get("dist", 0.0)))
+            values.append(float(self._agent_type_id(entry.get("type"))))
+            team_base, team_index = self._team_features(entry.get("team"))
+            values.append(float(team_base))
+            values.append(float(team_index))
+
+        missing_agents = max(0, max_agents - len(agents_obs))
+        values.extend([0.0] * (missing_agents * 6))
+
+        obstacles_obs = observation.get("obstacles", {}) if include_obstacles else {}
+        max_obstacles = len(env._obstacle_location)
+        for name in sorted(obstacles_obs.keys()):
+            entry = obstacles_obs[name]
+            values.extend(self._vector(entry.get("rel_pos", [0.0, 0.0])).tolist())
+            values.append(float(entry.get("dist", 0.0)))
+
+        missing_obstacles = max(0, max_obstacles - len(obstacles_obs))
+        values.extend([0.0] * (missing_obstacles * 3))
+
+        if include_walls:
+            values.extend(
+                [
+                    float(observation.get("walls", {}).get("left", 0.0)),
+                    float(observation.get("walls", {}).get("right", 0.0)),
+                    float(observation.get("walls", {}).get("up", 0.0)),
+                    float(observation.get("walls", {}).get("down", 0.0)),
+                ]
+            )
+        else:
+            values.extend([0.0, 0.0, 0.0, 0.0])
+
+        return np.asarray(values, dtype=np.float32)
