@@ -11,6 +11,7 @@ Responsibilities:
 NO learning logic lives here.
 """
 
+import argparse
 import yaml
 from pathlib import Path
 
@@ -176,8 +177,8 @@ def build_environment(configs: dict) -> GridWorldEnv:
 # Main Entry
 # -------------------------------------------------
 
-def main(config_dir: str = "configs"):
-    configs = load_all_configs(config_dir)
+def main(config_dir: str = "configs", experiment_file: str = "experiment.yaml"):
+    configs = load_all_configs(config_dir, experiment_file)
 
     env = build_environment(configs)
 
@@ -195,4 +196,8 @@ def main(config_dir: str = "configs"):
 
 
 if __name__ == "__main__":
-    main("configs")
+    parser = argparse.ArgumentParser("Run an experiment from YAML config")
+    parser.add_argument("--config-dir", default="configs")
+    parser.add_argument("--experiment-file", default="experiment.yaml")
+    args = parser.parse_args()
+    main(args.config_dir, args.experiment_file)

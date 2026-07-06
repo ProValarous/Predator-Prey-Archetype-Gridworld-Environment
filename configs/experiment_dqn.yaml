@@ -1,0 +1,20 @@
+experiment:
+  algorithm:
+    name: dqn
+    params:
+      gamma: 0.99
+      epsilon: 1.0
+      epsilon_decay: 0.98
+      min_epsilon: 0.05
+      episodes: 1
+      batch_size: 32
+      buffer_size: 10000
+      learning_rate: 0.001
+      hidden_dim: 128
+      target_update_interval: 10
+      min_replay_size: 32
+      save_path: checkpoints/dqn_checkpoint.pkl
+      verbose: true
+      log_interval: 10
+      debug_first_episode: true
+      seed: 42
