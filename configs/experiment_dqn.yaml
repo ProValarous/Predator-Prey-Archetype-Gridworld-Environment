@@ -1,0 +1,26 @@
+experiment:
+  algorithm:
+    name: dqn
+    params:
+      alpha: 0.001                   # learning rate for Adam optimizer
+      gamma: 0.99                    # discount factor: future rewards count at 99%
+      epsilon: 1.0                   # start fully random (pure exploration)
+      epsilon_decay: 0.995           # per-episode multiplier; after 200 eps: ~0.37
+      min_epsilon: 0.05              # never drop below 5% random actions
+      action_dim: 5                  # must match discrete_5 action space
+
+      # observation vector layout (auto-computed: 2 + max_other_agents*5 + max_visible_obstacles*3)
+      # 5 values per agent slot: rel_x, rel_y, dist, is_prey, speed
+      # for 3 predators + 3 prey: 5 other agents possible; set to actual agent count - 1
+      max_other_agents: 5            # = 2 + 5*5 + 5*3 = 42-element vector
+      max_visible_obstacles: 5       # top-K closest obstacles included (sorted by distance)
+
+      batch_size: 32                 # mini-batch size drawn from replay buffer each step
+      buffer_size: 5000              # max transitions stored per agent before oldest are evicted
+      target_update_interval: 100    # copy Q-network weights to target every N global steps
+
+      hidden_layers: [64, 64]        # MLP hidden layer sizes; increase for harder tasks
+      episodes: 200                  # number of training episodes
+      seed: 42
+      device: "cpu"                   # "cpu" or "cuda" — switch to "cuda" if GPU is available
+      curves_path: "training_curves_dqn.csv"  # per-episode reward+loss log; set to null to disable

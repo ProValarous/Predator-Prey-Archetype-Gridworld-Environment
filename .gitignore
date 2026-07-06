@@ -14,6 +14,13 @@ marl_venv/
 # Trained model artifacts
 *.pkl
 
+# Training curve CSVs (experiment output, not source)
+training_curves_*.csv
+
+# Meeting notes and presentation scripts
+PROGRESS_REPORT.md
+PRESENTATION_SCRIPT.txt
+
 # Training run output directories
 src/baselines/IQL/*_run/
 src/baselines/CQL/*_run/
