@@ -39,9 +39,6 @@ __pycache__/
 .env
 
 
-# wandb logs
-src/wandb/
-
 # npz tables
 src/baselines/CQL/*.npz
 
