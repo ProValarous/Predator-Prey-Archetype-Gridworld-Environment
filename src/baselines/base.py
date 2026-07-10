@@ -19,7 +19,6 @@ class BaseAlgorithm(ABC):
         observations: {agent_name: obs_dict}
         returns: {agent_name: action_int}
         """
-        pass
 
     @abstractmethod
     def train(self):

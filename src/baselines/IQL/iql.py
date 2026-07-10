@@ -111,8 +111,7 @@ class IQL(BaseAlgorithm):
 
                     q_current = self.q_tables[agent_id][s][a]
                     q_next_max = (
-                        0.0 if done
-                        else float(np.max(self.q_tables[agent_id][s_next]))
+                        0.0 if done else float(np.max(self.q_tables[agent_id][s_next]))
                     )
                     td_error = r + self.gamma * q_next_max - q_current
                     self.q_tables[agent_id][s][a] += self.alpha * td_error
@@ -122,12 +121,13 @@ class IQL(BaseAlgorithm):
             self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay)
 
             if (ep + 1) % 100 == 0:
-                reward_str = ", ".join(
-                    f"{k}={v:.2f}" for k, v in ep_reward.items()
-                )
+                reward_str = ", ".join(f"{k}={v:.2f}" for k, v in ep_reward.items())
                 LOGGER.info(
                     "Episode %d/%d | eps=%.3f | %s",
-                    ep + 1, self.episodes, self.epsilon, reward_str,
+                    ep + 1,
+                    self.episodes,
+                    self.epsilon,
+                    reward_str,
                 )
 
     # ------------------------------------------------------------------
@@ -150,9 +150,7 @@ class IQL(BaseAlgorithm):
             payload: dict = pickle.load(fh)
         for agent_id, table in payload.items():
             instance.q_tables[agent_id].update(table)
-        LOGGER.info(
-            "Loaded Q-tables from %s (agents: %s)", path, list(payload.keys())
-        )
+        LOGGER.info("Loaded Q-tables from %s (agents: %s)", path, list(payload.keys()))
         return instance
 
 
@@ -190,27 +188,44 @@ if __name__ == "__main__":
     p.add_argument("--min-epsilon", type=float, default=0.05)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--save-path", type=str, default="trained_iql.pkl")
-    p.add_argument("--load-path", type=str, default=None,
-                   help="pkl file to load (required for --mode eval)")
-    p.add_argument("--render", action="store_true",
-                   help="Open pygame window during eval (requires a display)")
+    p.add_argument(
+        "--load-path",
+        type=str,
+        default=None,
+        help="pkl file to load (required for --mode eval)",
+    )
+    p.add_argument(
+        "--render",
+        action="store_true",
+        help="Open pygame window during eval (requires a display)",
+    )
     args = p.parse_args()
 
     agents = []
     for i in range(1, args.preys + 1):
         agents.append(Agent(agent_name=f"prey_{i}", agent_team=i, agent_type="prey"))
     for i in range(1, args.predators + 1):
-        agents.append(Agent(agent_name=f"predator_{i}", agent_team=i, agent_type="predator"))
+        agents.append(
+            Agent(agent_name=f"predator_{i}", agent_team=i, agent_type="predator")
+        )
 
     render = "human" if (args.mode == "eval" and args.render) else None
-    env = GridWorldEnv(agents=agents, render_mode=render,
-                       size=args.size, perc_num_obstacle=10, seed=args.seed)
+    env = GridWorldEnv(
+        agents=agents,
+        render_mode=render,
+        size=args.size,
+        perc_num_obstacle=10,
+        seed=args.seed,
+    )
 
     config = {
-        "alpha": args.alpha, "gamma": args.gamma,
+        "alpha": args.alpha,
+        "gamma": args.gamma,
         "epsilon": args.epsilon if args.mode == "train" else 0.0,
-        "epsilon_decay": args.epsilon_decay, "min_epsilon": args.min_epsilon,
-        "episodes": args.episodes, "seed": args.seed,
+        "epsilon_decay": args.epsilon_decay,
+        "min_epsilon": args.min_epsilon,
+        "episodes": args.episodes,
+        "seed": args.seed,
     }
 
     if args.mode == "train":

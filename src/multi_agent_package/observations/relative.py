@@ -14,7 +14,7 @@ from multi_agent_package.observations.base import ObservationBuilder
 class RelativeObservation(ObservationBuilder):
     """
     Fully egocentric observation - agent frame.
-    
+
     No radius filtering. Agent always at [0,0].
     """
 
@@ -31,7 +31,7 @@ class RelativeObservation(ObservationBuilder):
 
             agent_obs = {
                 "local": {
-                    "pos": np.array([0, 0]),       # ALWAYS origin
+                    "pos": np.array([0, 0]),  # ALWAYS origin
                     "type": ag.agent_type,
                     "team": ag.agent_team,
                     "speed": ag.agent_speed,

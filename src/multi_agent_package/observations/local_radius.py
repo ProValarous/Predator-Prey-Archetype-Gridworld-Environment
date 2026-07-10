@@ -82,7 +82,9 @@ class LocalRadiusObservation(ObservationBuilder):
         missing_agents = max(0, max_agents - len(visible_agents))
         values.extend([0.0] * (missing_agents * 5))
 
-        visible_obstacles = observation.get("visible_obstacles", {}) if include_obstacles else {}
+        visible_obstacles = (
+            observation.get("visible_obstacles", {}) if include_obstacles else {}
+        )
         max_obstacles = len(env._obstacle_location)
         for name in sorted(visible_obstacles.keys()):
             entry = visible_obstacles[name]

@@ -2,9 +2,7 @@
 Integration tests: config loading, environment building, and end-to-end training.
 """
 
-import os
 import sys
-import pytest
 from pathlib import Path
 
 # Make src importable
@@ -18,60 +16,79 @@ CONFIGS_DIR = REPO_ROOT / "configs"
 # Config loading
 # ------------------------------------------------------------------
 
+
 class TestLoadAllConfigs:
     def test_loads_five_sections(self):
         from multi_agent_package.scripts.run_from_config import load_all_configs
+
         configs = load_all_configs()
-        assert set(configs.keys()) == {"env", "agents", "observations", "rewards", "actions", "experiment"}
+        assert set(configs.keys()) == {
+            "env",
+            "agents",
+            "observations",
+            "rewards",
+            "actions",
+            "experiment",
+        }
 
     def test_env_section_has_size(self):
         from multi_agent_package.scripts.run_from_config import load_all_configs
+
         configs = load_all_configs()
         assert "size" in configs["env"]["env"]
 
     def test_agents_section_has_predators_and_preys(self):
         from multi_agent_package.scripts.run_from_config import load_all_configs
+
         configs = load_all_configs()
         assert "predators" in configs["agents"]["agents"]
         assert "preys" in configs["agents"]["agents"]
 
     def test_observations_has_type(self):
         from multi_agent_package.scripts.run_from_config import load_all_configs
+
         configs = load_all_configs()
         assert "type" in configs["observations"]["observations"]
 
     def test_rewards_has_base(self):
         from multi_agent_package.scripts.run_from_config import load_all_configs
+
         configs = load_all_configs()
         assert "base" in configs["rewards"]["rewards"]
 
     def test_experiment_has_algorithm(self):
         from multi_agent_package.scripts.run_from_config import load_all_configs
+
         configs = load_all_configs()
         assert "algorithm" in configs["experiment"]["experiment"]
 
     def test_algorithm_has_name(self):
         from multi_agent_package.scripts.run_from_config import load_all_configs
+
         configs = load_all_configs()
         assert "name" in configs["experiment"]["experiment"]["algorithm"]
 
     def test_iql_experiment_file(self):
         from multi_agent_package.scripts.run_from_config import load_all_configs
+
         configs = load_all_configs(experiment_file="experiment_iql.yaml")
         assert configs["experiment"]["experiment"]["algorithm"]["name"] == "iql"
 
     def test_cql_experiment_file(self):
         from multi_agent_package.scripts.run_from_config import load_all_configs
+
         configs = load_all_configs(experiment_file="experiment_cql.yaml")
         assert configs["experiment"]["experiment"]["algorithm"]["name"] == "cql"
 
     def test_mixed_experiment_file(self):
         from multi_agent_package.scripts.run_from_config import load_all_configs
+
         configs = load_all_configs(experiment_file="experiment_mixed.yaml")
         assert configs["experiment"]["experiment"]["algorithm"]["name"] == "mixed"
 
     def test_dqn_experiment_file(self):
         from multi_agent_package.scripts.run_from_config import load_all_configs
+
         configs = load_all_configs(experiment_file="experiment_dqn.yaml")
         assert configs["experiment"]["experiment"]["algorithm"]["name"] == "dqn"
 
@@ -80,9 +97,14 @@ class TestLoadAllConfigs:
 # build_agents
 # ------------------------------------------------------------------
 
+
 class TestBuildAgents:
     def test_correct_agent_count(self):
-        from multi_agent_package.scripts.run_from_config import build_agents, load_all_configs
+        from multi_agent_package.scripts.run_from_config import (
+            build_agents,
+            load_all_configs,
+        )
+
         configs = load_all_configs()
         agents = build_agents(configs["agents"])
         pred_count = configs["agents"]["agents"]["predators"]["count"]
@@ -90,7 +112,11 @@ class TestBuildAgents:
         assert len(agents) == pred_count + prey_count
 
     def test_agent_types_correct(self):
-        from multi_agent_package.scripts.run_from_config import build_agents, load_all_configs
+        from multi_agent_package.scripts.run_from_config import (
+            build_agents,
+            load_all_configs,
+        )
+
         configs = load_all_configs()
         agents = build_agents(configs["agents"])
         pred_count = configs["agents"]["agents"]["predators"]["count"]
@@ -98,7 +124,11 @@ class TestBuildAgents:
         assert types[:pred_count] == ["predator"] * pred_count
 
     def test_agent_names_unique(self):
-        from multi_agent_package.scripts.run_from_config import build_agents, load_all_configs
+        from multi_agent_package.scripts.run_from_config import (
+            build_agents,
+            load_all_configs,
+        )
+
         configs = load_all_configs()
         agents = build_agents(configs["agents"])
         names = [a.agent_name for a in agents]
@@ -109,9 +139,14 @@ class TestBuildAgents:
 # build_environment
 # ------------------------------------------------------------------
 
+
 class TestBuildEnvironment:
     def _load_and_build(self, experiment_file="experiment_iql.yaml"):
-        from multi_agent_package.scripts.run_from_config import load_all_configs, build_environment
+        from multi_agent_package.scripts.run_from_config import (
+            load_all_configs,
+            build_environment,
+        )
+
         # Override render_mode to None so no display is needed
         configs = load_all_configs(experiment_file=experiment_file)
         configs["env"]["env"]["render_mode"] = None
@@ -120,6 +155,7 @@ class TestBuildEnvironment:
     def test_returns_gridworld_env(self):
         from multi_agent_package.core.gridworld import GridWorldEnv
         from multi_agent_package.wrappers.speed import SpeedWrapper
+
         env = self._load_and_build()
         # build_environment wraps the raw GridWorldEnv in SpeedWrapper to honor
         # per-agent agent_speed; the wrapper proxies everything else through.
@@ -155,10 +191,14 @@ class TestBuildEnvironment:
 # End-to-end training: IQL
 # ------------------------------------------------------------------
 
+
 class TestEndToEndIQL:
     def test_iql_trains_without_error(self):
-        from multi_agent_package.scripts.run_from_config import load_all_configs, build_environment
-        import baselines
+        from multi_agent_package.scripts.run_from_config import (
+            load_all_configs,
+            build_environment,
+        )
+        import baselines  # noqa: F401
         from baselines.IQL.iql import IQL
 
         configs = load_all_configs(experiment_file="experiment_iql.yaml")
@@ -179,10 +219,14 @@ class TestEndToEndIQL:
 # End-to-end training: CQL
 # ------------------------------------------------------------------
 
+
 class TestEndToEndCQL:
     def test_cql_trains_without_error(self):
-        from multi_agent_package.scripts.run_from_config import load_all_configs, build_environment
-        import baselines
+        from multi_agent_package.scripts.run_from_config import (
+            load_all_configs,
+            build_environment,
+        )
+        import baselines  # noqa: F401
         from baselines.CQL.cql import CQL
 
         configs = load_all_configs(experiment_file="experiment_cql.yaml")
@@ -201,10 +245,14 @@ class TestEndToEndCQL:
 # End-to-end training: Mixed
 # ------------------------------------------------------------------
 
+
 class TestEndToEndMixed:
     def test_mixed_trains_without_error(self):
-        from multi_agent_package.scripts.run_from_config import load_all_configs, build_environment
-        import baselines
+        from multi_agent_package.scripts.run_from_config import (
+            load_all_configs,
+            build_environment,
+        )
+        import baselines  # noqa: F401
         from baselines.MIXED.mix_train import MixedTrainer
 
         configs = load_all_configs(experiment_file="experiment_mixed.yaml")
@@ -226,10 +274,14 @@ class TestEndToEndMixed:
 # End-to-end training: DQN (3v3, default config)
 # ------------------------------------------------------------------
 
+
 class TestEndToEndDQN:
     def test_dqn_trains_without_error(self):
-        from multi_agent_package.scripts.run_from_config import load_all_configs, build_environment
-        import baselines
+        from multi_agent_package.scripts.run_from_config import (
+            load_all_configs,
+            build_environment,
+        )
+        import baselines  # noqa: F401
         from baselines.DQN.dqn import DQN
 
         configs = load_all_configs(experiment_file="experiment_dqn.yaml")
@@ -250,9 +302,11 @@ class TestEndToEndDQN:
 # End-to-end training: DQN (1v1 config, predator 2x prey speed)
 # ------------------------------------------------------------------
 
+
 class TestEndToEndDQN1v1:
     def test_dqn_1v1_config_loads(self):
         from multi_agent_package.scripts.run_from_config import load_all_configs
+
         configs = load_all_configs(
             config_dir="configs/dqn_1v1",
             experiment_file="experiment_dqn.yaml",
@@ -263,8 +317,11 @@ class TestEndToEndDQN1v1:
         assert configs["experiment"]["experiment"]["algorithm"]["name"] == "dqn"
 
     def test_dqn_1v1_trains_without_error(self):
-        from multi_agent_package.scripts.run_from_config import load_all_configs, build_environment
-        import baselines
+        from multi_agent_package.scripts.run_from_config import (
+            load_all_configs,
+            build_environment,
+        )
+        import baselines  # noqa: F401
         from baselines.DQN.dqn import DQN
 
         configs = load_all_configs(
@@ -289,8 +346,11 @@ class TestEndToEndDQN1v1:
 # SpeedWrapper stamina and sub-step behaviour
 # ------------------------------------------------------------------
 
+
 class TestSpeedWrapper:
-    def _make_wrapped(self, pred_speed=2, pred_stamina=9999, prey_speed=1, prey_stamina=9999):
+    def _make_wrapped(
+        self, pred_speed=2, pred_stamina=9999, prey_speed=1, prey_stamina=9999
+    ):
         from multi_agent_package.core.agent import Agent
         from multi_agent_package.core.gridworld import GridWorldEnv
         from multi_agent_package.observations.local_only import LocalOnlyObservation
@@ -298,14 +358,16 @@ class TestSpeedWrapper:
 
         agents = [
             Agent(agent_type="predator", agent_team="pred", agent_name="pred_1"),
-            Agent(agent_type="prey",     agent_team="prey", agent_name="prey_1"),
+            Agent(agent_type="prey", agent_team="prey", agent_name="prey_1"),
         ]
         agents[0].agent_speed = pred_speed
-        agents[0].stamina     = pred_stamina
+        agents[0].stamina = pred_stamina
         agents[1].agent_speed = prey_speed
-        agents[1].stamina     = prey_stamina
+        agents[1].stamina = prey_stamina
 
-        env = GridWorldEnv(agents=agents, size=5, perc_num_obstacle=0, render_mode=None, seed=0)
+        env = GridWorldEnv(
+            agents=agents, size=5, perc_num_obstacle=0, render_mode=None, seed=0
+        )
         env.observation_builder = LocalOnlyObservation().build
         return SpeedWrapper(env)
 
@@ -317,7 +379,7 @@ class TestSpeedWrapper:
     def test_stamina_restored_on_reset(self):
         wrapped = self._make_wrapped(pred_speed=3, pred_stamina=10)
         wrapped.reset()
-        wrapped._stamina["pred_1"] = 0      # drain it
+        wrapped._stamina["pred_1"] = 0  # drain it
         wrapped.reset()
         assert wrapped._stamina["pred_1"] == 10
 
@@ -325,7 +387,7 @@ class TestSpeedWrapper:
         wrapped = self._make_wrapped(pred_speed=3, pred_stamina=9999)
         wrapped.reset()
         before = wrapped._stamina["pred_1"]
-        wrapped.step({"pred_1": 0, "prey_1": 4})   # pred moves, prey NOOPs
+        wrapped.step({"pred_1": 0, "prey_1": 4})  # pred moves, prey NOOPs
         # predator took 3 sub-steps → 3 stamina deducted
         assert wrapped._stamina["pred_1"] == before - 3
 
@@ -333,17 +395,20 @@ class TestSpeedWrapper:
         wrapped = self._make_wrapped(pred_speed=3, pred_stamina=9999)
         wrapped.reset()
         before = wrapped._stamina["pred_1"]
-        wrapped.step({"pred_1": 4, "prey_1": 4})   # both NOOP
+        wrapped.step({"pred_1": 4, "prey_1": 4})  # both NOOP
         assert wrapped._stamina["pred_1"] == before
 
     def test_stamina_cap_limits_sub_steps(self):
         # with stamina=2 and speed=3, predator gets only 2 sub-steps
         from multi_agent_package.actions.speed_discrete import SpeedDiscreteActionSpace
+
         sp = SpeedDiscreteActionSpace()
         assert len(sp.to_moves(0, speed=3, stamina=2)) == 2
 
     def test_speed1_fast_path_no_stamina_deduction(self):
-        wrapped = self._make_wrapped(pred_speed=1, pred_stamina=9999, prey_speed=1, prey_stamina=9999)
+        wrapped = self._make_wrapped(
+            pred_speed=1, pred_stamina=9999, prey_speed=1, prey_stamina=9999
+        )
         assert wrapped._max_speed == 1
         wrapped.reset()
         before = wrapped._stamina["pred_1"]

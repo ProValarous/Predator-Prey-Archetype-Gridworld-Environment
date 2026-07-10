@@ -12,10 +12,10 @@ from multi_agent_package.core.agent import Agent
 from multi_agent_package.core.gridworld import GridWorldEnv
 from baselines.MIXED.mix_train import MixedTrainer
 
-
 # ------------------------------------------------------------------
 # Fixtures
 # ------------------------------------------------------------------
+
 
 def make_env(seed=0):
     agents = [
@@ -23,7 +23,9 @@ def make_env(seed=0):
         Agent(agent_type="predator", agent_team="predator_2", agent_name="pred_2"),
         Agent(agent_type="prey", agent_team="prey_1", agent_name="prey_1"),
     ]
-    return GridWorldEnv(agents=agents, size=6, perc_num_obstacle=0, render_mode=None, seed=seed)
+    return GridWorldEnv(
+        agents=agents, size=6, perc_num_obstacle=0, render_mode=None, seed=seed
+    )
 
 
 def base_config(predator_algo="cql", prey_algo="iql", **overrides):
@@ -46,6 +48,7 @@ def base_config(predator_algo="cql", prey_algo="iql", **overrides):
 # ------------------------------------------------------------------
 # Team partitioning
 # ------------------------------------------------------------------
+
 
 class TestMixedTeamPartitioning:
     def test_predators_identified(self):
@@ -73,6 +76,7 @@ class TestMixedTeamPartitioning:
 # ------------------------------------------------------------------
 # Q-table structure based on config
 # ------------------------------------------------------------------
+
 
 class TestMixedQTableStructure:
     def test_cql_predators_get_shared_table(self):
@@ -106,19 +110,24 @@ class TestMixedQTableStructure:
     def test_cql_joint_action_size_for_predator_team(self):
         """2 predators with 5 actions → 5^2 = 25 joint actions."""
         env = make_env()
-        algo = MixedTrainer(env, base_config(predator_algo="cql", prey_algo="iql", action_dim=5))
+        algo = MixedTrainer(
+            env, base_config(predator_algo="cql", prey_algo="iql", action_dim=5)
+        )
         assert algo._cql_n_joint["predator"] == 25
 
     def test_cql_joint_action_size_for_prey_team(self):
         """1 prey with 5 actions → 5^1 = 5 joint actions."""
         env = make_env()
-        algo = MixedTrainer(env, base_config(predator_algo="iql", prey_algo="cql", action_dim=5))
+        algo = MixedTrainer(
+            env, base_config(predator_algo="iql", prey_algo="cql", action_dim=5)
+        )
         assert algo._cql_n_joint["prey"] == 5
 
 
 # ------------------------------------------------------------------
 # Action selection
 # ------------------------------------------------------------------
+
 
 class TestMixedSelectActions:
     def test_returns_all_agents(self):
@@ -142,51 +151,71 @@ class TestMixedSelectActions:
 # Training loop
 # ------------------------------------------------------------------
 
+
 class TestMixedTrain:
     def test_iql_tables_populated_after_training(self):
         env = make_env()
-        algo = MixedTrainer(env, base_config(predator_algo="iql", prey_algo="iql", episodes=10))
+        algo = MixedTrainer(
+            env, base_config(predator_algo="iql", prey_algo="iql", episodes=10)
+        )
         algo.train()
         for aid, table in algo._iql_tables.items():
             assert len(table) > 0, f"IQL table for {aid} empty after training"
 
     def test_cql_table_populated_for_predator_team(self):
         env = make_env()
-        algo = MixedTrainer(env, base_config(predator_algo="cql", prey_algo="iql", episodes=10))
+        algo = MixedTrainer(
+            env, base_config(predator_algo="cql", prey_algo="iql", episodes=10)
+        )
         algo.train()
         assert len(algo._cql_tables["predator"]) > 0
 
     def test_iql_table_populated_for_prey(self):
         env = make_env()
-        algo = MixedTrainer(env, base_config(predator_algo="cql", prey_algo="iql", episodes=10))
+        algo = MixedTrainer(
+            env, base_config(predator_algo="cql", prey_algo="iql", episodes=10)
+        )
         algo.train()
         assert len(algo._iql_tables["prey_1"]) > 0
 
     def test_mixed_all_cql_tables_populated(self):
         env = make_env()
-        algo = MixedTrainer(env, base_config(predator_algo="cql", prey_algo="cql", episodes=10))
+        algo = MixedTrainer(
+            env, base_config(predator_algo="cql", prey_algo="cql", episodes=10)
+        )
         algo.train()
         assert len(algo._cql_tables["predator"]) > 0
         assert len(algo._cql_tables["prey"]) > 0
 
     def test_cql_reward_uses_team_sum(self):
-        """CQL Q-value equals sum of BOTH team members' rewards, not individual (alpha=1, gamma=0)."""
+        """CQL Q-value = sum of team rewards, not individual (alpha=1, gamma=0)."""
         from unittest.mock import patch
 
         env = make_env()
-        algo = MixedTrainer(env, base_config(predator_algo="cql", prey_algo="iql",
-                                              alpha=1.0, gamma=0.0, epsilon=0.0, episodes=1))
+        algo = MixedTrainer(
+            env,
+            base_config(
+                predator_algo="cql",
+                prey_algo="iql",
+                alpha=1.0,
+                gamma=0.0,
+                epsilon=0.0,
+                episodes=1,
+            ),
+        )
 
         # Inject a fixed one-step episode with known per-agent rewards.
         # pred_1=+10, pred_2=+20 → team sum must be 30, not 10 or 20.
-        fake_obs = {ag.agent_name: {"local": np.array([0, 0]), "global": None}
-                    for ag in env.agents}
+        fake_obs = {
+            ag.agent_name: {"local": np.array([0, 0]), "global": None}
+            for ag in env.agents
+        }
 
         def fake_step(actions):
             return {
                 "obs": fake_obs,
                 "reward": {"pred_1": 10.0, "pred_2": 20.0, "prey_1": 3.0},
-                "terminated": True,   # one-step episode → done=True, no bootstrap
+                "terminated": True,  # one-step episode → done=True, no bootstrap
                 "truncated": False,
                 "info": {},
             }
@@ -196,16 +225,22 @@ class TestMixedTrain:
 
         # With alpha=1, gamma=0, done=True:
         #   Q(s,a) = 0 + 1.0 * (central_r + 0 - 0) = central_r = 30.0
-        non_zero = [q for q_vec in algo._cql_tables["predator"].values()
-                    for q in q_vec if q != 0.0]
+        non_zero = [
+            q
+            for q_vec in algo._cql_tables["predator"].values()
+            for q in q_vec
+            if q != 0.0
+        ]
         assert len(non_zero) > 0, "No Q-values updated — training did not run"
-        assert all(q == pytest.approx(30.0) for q in non_zero), \
-            f"Expected team sum 30.0; got {non_zero}"
+        assert all(
+            q == pytest.approx(30.0) for q in non_zero
+        ), f"Expected team sum 30.0; got {non_zero}"
 
 
 # ------------------------------------------------------------------
 # Save / load
 # ------------------------------------------------------------------
+
 
 class TestMixedPersistence:
     def test_save_creates_file(self):

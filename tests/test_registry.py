@@ -17,10 +17,10 @@ from multi_agent_package.registry.reward_registry import (
 from multi_agent_package.observations.base import ObservationBuilder
 from multi_agent_package.rewards.base import RewardFunction
 
-
 # ------------------------------------------------------------------
 # Observation registry
 # ------------------------------------------------------------------
+
 
 class TestObservationRegistry:
     def test_default_registered(self):
@@ -56,7 +56,9 @@ class TestObservationRegistry:
         assert isinstance(builder, ObservationBuilder)
 
     def test_params_forwarded_to_builder(self):
-        builder = get_observation_builder("local_radius", radius=5, include_agents=False)
+        builder = get_observation_builder(
+            "local_radius", radius=5, include_agents=False
+        )
         assert builder.params.get("radius") == 5
         assert builder.params.get("include_agents") is False
 
@@ -82,6 +84,7 @@ class TestObservationRegistry:
 # ------------------------------------------------------------------
 # Reward registry
 # ------------------------------------------------------------------
+
 
 class TestRewardRegistry:
     def test_base_registered(self):
@@ -136,10 +139,11 @@ class TestRewardRegistry:
 # Algorithm registry (separate module, tested via baselines import)
 # ------------------------------------------------------------------
 
+
 class TestAlgorithmRegistry:
     def test_all_four_algorithms_registered(self):
-        import baselines  # trigger registrations
-        from baselines.registry.algorithm_registry import list_algorithms, get
+        import baselines  # noqa: F401 (trigger registrations)
+        from baselines.registry.algorithm_registry import list_algorithms
 
         algos = list_algorithms()
         assert "iql" in algos
@@ -148,7 +152,7 @@ class TestAlgorithmRegistry:
         assert "dqn" in algos
 
     def test_get_returns_class(self):
-        import baselines
+        import baselines  # noqa: F401 (trigger registrations)
         from baselines.registry.algorithm_registry import get
         from baselines.IQL.iql import IQL
         from baselines.CQL.cql import CQL
@@ -162,6 +166,7 @@ class TestAlgorithmRegistry:
 
     def test_unknown_algorithm_raises_value_error(self):
         from baselines.registry.algorithm_registry import get
+
         with pytest.raises(ValueError):
             get("nonexistent_algo")
 
@@ -170,28 +175,34 @@ class TestAlgorithmRegistry:
 # Action registry
 # ------------------------------------------------------------------
 
+
 class TestActionRegistry:
     def test_discrete_5_registered(self):
         from multi_agent_package.registry.action_registry import get_action_space
+
         sp = get_action_space("discrete_5")
         assert sp is not None
 
     def test_cross_registered(self):
         from multi_agent_package.registry.action_registry import get_action_space
+
         sp = get_action_space("cross")
         assert sp.n_actions == 5
 
     def test_speed_discrete_5_registered(self):
         from multi_agent_package.registry.action_registry import get_action_space
+
         sp = get_action_space("speed_discrete_5")
         assert sp is not None
 
     def test_speed_discrete_5_has_to_moves(self):
         from multi_agent_package.registry.action_registry import get_action_space
+
         sp = get_action_space("speed_discrete_5")
         assert hasattr(sp, "to_moves") and callable(sp.to_moves)
 
     def test_unknown_action_space_raises_key_error(self):
         from multi_agent_package.registry.action_registry import get_action_space
+
         with pytest.raises(KeyError):
             get_action_space("nonexistent_action")

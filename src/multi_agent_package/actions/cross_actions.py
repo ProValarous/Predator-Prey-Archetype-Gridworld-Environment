@@ -18,8 +18,8 @@ agent one cell right and one cell toward higher Y — visually
 down-right on screen. As with the cardinal space, reason from the
 direction vectors, not the compass labels.
 
-it inherits from ActionSpace directly (same as DiscreteActionSpace does), 
-not from DiscreteActionSpace — these are two independent 5-action spaces, 
+it inherits from ActionSpace directly (same as DiscreteActionSpace does),
+not from DiscreteActionSpace — these are two independent 5-action spaces,
 not a specialization of one another.
 """
 
@@ -36,11 +36,11 @@ class CrossActionSpace(ActionSpace):
     """
 
     _DIRECTIONS = {
-        0: np.array([1, 1], dtype=np.int32),    # NE
-        1: np.array([-1, 1], dtype=np.int32),   # NW
+        0: np.array([1, 1], dtype=np.int32),  # NE
+        1: np.array([-1, 1], dtype=np.int32),  # NW
         2: np.array([-1, -1], dtype=np.int32),  # SW
-        3: np.array([1, -1], dtype=np.int32),   # SE
-        4: np.array([0, 0], dtype=np.int32),    # NOOP
+        3: np.array([1, -1], dtype=np.int32),  # SE
+        4: np.array([0, 0], dtype=np.int32),  # NOOP
     }
 
     def to_direction(self, action: int) -> np.ndarray:

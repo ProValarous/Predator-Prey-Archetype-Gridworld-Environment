@@ -21,11 +21,11 @@ class DiscreteActionSpace(ActionSpace):
     """
 
     _DIRECTIONS = {
-        0: np.array([1,  0], dtype=np.int32),
-        1: np.array([0,  1], dtype=np.int32),
+        0: np.array([1, 0], dtype=np.int32),
+        1: np.array([0, 1], dtype=np.int32),
         2: np.array([-1, 0], dtype=np.int32),
         3: np.array([0, -1], dtype=np.int32),
-        4: np.array([0,  0], dtype=np.int32),
+        4: np.array([0, 0], dtype=np.int32),
     }
 
     def to_direction(self, action: int) -> np.ndarray:
