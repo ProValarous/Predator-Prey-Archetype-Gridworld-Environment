@@ -143,8 +143,9 @@ def build_environment(configs: dict) -> GridWorldEnv:
     # -----------------------------
     reward_fns = []
 
-    if reward_cfg["rewards"]["base"]["enabled"]:
-        reward_fns.append(get_reward_function("base"))
+    # base_reward() is called internally by gridworld.step() — do NOT add it
+    # here or every capture/death signal gets counted twice.
+    _ = reward_cfg["rewards"]["base"]["enabled"]  # validate key exists
 
     for r in reward_cfg["rewards"].get("shaping", []):
         reward_fns.append(
