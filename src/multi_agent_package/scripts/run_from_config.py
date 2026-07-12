@@ -15,7 +15,7 @@ import yaml
 from pathlib import Path
 
 # Force baseline auto-registration
-import baselines
+import baselines  # noqa: F401
 from baselines.registry import get as get_algorithm
 
 from multi_agent_package.core.gridworld import GridWorldEnv
@@ -37,6 +37,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 # -------------------------------------------------
 # YAML Loader
 # -------------------------------------------------
+
 
 def load_yaml(path: Path) -> dict:
     with open(path, "r") as f:
@@ -62,6 +63,7 @@ def load_all_configs(
 # -------------------------------------------------
 # Agent Builder
 # -------------------------------------------------
+
 
 def build_agents(agent_cfg: dict):
     agents = []
@@ -95,6 +97,7 @@ def build_agents(agent_cfg: dict):
 # -------------------------------------------------
 # Environment Builder
 # -------------------------------------------------
+
 
 def build_environment(configs: dict) -> GridWorldEnv:
     env_cfg = configs["env"]
@@ -140,8 +143,9 @@ def build_environment(configs: dict) -> GridWorldEnv:
     # -----------------------------
     reward_fns = []
 
-    if reward_cfg["rewards"]["base"]["enabled"]:
-        reward_fns.append(get_reward_function("base"))
+    # base_reward() is called internally by gridworld.step() — do NOT add it
+    # here or every capture/death signal gets counted twice.
+    _ = reward_cfg["rewards"]["base"]["enabled"]  # validate key exists
 
     for r in reward_cfg["rewards"].get("shaping", []):
         reward_fns.append(
@@ -184,6 +188,7 @@ def build_environment(configs: dict) -> GridWorldEnv:
 # -------------------------------------------------
 # Main Entry
 # -------------------------------------------------
+
 
 def main(config_dir: str = "configs"):
     configs = load_all_configs(config_dir)

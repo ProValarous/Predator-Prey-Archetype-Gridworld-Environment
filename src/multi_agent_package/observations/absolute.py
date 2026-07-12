@@ -14,7 +14,7 @@ from multi_agent_package.observations.base import ObservationBuilder
 class AbsoluteObservation(ObservationBuilder):
     """
     Fully absolute observation - world frame.
-    
+
     No radius filtering. All positions in grid coordinates.
     """
 
@@ -31,7 +31,7 @@ class AbsoluteObservation(ObservationBuilder):
 
             agent_obs = {
                 "local": {
-                    "pos": agent_pos,              # ABSOLUTE world position
+                    "pos": agent_pos,  # ABSOLUTE world position
                     "type": ag.agent_type,
                     "team": ag.agent_team,
                     "speed": ag.agent_speed,
@@ -50,10 +50,10 @@ class AbsoluteObservation(ObservationBuilder):
                     if distance_type == "manhattan":
                         dist = abs(ox - ax) + abs(oy - ay)
                     else:
-                        dist = float(np.sqrt((ox - ax)**2 + (oy - ay)**2))
+                        dist = float(np.sqrt((ox - ax) ** 2 + (oy - ay) ** 2))
 
                     agents_obs[other.agent_name] = {
-                        "pos": other_pos,          # ABSOLUTE position
+                        "pos": other_pos,  # ABSOLUTE position
                         "dist": dist,
                         "type": other.agent_type,
                         "team": other.agent_team,
@@ -70,10 +70,10 @@ class AbsoluteObservation(ObservationBuilder):
                     if distance_type == "manhattan":
                         dist = abs(ox - ax) + abs(oy - ay)
                     else:
-                        dist = float(np.sqrt((ox - ax)**2 + (oy - ay)**2))
+                        dist = float(np.sqrt((ox - ax) ** 2 + (oy - ay) ** 2))
 
                     obstacles_obs[f"obstacle_{i}"] = {
-                        "pos": obs_copy,           # ABSOLUTE position
+                        "pos": obs_copy,  # ABSOLUTE position
                         "dist": dist,
                     }
 

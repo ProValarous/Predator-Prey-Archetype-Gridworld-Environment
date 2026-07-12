@@ -34,8 +34,11 @@ def main():
     p.add_argument("--config-dir", default="configs")
     p.add_argument("--save-path", default="trained_dqn.pkl")
     p.add_argument("--load-path", default=None)
-    p.add_argument("--render", action="store_true",
-                   help="Enable pygame window during eval (requires a display)")
+    p.add_argument(
+        "--render",
+        action="store_true",
+        help="Enable pygame window during eval (requires a display)",
+    )
     args = p.parse_args()
 
     configs = load_all_configs(args.config_dir, EXPERIMENT_FILE)

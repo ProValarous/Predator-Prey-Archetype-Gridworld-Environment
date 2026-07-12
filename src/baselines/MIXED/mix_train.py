@@ -17,7 +17,8 @@ Usage (config-driven via run_from_config):
 
 Usage (standalone CLI):
     cd src
-    python -m baselines.MIXED.mix_train --predator-algo cql --prey-algo iql --episodes 1000
+    python -m baselines.MIXED.mix_train \
+        --predator-algo cql --prey-algo iql --episodes 1000
 """
 
 import logging
@@ -66,10 +67,16 @@ class MixedTrainer(BaseAlgorithm):
         self.agent_ids = list(initial_obs.keys())
 
         # Partition agents into teams
-        self._predators = [ag.agent_name for ag in self.env.agents
-                           if ag.agent_type.startswith(_PREDATOR_TEAM)]
-        self._prey = [ag.agent_name for ag in self.env.agents
-                      if not ag.agent_type.startswith(_PREDATOR_TEAM)]
+        self._predators = [
+            ag.agent_name
+            for ag in self.env.agents
+            if ag.agent_type.startswith(_PREDATOR_TEAM)
+        ]
+        self._prey = [
+            ag.agent_name
+            for ag in self.env.agents
+            if not ag.agent_type.startswith(_PREDATOR_TEAM)
+        ]
 
         # Build team lookup: agent_name → team_key
         self._team_of: dict[str, str] = {}
@@ -92,9 +99,9 @@ class MixedTrainer(BaseAlgorithm):
 
         # CQL tables: one per team
         self._cql_tables: dict[str, defaultdict] = {}
-        self._cql_team_ids: dict[str, list[str]] = {}          # team → ordered agent list
-        self._cql_n_joint: dict[str, int] = {}                 # team → n_joint_actions
-        self._cql_action_shape: dict[str, tuple] = {}          # team → reshape tuple
+        self._cql_team_ids: dict[str, list[str]] = {}  # team → ordered agent list
+        self._cql_n_joint: dict[str, int] = {}  # team → n_joint_actions
+        self._cql_action_shape: dict[str, tuple] = {}  # team → reshape tuple
 
         for team_key, members, algo in [
             (_PREDATOR_TEAM, self._predators, self.predator_algo),
@@ -130,6 +137,7 @@ class MixedTrainer(BaseAlgorithm):
                     return tuple(_convert(v) for v in val)
                 return val
             return obj
+
         return _convert(obs_dict)
 
     def _team_joint_state(self, observations: dict, team_key: str) -> tuple:
@@ -218,14 +226,11 @@ class MixedTrainer(BaseAlgorithm):
 
                     # central reward = sum of team members' rewards
                     central_r = sum(
-                        float(rewards[aid])
-                        for aid in self._cql_team_ids[team_key]
+                        float(rewards[aid]) for aid in self._cql_team_ids[team_key]
                     )
 
                     q_current = table[joint_s][joint_a]
-                    q_next_max = (
-                        0.0 if done else float(np.max(table[joint_s_next]))
-                    )
+                    q_next_max = 0.0 if done else float(np.max(table[joint_s_next]))
                     td_error = central_r + self.gamma * q_next_max - q_current
                     table[joint_s][joint_a] += self.alpha * td_error
 
@@ -237,7 +242,10 @@ class MixedTrainer(BaseAlgorithm):
                 reward_str = ", ".join(f"{k}={v:.2f}" for k, v in ep_reward.items())
                 LOGGER.info(
                     "Episode %d/%d | eps=%.3f | %s",
-                    ep + 1, self.episodes, self.epsilon, reward_str,
+                    ep + 1,
+                    self.episodes,
+                    self.epsilon,
+                    reward_str,
                 )
 
     # ------------------------------------------------------------------
@@ -308,27 +316,40 @@ if __name__ == "__main__":
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--save-path", type=str, default="trained_mixed.pkl")
     p.add_argument("--load-path", type=str, default=None)
-    p.add_argument("--render", action="store_true",
-                   help="Open pygame window during eval (requires a display)")
+    p.add_argument(
+        "--render",
+        action="store_true",
+        help="Open pygame window during eval (requires a display)",
+    )
     args = p.parse_args()
 
     agents = []
     for i in range(1, args.preys + 1):
         agents.append(Agent(agent_name=f"prey_{i}", agent_team=i, agent_type="prey"))
     for i in range(1, args.predators + 1):
-        agents.append(Agent(agent_name=f"predator_{i}", agent_team=i, agent_type="predator"))
+        agents.append(
+            Agent(agent_name=f"predator_{i}", agent_team=i, agent_type="predator")
+        )
 
     render = "human" if (args.mode == "eval" and args.render) else None
-    env = GridWorldEnv(agents=agents, render_mode=render,
-                       size=args.size, perc_num_obstacle=10, seed=args.seed)
+    env = GridWorldEnv(
+        agents=agents,
+        render_mode=render,
+        size=args.size,
+        perc_num_obstacle=10,
+        seed=args.seed,
+    )
 
     config = {
-        "alpha": args.alpha, "gamma": args.gamma,
+        "alpha": args.alpha,
+        "gamma": args.gamma,
         "epsilon": args.epsilon if args.mode == "train" else 0.0,
-        "epsilon_decay": args.epsilon_decay, "min_epsilon": args.min_epsilon,
+        "epsilon_decay": args.epsilon_decay,
+        "min_epsilon": args.min_epsilon,
         "predator_algo": args.predator_algo,
         "prey_algo": args.prey_algo,
-        "episodes": args.episodes, "seed": args.seed,
+        "episodes": args.episodes,
+        "seed": args.seed,
     }
 
     if args.mode == "train":

@@ -18,13 +18,16 @@ class TestCrossActionSpace:
     def test_gymnasium_space_matches_n_actions(self):
         assert self.space.gymnasium_space.n == self.space.n_actions
 
-    @pytest.mark.parametrize("action,expected", [
-        (0, [1, 1]),
-        (1, [-1, 1]),
-        (2, [-1, -1]),
-        (3, [1, -1]),
-        (4, [0, 0]),
-    ])
+    @pytest.mark.parametrize(
+        "action,expected",
+        [
+            (0, [1, 1]),
+            (1, [-1, 1]),
+            (2, [-1, -1]),
+            (3, [1, -1]),
+            (4, [0, 0]),
+        ],
+    )
     def test_direction_vectors(self, action, expected):
         np.testing.assert_array_equal(self.space.to_direction(action), expected)
 
@@ -49,8 +52,9 @@ class TestCrossActionWiredToEnv:
             Agent(agent_type="predator", agent_team="predator_1", agent_name="pred_1"),
             Agent(agent_type="prey", agent_team="prey_1", agent_name="prey_1"),
         ]
-        env = GridWorldEnv(agents=agents, size=8, perc_num_obstacle=0,
-                           render_mode=None, seed=seed)
+        env = GridWorldEnv(
+            agents=agents, size=8, perc_num_obstacle=0, render_mode=None, seed=seed
+        )
         env.action_space_plugin = CrossActionSpace()
         return env
 
