@@ -27,9 +27,8 @@ from numpy.random import default_rng
 
 from baselines.base import BaseAlgorithm
 from baselines.registry.algorithm_registry import register
-from baselines.DQN.q_network import QNetwork
+from baselines.DQN.q_network import QNetwork, DuelingQNetwork
 from baselines.DQN.replay_buffer import ReplayBuffer
-from baselines.DQN.q_network import QNetwork, DuelingQNetwork #ADDED
 
 LOGGER = logging.getLogger("dqn")
 
@@ -58,8 +57,8 @@ class DQN(BaseAlgorithm):
         self.debug_first_episode = bool(config.get("debug_first_episode", True))
         self.save_path = config.get("save_path", None)
         self.curves_path: Optional[str] = config.get("curves_path", None)
-        self.double_dqn = bool(config.get("double_dqn", False)) #ADDED
-        self.dueling = bool(config.get("dueling", False))     #ADDED
+        self.double_dqn = bool(config.get("double_dqn", False))  # ADDED
+        self.dueling = bool(config.get("dueling", False))  # ADDED
 
         seed = config.get("seed", None)
         self.rng = default_rng(seed)
@@ -132,7 +131,9 @@ class DQN(BaseAlgorithm):
         self.optimizers = {}
         self.replay_buffers = {}
 
-        network_cls = DuelingQNetwork if self.dueling else QNetwork #flag to enable duel DQN
+        network_cls = (
+            DuelingQNetwork if self.dueling else QNetwork
+        )  # flag to enable duel DQN
 
         for i, agent_id in enumerate(self.agent_ids):
             buffer_seed = None if seed is None else int(seed) + i
@@ -214,14 +215,18 @@ class DQN(BaseAlgorithm):
             if self.double_dqn:
                 # action selection from the ONLINE network, evaluation from the TARGET
                 # network: fixes vanilla DQN's overestimation bias.
-                next_actions = self.q_networks[agent_id](next_states_t).argmax(dim=1, keepdim=True)
+                next_actions = self.q_networks[agent_id](next_states_t).argmax(
+                    dim=1, keepdim=True
+                )
                 next_q_values = (
                     self.target_networks[agent_id](next_states_t)
                     .gather(1, next_actions)
                     .squeeze(1)
                 )
             else:
-                next_q_values = self.target_networks[agent_id](next_states_t).max(dim=1)[0]
+                next_q_values = self.target_networks[agent_id](next_states_t).max(
+                    dim=1
+                )[0]
 
             targets = rewards_t + self.gamma * (1.0 - dones_t) * next_q_values
 

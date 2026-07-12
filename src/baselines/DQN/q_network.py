@@ -40,6 +40,7 @@ class QNetwork(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
 
+
 class DuelingQNetwork(nn.Module):
     """
     Splits the final representation into a state-value stream V(s) and an
@@ -54,7 +55,9 @@ class DuelingQNetwork(nn.Module):
         if output_dim <= 0:
             raise ValueError(f"output_dim must be positive, got {output_dim}")
         if not hidden_layers or any(h <= 0 for h in hidden_layers):
-            raise ValueError(f"hidden_layers must be non-empty positive ints, got {hidden_layers}")
+            raise ValueError(
+                f"hidden_layers must be non-empty positive ints, got {hidden_layers}"
+            )
 
         trunk: List[nn.Module] = []
         in_dim = int(input_dim)
@@ -69,6 +72,6 @@ class DuelingQNetwork(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         features = self.trunk(x)
-        value = self.value_head(features)              # (batch, 1)
-        advantage = self.advantage_head(features)       # (batch, n_actions)
+        value = self.value_head(features)  # (batch, 1)
+        advantage = self.advantage_head(features)  # (batch, n_actions)
         return value + (advantage - advantage.mean(dim=1, keepdim=True))
