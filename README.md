@@ -1,10 +1,18 @@
 # 🐾 Predator–Prey Gridworld Environment
 
+[![CI](https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment/actions/workflows/ci.yaml/badge.svg?branch=STRP)](https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment/actions/workflows/ci.yaml)
+
 A **deterministic, modular, research-grade multi-agent predator–prey environment** built to study coordination, pursuit–evasion, and emergent behavior in Multi-Agent Reinforcement Learning (MARL).
 
 This repository is not just a simulation.
 
 It is a **controlled experimental laboratory** for understanding how multi-agent learning systems behave.
+
+<p align="center">
+  <img src="miscellenous/imgs/demo.gif" alt="A predator (red) chasing down a prey (green) across a 10x10 obstacle grid until capture" width="420">
+</p>
+
+<p align="center"><em>A speed-2 predator pursuing a speed-1 prey around obstacles (<code>configs/dqn_1v1</code>) until capture.</em></p>
 
 ---
 
@@ -16,6 +24,7 @@ This project provides:
 * Explicit, fully inspectable transition dynamics
 * Pluggable observation models
 * Pluggable reward functions
+* Pluggable action spaces (including per-agent speed/stamina mechanics)
 * Strict separation between environment and learning
 * Deterministic, reproducible experiments
 
@@ -77,24 +86,34 @@ The repository is divided into two major components:
 
 Implements:
 
-* Grid Environment dynamics
-* Agent movement
-* Capture logic
-* Episode termination
-* Observation plug-ins
-* Reward plug-ins
+* Grid environment dynamics, agent movement, capture logic, episode termination (`core/`, immutable)
+* Observation plug-ins — perception (`observations/`)
+* Reward plug-ins — incentives (`rewards/`)
+* Action-space plug-ins — what an agent's action integers mean (`actions/`)
+* Wrappers — cross-cutting mechanics layered on top of the base env, e.g. per-agent speed/stamina (`wrappers/`)
+* Registries — the only sanctioned way to wire a plug-in into an experiment (`registry/`)
 
 This layer defines the world.
+
+Currently registered plug-ins:
+
+| Category     | Registered options                                                    |
+| ------------ | ----------------------------------------------------------------------- |
+| Observations | `default`, `local_only`, `local_radius`, `absolute`, `relative`          |
+| Rewards      | `base`, `predator_distance`, `survival`                                  |
+| Actions      | `discrete_5`, `cross`, `speed_discrete_5`                               |
+| Wrappers     | `SpeedWrapper` (per-agent speed/stamina, applied last in the build chain) |
 
 ### 2️⃣ `baselines` — The Learning Algorithms
 
 Implements:
 
-* Independent Q-Learning (IQL)
-* Centralized Q-Learning (CQL)
-* MixedTrainer — per-team IQL/CQL assignment
+* **IQL** — Independent Q-Learning (tabular)
+* **CQL** — Centralized Q-Learning (tabular)
+* **MixedTrainer** — per-team algorithm assignment (e.g. CQL predators vs IQL prey)
+* **DQN** — Deep Q-Network (PyTorch, generic observation encoder, replay buffer)
 
-This layer defines how agents learn.
+See [`src/baselines/README.md`](src/baselines/README.md) for the algorithm contract and when to use each one.
 
 Algorithms interact with the environment only through:
 
@@ -129,19 +148,29 @@ This is enforced, not assumed.
 ```
 src/
 ├── baselines/                # Learning algorithms
+│   ├── IQL/  CQL/  MIXED/  DQN/
+│   └── registry/              # Algorithm name -> class
 └── multi_agent_package/      # Environment
-    ├── core/                 # Immutable Environment dynamics
+    ├── core/                 # Immutable environment dynamics (maintainers only)
     ├── observations/         # Perception plug-ins
     ├── rewards/              # Incentive plug-ins
+    ├── actions/              # Action-space plug-ins
+    ├── wrappers/             # Cross-cutting mechanics (e.g. SpeedWrapper)
     ├── registry/             # Safe plug-in selection
-    ├── scripts/              # Experiment runners
+    └── scripts/              # Experiment runners (run_from_config, run_dqn, ...)
 
 configs/                      # YAML experiment definitions
+├── env.yaml, agents.yaml, observations.yaml, rewards.yaml, actions.yaml
+├── experiment_{iql,cql,mixed,dqn}.yaml
+└── dqn_1v1/, dqn_speed1/, dqn_speed2/, dqn_speed3/   # ready-made DQN experiment sets
+
+tests/                        # pytest suite: registries, plugin contracts,
+                               # end-to-end training, architecture rules
 ```
 
-Core Environment dynamics is stable infrastructure.
+Core environment dynamics is stable infrastructure.
 
-Observations and rewards are the intended extension points.
+Observations, rewards, and actions are the intended extension points.
 
 ---
 
@@ -167,16 +196,34 @@ This environment is meant for:
 
 ## ⚡ Quickstart
 
+The build backend isn't wired up yet, so `pip install -e .` does **not** make the package importable — use `PYTHONPATH=src` instead. This is the only setup path actually verified to work.
+
 ```bash
 git clone https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment.git
 cd Predator-Prey-Archetype-Gridworld-Environment
+
 python -m venv .venv
-source .venv/bin/activate
-pip install -e .
-python -m multi_agent_package.scripts.run_from_config
+source .venv/bin/activate        # Windows: .venv\Scripts\Activate.ps1
+
+pip install -r requirements.txt
+
+# Run the default experiment (3 predators vs 3 prey, IQL, configs/experiment.yaml)
+PYTHONPATH=src python -m multi_agent_package.scripts.run_from_config
+
+# Or one of the ready-made DQN experiments
+PYTHONPATH=src python -m multi_agent_package.scripts.run_dqn --config-dir configs/dqn_1v1
 ```
 
 All experiments are launched from the repository root.
+
+### Running the tests
+
+```bash
+pip install -r requirements-dev.txt
+PYTHONPATH=src python -m pytest tests/ -q
+```
+
+CI (`.github/workflows/ci.yaml`) runs this same suite plus Black/flake8/pylint on every push and PR to `main`/`STRP`, and blocks any PR that touches `core/` (see below).
 
 ---
 
@@ -186,10 +233,11 @@ You are encouraged to:
 
 * Implement new reward functions
 * Design new observation schemes
+* Design new action spaces or wrappers
 * Run structured experiments
 * Perform reproducible ablations
 
-You are not expected to modify core Environment dynamics.
+You are not expected to modify core environment dynamics — this is enforced automatically: a CI check fails any pull request that touches `src/multi_agent_package/core/`. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full contribution rules.
 
 This mirrors how research infrastructure is structured in practice.
 
@@ -211,7 +259,3 @@ This mirrors how research infrastructure is structured in practice.
 ## 📜 License
 
 Apache License 2.0
-
----
-
-
