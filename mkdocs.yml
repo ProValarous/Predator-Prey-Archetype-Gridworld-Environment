@@ -1,8 +1,8 @@
 site_name: Predator-Prey Gridworld Environment
 site_description: A minimalist multi-agent predator-prey environment for MARL research.
-site_url: https://provalarous.github.io/Predator-Prey-Archetype-Gridworld-Environment/
-repo_url: https://provalarous.github.io/Predator-Prey-Archetype-Gridworld-Environment/
-repo_name: ProValarous/Predator-Prey-Gridworld-Environment
+site_url: https://provalarous.github.io/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/
+repo_url: https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment
+repo_name: ProValarous/Predator-Prey-Archetype-Gridworld-Environment
 
 nav:
   - Home: index.md
