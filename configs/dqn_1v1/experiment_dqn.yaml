@@ -9,6 +9,9 @@ experiment:
       min_epsilon: 0.05              # floor for exploration
       action_dim: 5                  # discrete_5 action space
 
+      double_dqn: true               # flag to enable double DQN
+      dueling: true                  # flag to enable dueling DQN
+
       batch_size: 32
       buffer_size: 10000
       target_update_interval: 100
