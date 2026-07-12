@@ -237,7 +237,7 @@ You are encouraged to:
 * Run structured experiments
 * Perform reproducible ablations
 
-You are not expected to modify core environment dynamics — this is enforced automatically: a CI check fails any pull request that touches `src/multi_agent_package/core/`. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full contribution rules.
+You are not expected to modify core environment dynamics — this is enforced automatically: a CI check fails any pull request that touches `src/multi_agent_package/core/`. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full contribution rules, and [`docs/git-workflow.md`](docs/git-workflow.md) for branching, commits, and how to open a PR.
 
 This mirrors how research infrastructure is structured in practice.
 
