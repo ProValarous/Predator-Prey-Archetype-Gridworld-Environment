@@ -217,3 +217,49 @@ agents:
 ```
 
 With `size=6, 1 pred, 1 prey, 5 actions`: joint action space = 5^2 = 25 per state. Manageable.
+
+---
+
+## Speed asymmetry (predator faster than prey)
+
+Requires `speed_discrete_5` or any action space paired with `SpeedWrapper`'s sub-stepping (speed comes from `agents.yaml`, not from the action space itself):
+
+```yaml
+# agents.yaml
+agents:
+  predators:
+    speed: 2       # via SpeedWrapper: up to 2 sub-steps per logical turn
+  preys:
+    speed: 1
+```
+
+See `configs/dqn_speed1`, `dqn_speed2`, `dqn_speed3` for a ready-made 1/2/3 speed sweep, and [concepts/wrappers.md](../concepts/wrappers.md) for the mechanics.
+
+---
+
+## Diagonal-only movement
+
+```yaml
+# actions.yaml
+actions:
+  type: cross    # NE/NW/SW/SE + noop — no cardinal moves at all
+  params: {}
+```
+
+Remember to update `action_dim` in your experiment YAML (still 5, since `cross` is also a 5-action space) if it's set explicitly.
+
+---
+
+## Double DQN + Dueling DQN
+
+```yaml
+# experiment_dqn.yaml
+experiment:
+  algorithm:
+    name: dqn
+    params:
+      double_dqn: true   # decouples action selection (online net) from evaluation (target net)
+      dueling: true      # splits the network into value + advantage streams
+```
+
+See `configs/dqn_1v1/experiment_dqn.yaml` for a working example with both enabled.

@@ -2,6 +2,8 @@
 
 One call to `env.step(actions)` — what happens inside.
 
+> This describes the **inner** `GridWorldEnv.step()`. In practice, `run_from_config.build_environment()` returns a `SpeedWrapper`-wrapped env, so a single call to the *outer* `step()` may invoke this inner pipeline multiple times in one turn (once per sub-step) when any agent's `agent_speed > 1`. See [concepts/wrappers.md](../concepts/wrappers.md) for the outer mechanics.
+
 ---
 
 ## Inputs / Outputs

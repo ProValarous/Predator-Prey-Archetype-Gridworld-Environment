@@ -109,9 +109,39 @@ Action selection marginalises the joint Q-tensor: for agent `i`, reshape the Q-v
 
 ---
 
+## DQN — Neural Training Loop
+
+Same episode/epsilon-decay structure as IQL, but each step's inner loop does gradient-based optimization instead of a tabular update:
+
+```
+for episode in range(episodes):
+    obs, _ = env.reset()
+    done = False
+    while not done:
+        actions = select_actions(obs)          # epsilon-greedy over each agent's QNetwork
+        out = env.step(actions)
+        for agent_id in agent_ids:
+            encode current + next obs via env.observation_encoder
+            validate encoded shape matches state_dim (raises ValueError if not)
+            replay_buffers[agent_id].push(state, action, reward, next_state, done)
+            _optimize_agent(agent_id):
+                if len(buffer) < max(min_replay_size, batch_size): return None   # not enough data yet
+                sample a batch; compute target via target_network (or online-select +
+                target-evaluate if double_dqn); SmoothL1Loss; clip grad_norm to grad_clip;
+                optimizer.step(); increment shared _train_steps counter
+                every target_update_interval steps: hard-sync target_networks from q_networks
+        obs = out["obs"]; done = out["terminated"] or out["truncated"]
+    epsilon = max(min_epsilon, epsilon * epsilon_decay)
+    if curves_path: append a CSV row (episode, epsilon, per-agent reward, per-agent mean loss)
+```
+
+`_train_steps` is a single counter shared across **all** agents, not one per agent — so `target_update_interval` counts total optimizer steps across every agent's updates combined.
+
+---
+
 ## Checkpoint Save/Load
 
-`IQL`, `CQL`, and `MixedTrainer` all implement `save(path)` and `load(env, config, path)`:
+`IQL`, `CQL`, `MixedTrainer`, and `DQN` all implement `save(path)` and `load(env, config, path)`:
 
 ```python
 algo.save("checkpoints/run_1.pkl")
@@ -119,14 +149,18 @@ algo2 = IQL.load(env, config, "checkpoints/run_1.pkl")
 algo2.evaluate(episodes=10)
 ```
 
+`DQN.save()` pickles both online and target network `state_dict()`s per agent, plus config/agent_ids/state_dim/action_dim. **Behavioral inconsistency worth knowing:** `DQN.train()` auto-saves to `save_path` at the end if configured; `IQL`/`CQL`/`MixedTrainer`'s `train()` do **not** auto-save — for those three, saving is a separate explicit call the caller script makes after `train()` returns.
+
 ---
 
 ## What Is Not Logged
 
-The current training loop does not log:
+IQL/CQL/MixedTrainer's training loops do not log:
 - Per-episode reward totals
 - Capture rates
 - Epsilon value over time
 - Q-table size / state coverage
 
-If you need learning curves, wrap the training loop or add logging before calling `algorithm.train()`.
+DQN is the exception: if `curves_path` is set in config, it writes a CSV with `episode`, `epsilon`, and per-agent reward/loss columns every episode (opened/closed via a `finally` block, so partial data survives an exception).
+
+If you need learning curves for the tabular baselines, wrap the training loop or add logging before calling `algorithm.train()`.

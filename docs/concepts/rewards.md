@@ -23,7 +23,9 @@ These values live in `GridWorldEnv.base_reward()` and cannot be changed via conf
 
 The obstacle penalty (`−200`) exceeds the capture bonus (`+100`) to strongly discourage wall-hugging. The step cost (`−5`) applies **only to predators** — it incentivizes faster capture. Prey pay no per-step cost; the `SurvivalReward` shaper can be added to give prey a positive per-step signal instead.
 
-These are wrapped by `BaseReward` (key: `"base"`) which applies a `weight` multiplier. Even at `weight=1.0`, you cannot disable or replace these signals without modifying core code.
+`GridWorldEnv.step()` calls `self.base_reward()` **unconditionally, every step** — it is not routed through the plugin/registry system at all. You cannot disable or replace these signals without modifying core code.
+
+> ⚠️ There is a `BaseReward` reward-function class (registry key `"base"`) that wraps `env.base_reward()` and scales it by `weight`. It is **not** part of the active reward chain — `run_from_config.build_environment()` deliberately does not add it, because `base_reward()` is already unconditionally applied inside `step()` (see above); chaining `BaseReward` on top would double-count every capture/step-cost/obstacle-penalty signal (this was a real bug, fixed in PR #26). `rewards.yaml`'s `base.enabled` flag is consequently **inert** post-fix: `run_from_config.py` reads it only to assert the key exists, never to gate anything — `base_reward()` runs regardless of what it's set to.
 
 ---
 
@@ -46,16 +48,16 @@ Without shaping, predators only receive signal when they capture prey (`+100`). 
 
 ## Reward Composition
 
-Multiple reward functions are **summed** per agent:
+Composition happens in two tiers:
 
 ```
-total_reward[agent] = base_reward[agent]
-                    + predator_distance_reward[agent]
-                    + survival_reward[agent]
-                    + ...
+total_reward[agent] = base_reward[agent]              ← computed directly by gridworld.step(),
+                                                          always on, never via a plugin
+                    + sum(shaping_fn.compute(env)[agent]
+                          for shaping_fn in configured_shapers)  ← env.reward_fn, added on top
 ```
 
-The composition happens in a closure built by `run_from_config.py` and assigned to `env.reward_fn`. Adding a new reward component means adding an entry to `rewards.yaml` — no code change needed.
+The shaping sum happens in a closure built by `run_from_config.py` and assigned to `env.reward_fn`; `gridworld.step()` adds its output onto the already-computed base reward (`rewards[k] += custom.get(k, 0.0)`). Adding a new **shaping** component means adding an entry to `rewards.yaml`'s `shaping` list — no code change needed. The base reward itself cannot be added/removed this way (see above).
 
 **Limitation:** The current composition gives no visibility into individual components during training. If you need per-component logging, you must modify the closure or add a wrapper.
 
@@ -99,7 +101,7 @@ The consequence: cooperative multi-predator strategies are rewarded more than so
 
 Because each agent's Q-table changes every episode, the effective reward signal seen by any single agent is **non-stationary**: the same observation can lead to different outcomes depending on what the other agents do. This violates the stationarity assumption that standard Q-learning convergence proofs rely on.
 
-In practice: IQL often works but may oscillate or converge to suboptimal joint policies. See [ADR-004](../decisions/ADR-004-tabular-baselines.md) and [concepts/marl.md](marl.md) for details.
+In practice: IQL often works but may oscillate or converge to suboptimal joint policies. See [concepts/marl.md](marl.md) for details.
 
 ### Competitive vs. Cooperative Dynamics
 

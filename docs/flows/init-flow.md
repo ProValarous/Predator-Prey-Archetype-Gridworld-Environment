@@ -59,13 +59,18 @@ configs/
          │               **obs_cfg["params"]     # e.g. radius=3
          │             )
          │   env.observation_builder = builder.build
+         │   env.observation_encoder = builder.encode   # required by DQN
          │
          └── Wire reward ───────────────────────────────────────────
              reward_cfg = configs["rewards"]
              reward_fns = []
 
-             if reward_cfg["rewards"]["base"]["enabled"]:
-               reward_fns.append(get_reward_function("base"))
+             # base_reward() is called internally by gridworld.step() on
+             # every step — it is NOT added to reward_fns here. Doing so
+             # used to double-count every capture/step-cost/obstacle
+             # signal (fixed in PR #26). rewards.yaml's base.enabled key
+             # is only read to assert it exists; the value is discarded.
+             _ = reward_cfg["rewards"]["base"]["enabled"]
 
              for r in reward_cfg["rewards"].get("shaping", []):
                reward_fns.append(
@@ -79,7 +84,7 @@ configs/
                    total[k] += v
                return total
 
-             env.reward_fn = combined_reward
+             env.reward_fn = combined_reward   # ADDED ON TOP of base_reward() inside step()
 
          └── Wire action space ─────────────────────────────────────
              action_cfg = configs["actions"]
@@ -90,10 +95,19 @@ configs/
              env.action_space_plugin = space
                   │
                   ▼
-  env is fully wired: observation_builder ✓  reward_fn ✓  action_space_plugin ✓
+  env is fully wired: observation_builder ✓  observation_encoder ✓
+                       reward_fn ✓  action_space_plugin ✓
                   │
                   ▼
-  algo_cfg = configs["experiment"]["algorithm"]
+  env = SpeedWrapper(env)
+  # Applied LAST — it proxies unknown attributes (agents, action_space_plugin,
+  # observation_encoder, ...) through to the inner env via __getattr__, so
+  # everything above must already be attached for the proxy to expose it.
+  # Note: SpeedWrapper hardcodes its own SpeedDiscreteActionSpace() instance
+  # for sub-step counting — it does NOT read env.action_space_plugin.
+                  │
+                  ▼
+  algo_cfg = configs["experiment"]["experiment"]["algorithm"]   # note: double "experiment"
   AlgorithmClass = get(algo_cfg["name"])   # from algorithm_registry
   algorithm = AlgorithmClass(env, algo_cfg.get("params", {}))
                   │
@@ -108,13 +122,16 @@ configs/
 | Attribute | Value |
 |-----------|-------|
 | `env.agents` | List of N Agent instances (positions unset) |
-| `env.reward_fn` | Combined closure over all configured reward fns |
+| `env.reward_fn` | Combined closure over configured **shaping** fns only — base reward is separate, always-on, computed directly by `gridworld.step()` |
 | `env.observation_builder` | Bound method of configured observation builder |
+| `env.observation_encoder` | Bound `encode` method of the same builder (required by DQN) |
 | `env.action_space_plugin` | Configured `ActionSpace` instance |
 | `env.rng` | Seeded `np.random.default_rng(seed)` |
 | `env.size` | Grid dimension |
 | `env._obstacle_location` | Empty list (set on first `reset()`) |
 | `env._captured_agents` | Empty list `List[str]` (cleared on each `reset()`) |
+
+The return value of `build_environment()` is actually a `SpeedWrapper` wrapping the object above, not the raw `GridWorldEnv` — all the attributes in this table are still reachable (via `__getattr__` proxying), plus `wrapper._speeds`, `wrapper._max_stamina`, `wrapper._stamina` derived from each agent's `agent_speed`/`stamina`.
 
 The environment is **not ready to step** until `env.reset()` is called. `reset()` places obstacles and agents.
 
@@ -128,4 +145,4 @@ The environment is **not ready to step** until `env.reset()` is called. `reset()
 | `KeyError: 'discrete_X'` | Unknown key in `actions.yaml` type field; check `action_registry.py` |
 | `TypeError: 'NoneType' is not callable` on `step()` | `reward_fn` or `observation_builder` not wired; `reset()` called before wiring |
 | `ValueError: Algorithm 'X' not registered` | `import baselines` missing before `get_algorithm()`; auto-registration never ran |
-| `KeyError: 'algorithm'` on algo lookup | Use `configs["experiment"]["algorithm"]` — one level only. `configs["experiment"]["experiment"]` is a double-nesting that does not exist. |
+| `KeyError: 'algorithm'` on algo lookup | `load_all_configs()` stores the parsed YAML file's own top-level `experiment:` key under `configs["experiment"]`, so the real path is the double-nested `configs["experiment"]["experiment"]["algorithm"]` — this is correct, verified against `run_from_config.py`'s actual `main()`, not a typo to avoid. |

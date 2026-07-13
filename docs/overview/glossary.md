@@ -35,16 +35,19 @@ All agent moves are resolved at the same time within a step. No sequential order
 ## Architecture Terms
 
 **Core (immutable)**
-The modules `core/gridworld.py` and `core/agent.py`. These define environment physics and are never modified by contributors. See [ADR-001](../decisions/ADR-001-immutable-core.md).
+The modules `core/gridworld.py` and `core/agent.py`. These define environment physics and are never modified by contributors — enforced by the `core-guard` CI check on every pull request. See [Contributing](../contributing.md)'s "Golden Rule."
 
 **Plugin**
 Any `ObservationBuilder`, `RewardFunction`, or `ActionSpace` subclass. Plugins are loaded at runtime via the registry and injected into the environment. They may read but must not write env state.
 
 **Registry**
-A dict-based lookup table mapping string names (used in YAML) to Python classes. Three registries exist: `observation_registry`, `reward_registry`, and `action_registry`. See [ADR-002](../decisions/ADR-002-plugin-registry.md).
+A dict-based lookup table mapping string names (used in YAML) to Python classes. Four registries exist: `observation_registry`, `reward_registry`, `action_registry` (all three under `multi_agent_package/registry/`), and `algorithm_registry` (under `baselines/registry/`).
 
 **Callable Injection**
-The pattern where the environment holds a function pointer (`env.reward_fn`, `env.observation_builder`) rather than a class reference. The plugin's method is bound at wiring time in `run_from_config.py`. See [ADR-003](../decisions/ADR-003-callable-injection.md). The action space (`env.action_space_plugin`) follows the same injection pattern but is stored as an object rather than a bound method, because `to_direction()` requires an argument.
+The pattern where the environment holds a function pointer (`env.reward_fn`, `env.observation_builder`) rather than a class reference. The plugin's method is bound at wiring time in `run_from_config.py`. The action space (`env.action_space_plugin`) follows the same injection pattern but is stored as an object rather than a bound method, because `to_direction()` requires an argument.
+
+**Wrapper**
+An object that wraps the environment (or another wrapper), overriding specific methods (`step()`/`reset()`) while proxying everything else through `__getattr__`. Not registry-driven — there's exactly one, `SpeedWrapper`, applied explicitly by `run_from_config.build_environment()` as the outermost layer. See [concepts/wrappers.md](../concepts/wrappers.md).
 
 **Action Space Plugin**
 An `ActionSpace` subclass that maps discrete integer actions to `[dx, dy]` direction vectors. Registered in `action_registry.py` and declared in `configs/actions.yaml`. Injected as `env.action_space_plugin` before training.
@@ -90,24 +93,38 @@ Each agent maintains its own Q-table and learns independently. No explicit model
 **CQL (Centralized Q-Learning)**
 Q-learning with a shared (centralized) Q-table over the joint state-action space of all agents. A single table covers all agents collectively, enabling coordinated learning at the cost of state-space scaling. Implemented in `baselines/CQL/cql.py`.
 
+> ⚠️ **Naming collision:** this "CQL" is unrelated to the well-known offline-RL algorithm "Conservative Q-Learning" (Kumar et al., 2020) that shares the same acronym in the broader RL literature. This repo's CQL is plain online joint-action tabular Q-learning — no conservative/pessimistic regularization, no offline dataset, no distributional-shift penalty.
+
 **Q-Table**
 A lookup table `Q[state][action] → expected_return`. In IQL, one table per agent. In CQL, one shared table over the joint state of all agents.
 
 **MixedTrainer**
 A multi-algorithm baseline where predators and prey are assigned different learning algorithms (IQL or CQL) via `predator_algo` / `prey_algo` config params. Registered as `"mixed"` in the algorithm registry.
 
+**DQN (Deep Q-Network)**
+A PyTorch neural-network baseline: one independent `QNetwork` (or `DuelingQNetwork`) plus target network and replay buffer per agent — architecturally similar to IQL (independent per-agent learning) but with a function approximator instead of a table. Requires `env.observation_encoder` to be attached (an `encode(obs, env) -> np.ndarray` callable). Implemented in `baselines/DQN/dqn.py`.
+
+**Double DQN**
+A DQN variant (`double_dqn: true` config flag) that selects the bootstrap action using the *online* network but evaluates its Q-value using the *target* network, decoupling action selection from evaluation to reduce the max-operator's overestimation bias.
+
+**Dueling DQN**
+A DQN variant (`dueling: true` config flag) using `DuelingQNetwork`, which splits the network into a value stream `V(s)` and an advantage stream `A(s,a)`, recombined as `Q(s,a) = V(s) + (A(s,a) - mean_a A(s,a))`.
+
+**Replay Buffer**
+A fixed-capacity ring buffer of `(state, action, reward, next_state, done)` transitions, sampled without replacement in random batches for DQN's gradient updates. Implemented in `baselines/DQN/replay_buffer.py` as preallocated numpy arrays (not a `deque`), for O(1) vectorized batch sampling.
+
 **Epsilon-Greedy**
-Exploration strategy: with probability `epsilon`, select a random action; otherwise select the greedy (highest Q-value) action. `epsilon` decays over episodes.
+Exploration strategy: with probability `epsilon`, select a random action; otherwise select the greedy (highest Q-value) action. `epsilon` decays over episodes. Used by all four baselines (IQL, CQL, MixedTrainer, DQN).
 
 **State Encoding**
-The process of converting an observation dict (which may contain numpy arrays and nested dicts) into a hashable tuple usable as a Q-table key. Implemented in `IQL._encode_state()`.
+The process of converting an observation dict (which may contain numpy arrays and nested dicts) into a hashable tuple usable as a Q-table key. Implemented in `IQL._encode_state()` (and identically in `CQL`/`MixedTrainer`). DQN instead flattens observations to a numeric vector via `env.observation_encoder`, not a hashable tuple.
 
 ---
 
 ## Configuration Terms
 
 **Config Directory**
-The `configs/` directory containing five YAML files: `env.yaml`, `agents.yaml`, `observations.yaml`, `rewards.yaml`, `experiment.yaml`.
+The `configs/` directory containing six YAML files per experiment set: `env.yaml`, `agents.yaml`, `observations.yaml`, `rewards.yaml`, `actions.yaml`, and an experiment file (`experiment.yaml` or `experiment_{iql,cql,mixed,dqn}.yaml`). Ready-made DQN experiment sets also exist as subdirectories: `configs/dqn_1v1/`, `configs/dqn_speed1/`, `configs/dqn_speed2/`, `configs/dqn_speed3/`.
 
 **Seed**
 An integer passed to `np.random.default_rng(seed)` that initializes the environment's random number generator. The same seed produces the same obstacle layout, agent start positions, and (if the algorithm is deterministic) training trajectory.

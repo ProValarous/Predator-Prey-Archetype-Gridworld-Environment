@@ -96,6 +96,8 @@ from multi_agent_package.registry.action_registry import register_action_space
 register_action_space("my_action_space", MyActionSpace)
 ```
 
+> ⚠️ Unlike `register_reward()` and `register_observation()`, `register_action_space()` does **not** check `issubclass(cls, ActionSpace)` — registering an incompatible class succeeds silently and only fails later, when `get_action_space()`'s result is actually used inside `env.step()`.
+
 The registry key must match what is in `actions.yaml`:
 ```yaml
 actions:
@@ -115,6 +117,8 @@ env.action_space_plugin = get_action_space("discrete_5")
 ```
 
 `step()` calls `env.action_space_plugin.to_direction(a)` when the plugin is set, and falls back to `ag._actions_to_directions[a]` otherwise.
+
+> ⚠️ **`SpeedWrapper` does not use `env.action_space_plugin`.** It hardcodes its own `SpeedDiscreteActionSpace()` instance to compute sub-step counts via `to_moves()`. This works today because every shipped action space treats action `4` as NOOP, but a custom action space with a different NOOP index or action count would desync from the wrapper's counting. See [concepts/wrappers.md](../concepts/wrappers.md).
 
 ---
 

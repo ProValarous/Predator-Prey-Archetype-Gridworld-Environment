@@ -78,7 +78,7 @@ This is the **credit assignment problem**: which agent deserves credit for a joi
 
 CTDE approaches (QMIX, MADDPG, VDN) train a centralized value function that sees all agents' observations and actions. At execution time, each agent still acts from its own observation only.
 
-**This project does not implement CTDE.** See [ADR-004](../decisions/ADR-004-tabular-baselines.md).
+**This project does not implement CTDE.** The tabular baselines (IQL/CQL/MixedTrainer) are deliberately simple decentralized/centralized designs rather than a CTDE architecture; DQN is likewise independent per-agent (one network per agent), not CTDE.
 
 Why: CTDE for tabular methods requires a joint state space of size `|S|^n` (exponential in agent count). For 5 agents on a 10×10 grid using `AbsoluteObservation`, the joint state space is infeasible.
 

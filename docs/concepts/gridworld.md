@@ -55,6 +55,8 @@ These properties hold throughout any well-formed episode:
 3. **All positions are in-bounds** — the step loop clips any out-of-bounds move back to the current position
 4. **Randomness flows through `self.rng` only** — no global random state
 
+> **`allow_cell_sharing` is currently a dead config flag.** It's accepted by `GridWorldEnv.__init__` and stored on the instance, but nothing in `step()` ever reads it — there is no code path that prevents two same-type agents (two predators, or two prey) from sharing a cell, regardless of this setting. Toggling it in `env.yaml` has no observable effect today.
+
 ---
 
 ## Episode Lifecycle
@@ -83,7 +85,7 @@ close()
 ## Physics Rules
 
 ### Movement
-- Each agent picks one of 5 actions: Right, Up, Left, Down, Noop
+- Each agent picks one action integer; the active `ActionSpace` plugin maps it to a `[dx, dy]` vector (default `discrete_5`: Right, Up, Left, Down, Noop — see [concepts/actions.md](actions.md) for the other two shipped action spaces)
 - All moves are processed **simultaneously** (no ordering)
 - Out-of-bounds → agent stays in place
 - Obstacle cell → agent stays in place
@@ -102,13 +104,14 @@ close()
 
 ## Extension Contract
 
-The GridWorld is **immutable**. It exposes two injection points for plugins:
+The GridWorld is **immutable**. It exposes three injection points for plugins:
 
 ```python
-env.reward_fn          # callable(env) → Dict[str, float]
-env.observation_builder  # callable(env) → Dict[str, dict]
+env.reward_fn             # callable(env) → Dict[str, float]
+env.observation_builder    # callable(env) → Dict[str, dict]
+env.action_space_plugin    # ActionSpace instance — .to_direction(int) → np.ndarray
 ```
 
-Both are `None` at construction and must be set before calling `step()`. They are read-only with respect to the environment — plugins may not modify `env` state through these calls.
+All three are `None` at construction and must be set before calling `step()` (`run_from_config.build_environment()` wires them). They are read-only with respect to the environment — plugins may not modify `env` state through these calls.
 
-See [specs/environment-spec.md](../specs/environment-spec.md) for the full behavioral contract.
+`run_from_config.build_environment()` additionally wraps the fully-wired env in `SpeedWrapper` before returning it, so in practice most code interacts with a `SpeedWrapper`-wrapped `GridWorldEnv`, not the raw class. See [concepts/wrappers.md](wrappers.md), [specs/observation-builder-spec.md](../specs/observation-builder-spec.md), [specs/reward-function-spec.md](../specs/reward-function-spec.md), and [specs/action-space-spec.md](../specs/action-space-spec.md) for the per-plugin behavioral contracts.

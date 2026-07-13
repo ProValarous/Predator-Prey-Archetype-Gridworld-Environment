@@ -16,7 +16,7 @@ GridWorldEnv(
     seed:                     Optional[int]  = None,
     capture_threshold:        int            = 1,
     max_steps:                Optional[int]  = None,
-    allow_cell_sharing:       bool           = True,
+    allow_cell_sharing:       bool           = True,   # accepted and stored, but never read anywhere — currently dead
     block_agents_by_obstacles: bool          = True,
 )
 ```
@@ -56,9 +56,12 @@ env.close() -> None
 **Extension hooks (set before training):**
 ```python
 env.observation_builder  = callable(env) -> Dict[str, dict]
+env.observation_encoder  = callable(obs, env) -> array-like   # required by DQN only
 env.reward_fn            = callable(env) -> Dict[str, float]
 env.action_space_plugin  = ActionSpace   # object with .to_direction(int) -> np.ndarray
 ```
+
+> Note: `render_mode="rgb_array"` is accepted but currently non-functional — both `render()` and `_render_frame()` return `None` for any mode other than `"human"`, so the pixel-array-returning code path is unreachable dead code.
 
 ---
 
@@ -79,12 +82,12 @@ Agent(
 | `agent_name` | `str` | Unique identifier used as dict key |
 | `agent_type` | `str` | `"predator"` or `"prey"` |
 | `agent_team` | `str\|int` | Team identifier |
-| `agent_speed` | `int` | 1 for predators, 3 for prey — stored only, not used in step |
-| `stamina` | `int` | Default 10 — stored only, not used in any mechanic |
+| `agent_speed` | `int` | Defaults to 1 (predator)/3 (prey) from `__init__`, but `build_agents()` always overwrites it from `agents.yaml`. Ignored by `GridWorldEnv.step()` itself; consumed by `SpeedWrapper` for sub-step budgeting. |
+| `stamina` | `int` | Default 10. Ignored by `GridWorldEnv.step()` itself; depleted by `SpeedWrapper` (1 per sub-step), reset to max on `env.reset()`. |
 | `_agent_location` | `np.ndarray (2,)` | Current `[x, y]` position |
 | `action_space` | `gym.spaces.Discrete(5)` | 5 discrete actions |
 
-**Actions:**
+**Actions (default `discrete_5`; see [reference/config-reference.md](config-reference.md#actionsyaml) for `cross` and `speed_discrete_5`):**
 
 | Int | Direction | Grid delta |
 |-----|-----------|-----------|
@@ -168,25 +171,87 @@ algo._team_joint_action_index(actions, team_key) -> int
 
 ---
 
+## DQN
+
+```python
+DQN(env, config: dict)
+# config keys: gamma, epsilon, epsilon_decay, min_epsilon, episodes, seed,
+#              batch_size, buffer_size, min_replay_size, target_update_interval,
+#              learning_rate, hidden_layers, grad_clip, device, verbose,
+#              log_interval, debug_first_episode, save_path, curves_path,
+#              double_dqn (bool, default False), dueling (bool, default False)
+# action_dim is NOT read as a plain default — resolved via _resolve_action_dim():
+#   env.action_space_plugin.n_actions if set, else env.action_space.n;
+#   raises ValueError if config also sets action_dim and it disagrees
+
+# Precondition: env.observation_encoder must already be a callable(obs, env) -> array-like
+# (run_from_config.build_environment() attaches this from the observation builder's encode())
+
+algo.q_networks           # Dict[str, QNetwork | DuelingQNetwork]   — one per agent
+algo.target_networks      # Dict[str, QNetwork | DuelingQNetwork]   — hard-synced every target_update_interval
+algo.replay_buffers       # Dict[str, ReplayBuffer]                 — one per agent, seed+i per agent
+algo.state_dim            # int   — derived from encoding the first agent's initial observation
+algo.action_dim           # int   — resolved as above
+algo._resolve_action_dim(config: dict) -> int
+algo._encode_observation(obs) -> np.ndarray   # flattened float32 vector via observation_encoder
+```
+
+```python
+# src/baselines/DQN/q_network.py
+QNetwork(input_dim, hidden_layers, output_dim)          # plain MLP, linear output (Q-values can be negative)
+DuelingQNetwork(input_dim, hidden_layers, output_dim)   # value_head + advantage_head, recombined:
+                                                          # Q(s,a) = V(s) + (A(s,a) - mean_a A(s,a))
+
+# src/baselines/DQN/replay_buffer.py
+ReplayBuffer(capacity: int, state_dim: int, seed=None)
+buffer.push(state, action, reward, next_state, done)
+buffer.sample(batch_size) -> (states, actions, rewards, next_states, dones)  # without replacement
+len(buffer)   # current size (<= capacity)
+```
+
+---
+
+## Wrappers
+
+```python
+# src/multi_agent_package/wrappers/speed.py
+SpeedWrapper(env)   # wraps a fully-wired GridWorldEnv; apply LAST in build_environment()
+
+wrapper.step(actions: Dict[str, int]) -> dict     # same {"obs","reward","terminated","truncated","info"} shape
+wrapper.reset(**kwargs)                           # resets stamina to max, delegates to env.reset()
+wrapper.close()
+wrapper.NOOP                                       # class constant, 4
+# Unknown attributes (env.agents, env.action_space_plugin, env.observation_encoder, ...)
+# proxy through to the wrapped env via __getattr__.
+```
+
+---
+
 ## Registries
 
 ```python
 # Observation registry
 from multi_agent_package.registry.observation_registry import (
     get_observation_builder,      # (name: str, **params) -> ObservationBuilder
-    register_observation,         # (name: str, cls: Type[ObservationBuilder]) -> None
+    register_observation,         # (name: str, cls: Type[ObservationBuilder]) -> None  (validates issubclass)
 )
 
 # Reward registry
 from multi_agent_package.registry.reward_registry import (
     get_reward_function,          # (name: str, weight: float = 1.0, **params) -> RewardFunction
-    register_reward,              # (name: str, cls: Type[RewardFunction]) -> None
+    register_reward,              # (name: str, cls: Type[RewardFunction]) -> None  (validates issubclass)
+)
+
+# Action registry
+from multi_agent_package.registry.action_registry import (
+    get_action_space,             # (name: str, **params) -> ActionSpace
+    register_action_space,        # (name: str, cls: Type[ActionSpace]) -> None  (does NOT validate issubclass)
 )
 
 # Algorithm registry
 from baselines.registry.algorithm_registry import (
     get,                          # (name: str) -> Type[BaseAlgorithm]
-    register,                     # (name: str, cls) -> None
+    register,                     # (name: str, cls) -> None  (raises if name already registered)
     list_algorithms,              # () -> List[str]
 )
 ```
@@ -201,10 +266,27 @@ load_all_configs(
     experiment_file: str = "experiment.yaml",
 ) -> dict
 # Returns {"env": dict, "agents": dict, "observations": dict,
-#           "rewards": dict, "experiment": dict}
+#           "rewards": dict, "actions": dict, "experiment": dict}
 
 build_agents(agent_cfg: dict) -> List[Agent]
 
-build_environment(configs: dict) -> GridWorldEnv
-# Wires observation_builder and reward_fn before returning.
+build_environment(configs: dict) -> SpeedWrapper   # NOT a raw GridWorldEnv
+# Wires, in order: GridWorldEnv construction, observation_builder +
+# observation_encoder, reward_fn (base_reward() is NOT re-added — it's
+# already unconditional inside step()), action_space_plugin, then wraps
+# the result in SpeedWrapper (must be last, since it proxies the above
+# via __getattr__).
+
+main(config_dir: str = "configs") -> None
+# load_all_configs -> build_environment -> get_algorithm(name) -> algo.train() -> env.close()
+```
+
+Each algorithm also has a thin per-algorithm entry point under `scripts/` (`run_iql.py`, `run_cql.py`, `run_mixed.py`, `run_dqn.py`), all sharing the same CLI shape:
+
+```
+--mode {train,eval}   (default: train)
+--config-dir DIR      (default: "configs")
+--save-path PATH      (default: "trained_<algo>.pkl")
+--load-path PATH      (required for --mode eval)
+--render              (store_true; only affects --mode eval)
 ```

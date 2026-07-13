@@ -131,7 +131,27 @@ experiment:
       episodes: 1000
 ```
 
-Registered algorithms: `iql`, `cql`, `mixed` (MixedTrainer — assign IQL or CQL per team).
+Registered algorithms: `iql`, `cql`, `mixed` (MixedTrainer — assign IQL or CQL per team), `dqn`.
+
+---
+
+## DQN — the Neural Algorithm
+
+Unlike IQL/CQL/MixedTrainer (tabular), `DQN` (`baselines/DQN/dqn.py`) uses one independent PyTorch `QNetwork` (or `DuelingQNetwork`) plus a target network and a replay buffer **per agent** — architecturally, it's IQL's independent-per-agent structure with a function approximator instead of a table.
+
+**Extra precondition beyond `BaseAlgorithm`:** DQN requires `env.observation_encoder` to already be attached — a callable `encode(obs, env) -> array-like`, flattened internally to a 1-D `float32` array. `run_from_config.build_environment()` attaches this automatically from the configured observation builder's `encode()` method; constructing `DQN` directly on an env missing this attribute raises `ValueError`.
+
+**`action_dim` resolution differs from the tabular baselines:** DQN infers it from `env.action_space_plugin.n_actions` (falling back to `env.action_space.n` if no plugin is set) rather than taking a bare `config.get("action_dim", 5)`. If the config also sets `action_dim` explicitly and it disagrees with the inferred value, construction raises `ValueError` immediately — fail-fast instead of silently building a network with the wrong output size.
+
+**Config keys** (`experiment_dqn.yaml`): `gamma`, `epsilon`, `epsilon_decay`, `min_epsilon`, `episodes`, `batch_size`, `buffer_size`, `min_replay_size`, `target_update_interval`, `learning_rate`, `hidden_layers`, `grad_clip`, `device`, `verbose`, `log_interval`, `debug_first_episode`, `save_path`, `curves_path`, plus two flags: `double_dqn` and `dueling` (both default `false`; the shipped `configs/experiment_dqn.yaml` doesn't set them, so it trains vanilla DQN by default — `configs/dqn_1v1/experiment_dqn.yaml` sets both `true`).
+
+**Double DQN** (`double_dqn: true`): the bootstrap action is selected via the *online* network's argmax on `next_states`, but its Q-value is read from the *target* network — decoupling selection from evaluation to reduce the max operator's overestimation bias. Vanilla DQN (`double_dqn: false`) just takes `target_network(next_states).max()`.
+
+**Dueling DQN** (`dueling: true`): swaps `QNetwork` for `DuelingQNetwork`, which splits into a value head `V(s)` (scalar) and an advantage head `A(s,a)` (per action), recombined as `Q(s,a) = V(s) + (A(s,a) - mean_a A(s,a))`.
+
+**Loss/optimization:** `SmoothL1Loss` (Huber), gradient-clipped via `grad_clip`, Adam optimizer. Target networks are hard-synced (not Polyak-averaged) every `target_update_interval` optimizer steps, using a step counter shared across all agents.
+
+**Behavioral inconsistency worth knowing:** `DQN.train()` auto-saves to `save_path` if configured. IQL/CQL/MixedTrainer's `train()` methods do **not** auto-save — saving there is a separate explicit step the caller script performs after `train()` returns.
 
 ---
 
@@ -140,14 +160,14 @@ Registered algorithms: `iql`, `cql`, `mixed` (MixedTrainer — assign IQL or CQL
 ### Non-Stationarity
 Each algorithm instance sees the environment as a single-agent MDP from its perspective. In reality, other agents are also learning — their policies change every episode, making the effective transition dynamics non-stationary. This violates the stationarity assumption required for Q-learning convergence proofs.
 
-**Implication:** Algorithms must not assume that the same observation will always lead to the same outcome. IQL and CQL converge empirically in small environments but have no formal convergence guarantee in multi-agent settings.
+**Implication:** Algorithms must not assume that the same observation will always lead to the same outcome. IQL, CQL, and DQN all converge empirically in small environments but have no formal convergence guarantee in multi-agent settings.
 
 ### Independent vs. Centralized Learning
-**IQL** is fully decentralized: each agent maintains its own Q-table, updated only from its own observations and rewards. No shared value function, no communication.
+**IQL** and **DQN** are fully decentralized: each agent maintains its own Q-table (or network), updated only from its own observations and rewards. No shared value function, no communication.
 
-**CQL** is centralized: a single Q-table is shared across all agents, keyed on the joint state-action space. This enables coordinated value estimates at the cost of exponential state-space scaling with agent count.
+**CQL** is centralized: a single Q-table is shared across all agents, keyed on the joint state-action space. This enables coordinated value estimates at the cost of exponential state-space scaling with agent count. (Note: this "CQL" — Centralized Q-Learning — is unrelated to the offline-RL algorithm "Conservative Q-Learning" that shares the same acronym in the wider literature; there's no conservative/pessimistic regularization here.)
 
-Centralized Training with Decentralized Execution (CTDE) — where a centralized critic uses global state during training but agents execute independently — is intentionally out of scope. See [ADR-004](../decisions/ADR-004-tabular-baselines.md).
+Centralized Training with Decentralized Execution (CTDE) — where a centralized critic uses global state during training but agents execute independently — is intentionally out of scope for all four baselines.
 
 ### Exploration
 Epsilon-greedy exploration is applied **independently per agent**. This means agents may simultaneously explore in conflicting directions. There is no joint exploration or coordinated strategy. In cooperative tasks, independent exploration can slow convergence compared to approaches that coordinate exploratory actions.
@@ -166,6 +186,6 @@ After a prey is captured, IQL/CQL continue updating its Q-table for the remainde
 - [ ] Hyperparameters accepted as `config: dict` in `__init__`
 - [ ] Self-registers at module load via `register()` — guarded with `if __name__ != "__main__":`
 - [ ] Import added to `baselines/__init__.py`
-- [ ] CLI (`--mode train|eval`) built into the algorithm file itself (no separate train/eval scripts)
+- [ ] Standalone CLI (`--mode train|eval`) built into the algorithm file itself, building its own env directly — this is in addition to, not instead of, a thin `run_<algo>.py` wrapper under `scripts/` that reads the matching `experiment_<algo>.yaml` via `run_from_config`'s `load_all_configs`/`build_environment`
 - [ ] `train()` calls `algo.save(path)` to persist; `load(cls, env, config, path)` classmethod restores it
 - [ ] Evaluation uses `algo.evaluate()` from `BaseAlgorithm` (or overrides it)

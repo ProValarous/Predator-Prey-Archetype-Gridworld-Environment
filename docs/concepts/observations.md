@@ -59,13 +59,13 @@ Captured prey are **not removed** from observations after capture. Their positio
 - Prey still see captured teammates in their observation
 - Q-tables may grow entries for states that include frozen prey positions
 
-This is a known limitation (see [specs/environment-spec.md](../specs/environment-spec.md#known-deviations-from-spec)). For experiments where removed agents should disappear from observations, the observation builder must explicitly filter `env._captured_agents`.
+This is a known limitation of the current implementation. For experiments where removed agents should disappear from observations, the observation builder must explicitly filter `env._captured_agents`.
 
 ---
 
 ## Observation Schema — Known Inconsistency
 
-> ⚠️ **Current limitation:** Observation builders are not fully interchangeable. Each builder returns a dict with different top-level keys (`"agents"` vs `"visible_agents"` vs `"relative_agents"`). An algorithm written against one builder will break when switched to another without code changes. This contradicts the modularity promise. Tracked as [audit O-01](../reviews/audit-2026-06-07.md) and scheduled for fix in week 1.
+> ⚠️ **Current limitation:** Observation builders are not fully interchangeable. Each builder returns a dict with different top-level keys for other entities — `dist_agents`/`dist_obstacles` (`default`), `visible_agents`/`visible_obstacles` (`local_radius`), `agents`/`obstacles` (`absolute` and `relative`) — see the [Output Schema per Builder](#output-schema-per-builder) section below for exact shapes. An algorithm or observation-consuming script written against one builder's schema will break when switched to another without code changes. This contradicts the modularity promise, and there's no adapter layer that normalizes across builders today.
 
 ---
 
@@ -108,3 +108,95 @@ For a 10×10 grid with LocalOnly observations, the state space per agent is 100 
 | Full-information baseline | `default` or `absolute` |
 | Translation-invariant policy | `relative` |
 | Ablate information radius | `local_radius` with varying `radius` |
+
+---
+
+## Output Schema per Builder
+
+Each builder's exact return shape (per agent). These differ across builders — see the "Known Inconsistency" note above.
+
+### `DefaultObservation` (`default`)
+
+```python
+{
+    "agent_name": {
+        "local": np.ndarray,        # own position [x, y]
+        "global": {
+            "dist_agents": {"other_agent_name": float, ...},      # Euclidean
+            "dist_obstacles": {"obstacle_0": float, ...},          # Euclidean
+        }
+    }
+}
+```
+Delegates to `GridWorldEnv._default_observations()`. No constructor params.
+
+### `LocalOnlyObservation` (`local_only`)
+
+```python
+{
+    "agent_name": {
+        "local": np.ndarray,   # own position [x, y]
+        "global": None,
+    }
+}
+```
+No constructor params. Reads only `agent._agent_location`.
+
+### `LocalRadiusObservation` (`local_radius`)
+
+Params: `radius: int = 3`, `include_agents: bool = True`, `include_obstacles: bool = True`.
+
+```python
+{
+    "agent_name": {
+        "local": np.ndarray,
+        "visible_agents": {
+            "other_agent_name": {"rel_pos": tuple, "dist": int, "type": str}
+        },
+        "visible_obstacles": {
+            "obstacle_i": {"rel_pos": tuple, "dist": int}
+        },
+        "radius": int,
+    }
+}
+```
+Distance is Manhattan; only entities with `dist <= radius` appear.
+
+### `AbsoluteObservation` (`absolute`)
+
+Params: `include_agents: bool = True`, `include_obstacles: bool = True`, `distance_type: "euclidean"|"manhattan" = "euclidean"`.
+
+```python
+{
+    "agent_name": {
+        "local": {"pos": np.array([x, y]), "type": str, "team": str, "speed": int},
+        "agents": {
+            "other_agent_name": {"pos": np.array([x, y]), "dist": float, "type": str, "team": str}
+        },
+        "obstacles": {
+            "obstacle_0": {"pos": np.array([x, y]), "dist": float}
+        }
+    }
+}
+```
+All positions are world-frame (absolute grid coordinates).
+
+### `RelativeObservation` (`relative`)
+
+Params: `include_agents: bool = True`, `include_obstacles: bool = True`, `include_walls: bool = False`, `distance_type: "manhattan"|"euclidean" = "manhattan"`.
+
+```python
+{
+    "agent_name": {
+        "local": {"pos": np.array([0, 0]), "type": str, "team": str, "speed": int},  # ALWAYS origin
+        "agents": {
+            "other_agent_name": {"rel_pos": np.array([dx, dy]), "dist": int, "type": str, "team": str}
+        },
+        "obstacles": {
+            "obstacle_0": {"rel_pos": np.array([dx, dy]), "dist": int}
+        },
+        "walls": {"left": int, "right": int, "up": int, "down": int}   # if include_walls=True
+    }
+}
+```
+The observing agent is always reported at `[0, 0]`; every other position is an offset relative to it.

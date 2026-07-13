@@ -22,13 +22,14 @@ The Predator-Prey Archetype Gridworld is a **discrete, deterministic multi-agent
 **In scope:**
 - Discrete grid-based multi-agent dynamics
 - Configurable predator and prey teams
-- Pluggable observation and reward systems
-- Tabular Q-learning baselines (IQL, CQL)
+- Pluggable observation, reward, and action-space systems
+- Per-agent speed/stamina mechanics via wrappers
+- Tabular Q-learning baselines (IQL, CQL, MixedTrainer) and a PyTorch DQN baseline (including Double DQN and Dueling DQN)
 - Pygame-based visualization
 
 **Out of scope:**
 - Continuous state/action spaces
-- Deep reinforcement learning (DQN, PPO, SAC)
+- Policy-gradient or actor-critic methods (PPO, SAC, MADDPG)
 - Networked or distributed training
 - Photorealistic rendering
 
@@ -49,16 +50,18 @@ The Predator-Prey Archetype Gridworld is a **discrete, deterministic multi-agent
 │   GridWorldEnv  ←→  Agent (×N)                         │
 │   (core/ — immutable)                                   │
 │                                                         │
-│   ┌──────────────────┐   ┌──────────────────────────┐  │
-│   │ Observation Layer│   │     Reward Layer          │  │
-│   │ (5 builders)     │   │ (3 composable functions)  │  │
-│   └──────────────────┘   └──────────────────────────┘  │
+│  ┌────────────┐ ┌────────────┐ ┌───────────────────┐  │
+│  │Observations│ │  Rewards   │ │  Action Spaces     │  │
+│  │(5 builders)│ │(3 funcs)   │ │(3 spaces)          │  │
+│  └────────────┘ └────────────┘ └───────────────────┘  │
+│              ↓ wrapped by SpeedWrapper (speed/stamina) │
 └────────────────────────┬────────────────────────────────┘
                          │ env.step() / env.reset()
                          ▼
 ┌─────────────────────────────────────────────────────────┐
 │                  Baselines Layer                        │
-│   IQL (tabular)   CQL (tabular, centralized)           │
+│  IQL (tabular)  CQL (tabular, centralized)              │
+│  MixedTrainer (per-team)  DQN (PyTorch, +Double/Dueling)│
 │   (baselines/ — extensible)                             │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -81,5 +84,4 @@ The Predator-Prey Archetype Gridworld is a **discrete, deterministic multi-agent
 
 - [Architecture deep-dive](architecture.md)
 - [Glossary](glossary.md)
-- [Data flows](../flows/)
-- [Design decisions](../decisions/)
+- [Data flows](../flows/init-flow.md)

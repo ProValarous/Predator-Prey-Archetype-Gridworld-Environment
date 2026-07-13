@@ -114,7 +114,7 @@ actions:
 
 ## Step 5 — Update baselines (if needed)
 
-Existing baselines (IQL, CQL) hard-code `action_dim: 5` in `experiment.yaml`. If your action space has a different number of actions, update that param:
+IQL, CQL, and MixedTrainer all take a fixed `action_dim: 5` from their experiment YAML with no validation against the actual action space. If your action space has a different number of actions, update that param:
 
 ```yaml
 # configs/experiment.yaml
@@ -124,7 +124,7 @@ experiment:
       action_dim: 9   # ← must match your action space's n_actions
 ```
 
-Alternatively, baselines can read `env.action_space_plugin.n_actions` directly to avoid the mismatch:
+DQN does this automatically: `_resolve_action_dim()` reads `env.action_space_plugin.n_actions` and, if `experiment_dqn.yaml` also sets `action_dim` explicitly, raises `ValueError` at construction time if the two disagree (fail-fast instead of silently training with the wrong output layer size). For your own algorithm, prefer the same pattern:
 ```python
 action_dim = env.action_space_plugin.n_actions if env.action_space_plugin else 5
 ```

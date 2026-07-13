@@ -7,22 +7,22 @@ Five steps from a fresh clone to a trained agent.
 ## 1. Install dependencies
 
 ```bash
-cd src
-pip install -e .
-pip install -r ../requirements.txt
+pip install -r requirements.txt
 ```
+
+> `pip install -e .` does **not** work in this repo — no build backend is configured, so an editable install won't make `multi_agent_package` importable even if `pip` reports success. Every command below uses `PYTHONPATH=src` instead; run them from the repository root, not `src/`.
 
 Verify the install:
 
 ```bash
-python -c "from multi_agent_package.core.gridworld import GridWorldEnv; print('OK')"
+PYTHONPATH=src python -c "from multi_agent_package.core.gridworld import GridWorldEnv; print('OK')"
 ```
 
 ---
 
 ## 2. Configure your experiment
 
-Five YAML files in `configs/` control everything. For a first run, the defaults work:
+Six YAML files in `configs/` control everything. For a first run, the defaults work:
 
 | File | Controls |
 |------|---------|
@@ -30,37 +30,54 @@ Five YAML files in `configs/` control everything. For a first run, the defaults 
 | `agents.yaml` | How many predators and prey, their speed/stamina |
 | `observations.yaml` | What each agent can see |
 | `rewards.yaml` | Reward signals and shaping |
-| `experiment.yaml` | Which algorithm, its hyperparameters |
+| `actions.yaml` | Which action space (`discrete_5`, `cross`, or `speed_discrete_5`) |
+| `experiment.yaml` (or `experiment_{iql,cql,mixed,dqn}.yaml`) | Which algorithm, its hyperparameters |
 
-To run IQL with default settings, no edits needed. To run CQL or MixedTrainer, point at the matching experiment file:
+Each algorithm has its own dedicated runner script that reads the matching experiment file and supports `--mode train|eval`:
 
 ```bash
-# IQL (default)
-python -m multi_agent_package.scripts.run_from_config
+# IQL — reads configs/experiment_iql.yaml
+PYTHONPATH=src python -m multi_agent_package.scripts.run_iql
 
-# CQL
-python -m multi_agent_package.scripts.run_iql   # or run_cql / run_mixed
+# CQL — reads configs/experiment_cql.yaml
+PYTHONPATH=src python -m multi_agent_package.scripts.run_cql
+
+# MixedTrainer — reads configs/experiment_mixed.yaml
+PYTHONPATH=src python -m multi_agent_package.scripts.run_mixed
+
+# DQN — reads configs/experiment_dqn.yaml
+PYTHONPATH=src python -m multi_agent_package.scripts.run_dqn
+
+# Or a ready-made DQN experiment set (1 predator vs 1 prey, double+dueling enabled)
+PYTHONPATH=src python -m multi_agent_package.scripts.run_dqn --config-dir configs/dqn_1v1
+
+# Generic launcher — reads configs/experiment.yaml, whatever algorithm.name it specifies (default: iql)
+PYTHONPATH=src python -m multi_agent_package.scripts.run_from_config
 ```
 
 ---
 
 ## 3. Train
 
+Each `run_<algo>.py` script trains and saves a checkpoint by default:
+
 ```bash
-cd src
+# IQL, 1000 episodes (override via experiment_iql.yaml, not a CLI flag)
+PYTHONPATH=src python -m multi_agent_package.scripts.run_iql --save-path my_iql.pkl
 
-# Train with IQL for 1000 episodes, save checkpoint
-python -m baselines.IQL.iql --mode train --episodes 1000 --save-path my_iql.pkl
+# CQL
+PYTHONPATH=src python -m multi_agent_package.scripts.run_cql --save-path my_cql.pkl
 
-# Train with CQL
-python -m baselines.CQL.cql --mode train --episodes 1000 --save-path my_cql.pkl
+# MixedTrainer (predator/prey algorithm assignment comes from experiment_mixed.yaml)
+PYTHONPATH=src python -m multi_agent_package.scripts.run_mixed --save-path my_mixed.pkl
 
-# Train MixedTrainer (predators CQL, prey IQL)
-python -m baselines.MIXED.mix_train --mode train --predator-algo cql --prey-algo iql \
-    --episodes 1000 --save-path my_mixed.pkl
+# DQN
+PYTHONPATH=src python -m multi_agent_package.scripts.run_dqn --save-path my_dqn.pkl
 ```
 
-Training logs to stdout every 100 episodes (configurable via `logging`).
+Each algorithm also has its own standalone CLI with hyperparameters as flags (e.g. `python -m baselines.IQL.iql --episodes 1000 --alpha 0.1 ...`), which builds its own `GridWorldEnv` directly rather than going through `run_from_config` — see [reference/api-reference.md](../reference/api-reference.md).
+
+Training logs to stdout every 100 episodes (10 for DQN, via `log_interval`).
 
 ---
 
@@ -74,14 +91,13 @@ python -m baselines.IQL.iql --mode eval --load-path my_iql.pkl --episodes 20
 python -m baselines.IQL.iql --mode eval --load-path my_iql.pkl --episodes 5 --render
 ```
 
-Or use `evaluate.py` for structured metrics:
+Or use `evaluate.py`, which builds its own env + algorithm from a config directory (it does **not** take an existing `algo`/`env` — see [guides/using-evaluate.md](using-evaluate.md) for the exact signature and output shape):
 
 ```python
-# From Python
 from multi_agent_package.scripts.evaluate import evaluate
-results = evaluate(algo, env, episodes=20)
+results = evaluate(config_dir="configs", episodes=20)
 print(results)
-# {"mean_return": {...}, "episode_lengths": [...], "capture_rate": 0.7}
+# {"mean_episode_length": 47.2, "std_episode_length": 8.1, "mean_return_pred_1": -12.4, ...}
 ```
 
 ---
@@ -133,5 +149,4 @@ experiment:
 | `KeyError: 'experiment'` | Config nested as `configs["experiment"]["experiment"]["algorithm"]` — two levels |
 | Training finishes instantly (0 steps) | `max_steps: 0` or `capture_threshold: 0` in `env.yaml` |
 | Q-tables always empty | `episodes` too low or env always truncating before any step |
-
-See [troubleshooting.md](../troubleshooting.md) for more.
+| `pip install -e .` doesn't make `multi_agent_package` importable | No build backend is configured yet — use `PYTHONPATH=src` instead (see [docs/git-workflow.md](../git-workflow.md#setup)) |
