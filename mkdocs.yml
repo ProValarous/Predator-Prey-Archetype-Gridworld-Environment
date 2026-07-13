@@ -6,30 +6,66 @@ repo_name: ProValarous/Predator-Prey-Archetype-Gridworld-Environment
 
 nav:
   - Home: index.md
+  - Mission: mission.md
   - Getting Started:
-    - Usage: usage.md
+    - Quickstart: guides/quickstart.md
+    - Student Reading Guide: student-guide.md
+  - Overview:
+    - Project Overview: overview/index.md
+    - Architecture: overview/architecture.md
+    - Glossary: overview/glossary.md
   - Concepts:
-    - Agents: agents.md
-    - Environment: environment.md
-    - Observation: observations.md
-  - API Reference:
+    - GridWorld: concepts/gridworld.md
+    - Agents: concepts/agents.md
+    - Observations: concepts/observations.md
+    - Rewards: concepts/rewards.md
+    - Actions: concepts/actions.md
+    - Wrappers: concepts/wrappers.md
+    - MARL Theory: concepts/marl.md
+  - Data Flows:
+    - Initialization: flows/init-flow.md
+    - Per-Step Pipeline: flows/step-flow.md
+    - Training Loop: flows/training-loop.md
+  - Guides:
+    - Custom Observation Builder: guides/custom-observation.md
+    - Custom Reward Function: guides/custom-reward.md
+    - Custom Action Space: guides/custom-action.md
+    - Config Recipes: guides/config-recipes.md
+    - Using evaluate.py: guides/using-evaluate.md
+  - Specs:
+    - ObservationBuilder Spec: specs/observation-builder-spec.md
+    - RewardFunction Spec: specs/reward-function-spec.md
+    - ActionSpace Spec: specs/action-space-spec.md
+    - BaseAlgorithm Spec: specs/algorithm-spec.md
+  - Reference:
+    - API Reference: reference/api-reference.md
+    - Config Reference: reference/config-reference.md
     - Agent Class: api/agents.md
-    - GridWorldEnv: api/gridworld.md
-  - Contributing: contributing.md
-  - Git Workflow: git-workflow.md
-  - Code of Conduct: CODE_OF_CONDUCT.md
-  - Tutorial: tutorial.md
+    - GridWorldEnv Class: api/gridworld.md
+    - Baselines Classes: api/baselines.md
+  - Contributing:
+    - How to Contribute: contributing.md
+    - Git Workflow: git-workflow.md
+    - Code of Conduct: CODE_OF_CONDUCT.md
 
 theme:
   name: material
   language: en
   features:
+    - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
-    - navigation.expand
+    - navigation.indexes
     - navigation.top
+    - navigation.footer
+    - navigation.expand
+    - toc.follow
     - search.highlight
     - search.suggest
+    - search.share
     - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
   palette:
     - scheme: default
       primary: teal
@@ -52,7 +88,23 @@ plugins:
       default_handler: python
       handlers:
         python:
-          paths: [src]
+          # multi_agent_package/core/ and each baselines/<ALGO>/ subdir have
+          # no __init__.py (namespace packages) — griffe can't traverse
+          # them as submodules of their parent package. core/ is
+          # deliberately kept that way (off-limits per CONTRIBUTING.md's
+          # Golden Rule, so adding __init__.py there isn't an option);
+          # the baselines/ subdirs are just an existing gap. Rather than
+          # touch source for a docs config, each is listed here as its
+          # own search root instead, referenced with a bare module name
+          # in docs/api/*.md (e.g. `agent.Agent`, `iql.IQL`).
+          paths:
+            - src
+            - src/multi_agent_package/core
+            - src/baselines
+            - src/baselines/IQL
+            - src/baselines/CQL
+            - src/baselines/MIXED
+            - src/baselines/DQN
           options:
             docstring_style: numpy
             show_source: true
@@ -65,12 +117,24 @@ plugins:
 markdown_extensions:
   - admonition
   - tables
+  - footnotes
   - toc:
       permalink: true
   - pymdownx.highlight:
       anchor_linenums: true
-  - pymdownx.superfences
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - attr_list
   - md_in_html
