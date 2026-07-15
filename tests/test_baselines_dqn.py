@@ -133,8 +133,8 @@ class TestDuelingQNetwork:
         x = torch.randn((2, 4))
         with torch.no_grad():
             features = net.trunk(x)
-            value = net.value_head(features)   # (2, 1)
-            q_out = net(x)                     # (2, 5)
+            value = net.value_head(features)  # (2, 1)
+            q_out = net(x)  # (2, 5)
         assert torch.allclose(q_out.mean(dim=1, keepdim=True), value, atol=1e-5)
 
 
