@@ -240,6 +240,8 @@ class DQN(BaseAlgorithm):
         )
         optimizer.step()
 
+        # counts total gradient steps across all agents — with N agents this
+        # triggers a sync every target_update_interval/N env steps per agent.
         self._train_steps += 1
         if self._train_steps % self.target_update_interval == 0:
             self._sync_targets()

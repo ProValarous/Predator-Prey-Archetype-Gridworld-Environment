@@ -20,3 +20,5 @@ experiment:
       seed: 42
       device: "cpu"
       curves_path: "training_curves_dqn.csv"
+      # double_dqn: false  # true → online net selects action, target net scores it (fixes overestimation)
+      # dueling: false     # true → Dueling network: Q = V(s) + A(s,a) − mean(A)
