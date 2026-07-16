@@ -7,6 +7,7 @@ import torch
 
 from baselines.DQN.replay_buffer import ReplayBuffer
 from baselines.DQN.q_network import QNetwork
+from baselines.DQN.curve_recorder import CurveRecorder
 
 # ------------------------------------------------------------------
 # ReplayBuffer
@@ -96,6 +97,43 @@ class TestQNetwork:
         net = QNetwork(2, [16, 8, 4], 3)
         out = net(torch.zeros((1, 2)))
         assert out.shape == (1, 3)
+
+
+# ------------------------------------------------------------------
+# CurveRecorder
+# ------------------------------------------------------------------
+
+
+class TestCurveRecorder:
+    def test_column_order_and_header(self, tmp_path):
+        path = tmp_path / "curves.csv"
+        rec = CurveRecorder(str(path), ["pred_1", "prey_1"])
+        rec.close()
+        header = path.read_text().strip().splitlines()[0]
+        assert header == "episode,epsilon,pred_1_reward,prey_1_reward,pred_1_loss,prey_1_loss"
+
+    def test_record_rounds_and_writes_row(self, tmp_path):
+        path = tmp_path / "curves.csv"
+        rec = CurveRecorder(str(path), ["pred_1"])
+        rec.record(1, 0.123456, {"pred_1": 2.98765}, {"pred_1": [1.0, 2.0]})
+        rec.close()
+        row = path.read_text().strip().splitlines()[1]
+        # epsilon->4dp, reward->4dp, mean loss (1.5)->6dp
+        assert row == "1,0.1235,2.9876,1.5"
+
+    def test_warmup_episode_writes_empty_loss_cell(self, tmp_path):
+        path = tmp_path / "curves.csv"
+        rec = CurveRecorder(str(path), ["pred_1"])
+        rec.record(1, 0.5, {"pred_1": -3.0}, {"pred_1": []})
+        rec.close()
+        row = path.read_text().strip().splitlines()[1]
+        assert row == "1,0.5,-3.0,"
+
+    def test_creates_missing_parent_dir(self, tmp_path):
+        path = tmp_path / "nested" / "sub" / "curves.csv"
+        rec = CurveRecorder(str(path), ["pred_1"])
+        rec.close()
+        assert path.exists()
 
 
 # ------------------------------------------------------------------

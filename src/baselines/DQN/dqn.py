@@ -12,7 +12,6 @@ constructing DQN (run_from_config.build_environment does this).
 
 from __future__ import annotations
 
-import csv
 import logging
 import os
 import pickle
@@ -29,6 +28,7 @@ from baselines.base import BaseAlgorithm
 from baselines.registry.algorithm_registry import register
 from baselines.DQN.q_network import QNetwork, DuelingQNetwork
 from baselines.DQN.replay_buffer import ReplayBuffer
+from baselines.DQN.curve_recorder import CurveRecorder
 
 LOGGER = logging.getLogger("dqn")
 
@@ -257,29 +257,23 @@ class DQN(BaseAlgorithm):
     # ------------------------------------------------------------------
 
     def train(self):
-        csv_file = None
-        csv_writer = None
-        if self.curves_path:
-            os.makedirs(os.path.dirname(self.curves_path) or ".", exist_ok=True)
-            csv_file = open(self.curves_path, "w", newline="")
-            reward_cols = [f"{aid}_reward" for aid in self.agent_ids]
-            loss_cols = [f"{aid}_loss" for aid in self.agent_ids]
-            csv_writer = csv.DictWriter(
-                csv_file, fieldnames=["episode", "epsilon"] + reward_cols + loss_cols
-            )
-            csv_writer.writeheader()
+        recorder = (
+            CurveRecorder(self.curves_path, self.agent_ids)
+            if self.curves_path
+            else None
+        )
 
         self._debug(f"Starting training for {self.episodes} episodes")
         try:
-            self._train_loop(csv_writer)
+            self._train_loop(recorder)
         finally:
-            if csv_file:
-                csv_file.close()
+            if recorder:
+                recorder.close()
 
         if self.save_path:
             self.save(self.save_path)
 
-    def _train_loop(self, csv_writer) -> None:
+    def _train_loop(self, recorder: Optional[CurveRecorder]) -> None:
         for episode in range(self.episodes):
             observations, _ = self.env.reset()
             episode_rewards = {agent_id: 0.0 for agent_id in self.agent_ids}
@@ -339,15 +333,10 @@ class DQN(BaseAlgorithm):
                     f"steps={step_count} | rewards: {reward_str} | avg_loss: {loss_str}"
                 )
 
-            if csv_writer:
-                row: dict = {"episode": episode + 1, "epsilon": round(self.epsilon, 4)}
-                for aid in self.agent_ids:
-                    row[f"{aid}_reward"] = round(episode_rewards[aid], 4)
-                    losses = episode_losses[aid]
-                    row[f"{aid}_loss"] = (
-                        round(sum(losses) / len(losses), 6) if losses else ""
-                    )
-                csv_writer.writerow(row)
+            if recorder:
+                recorder.record(
+                    episode + 1, self.epsilon, episode_rewards, episode_losses
+                )
 
     # ------------------------------------------------------------------
     # Persistence
