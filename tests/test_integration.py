@@ -393,6 +393,7 @@ class TestSpeedWrapper:
         from multi_agent_package.core.agent import Agent
         from multi_agent_package.core.gridworld import GridWorldEnv
         from multi_agent_package.observations.local_only import LocalOnlyObservation
+        from multi_agent_package.actions.discrete_actions import DiscreteActionSpace
         from multi_agent_package.wrappers.speed import SpeedWrapper
 
         agents = [
@@ -408,6 +409,7 @@ class TestSpeedWrapper:
             agents=agents, size=5, perc_num_obstacle=0, render_mode=None, seed=0
         )
         env.observation_builder = LocalOnlyObservation().build
+        env.action_space_plugin = DiscreteActionSpace()
         return SpeedWrapper(env)
 
     def test_max_stamina_read_from_agent(self):
@@ -438,11 +440,12 @@ class TestSpeedWrapper:
         assert wrapped._stamina["pred_1"] == before
 
     def test_stamina_cap_limits_sub_steps(self):
-        # with stamina=2 and speed=3, predator gets only 2 sub-steps
-        from multi_agent_package.actions.speed_discrete import SpeedDiscreteActionSpace
-
-        sp = SpeedDiscreteActionSpace()
-        assert len(sp.to_moves(0, speed=3, stamina=2)) == 2
+        # with stamina=2 and speed=3, predator gets only 2 sub-steps (not 3)
+        wrapped = self._make_wrapped(pred_speed=3, pred_stamina=2)
+        wrapped.reset()
+        wrapped._stamina["pred_1"] = 2   # ensure known start value
+        wrapped.step({"pred_1": 0, "prey_1": 4})
+        assert wrapped._stamina["pred_1"] == 0   # depleted by min(3, 2) = 2
 
     def test_speed1_fast_path_no_stamina_deduction(self):
         wrapped = self._make_wrapped(
