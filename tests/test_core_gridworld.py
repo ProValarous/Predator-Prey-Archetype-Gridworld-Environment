@@ -147,6 +147,28 @@ class TestStepCost:
         # predator should lose 5 per step (no capture, no obstacle)
         assert out["reward"]["pred_1"] == pytest.approx(-5.0)
 
+    def test_include_base_reward_true_is_default(self):
+        env = make_env(perc_obstacle=0)
+        assert env.include_base_reward is True
+
+    def test_include_base_reward_false_zeroes_base_signal(self):
+        # With the base reward disabled, step() must emit exactly 0.0 for every
+        # agent (no step cost, no capture/obstacle signal) instead of applying
+        # base_reward() a second time. Guards issue #32.
+        env = make_env(perc_obstacle=0, include_base_reward=False)
+        obs, _ = env.reset()
+        out = env.step({aid: 4 for aid in obs})
+        assert set(out["reward"]) == set(obs)
+        assert all(v == 0.0 for v in out["reward"].values())
+
+    def test_include_base_reward_false_still_applies_shaping(self):
+        # Disabling the base reward must not disable reward_fn shaping.
+        env = make_env(perc_obstacle=0, include_base_reward=False)
+        obs, _ = env.reset()
+        env.reward_fn = lambda e: {ag.agent_name: 1.5 for ag in e.agents}
+        out = env.step({aid: 4 for aid in obs})
+        assert all(v == pytest.approx(1.5) for v in out["reward"].values())
+
 
 # ------------------------------------------------------------------
 # Obstacle mechanics
