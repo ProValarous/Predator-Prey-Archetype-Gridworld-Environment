@@ -10,6 +10,7 @@ import pytest
 
 from multi_agent_package.core.agent import Agent
 from multi_agent_package.core.gridworld import GridWorldEnv
+from multi_agent_package.rewards.base_reward import BaseReward
 from baselines.CQL.cql import CQL
 
 # ------------------------------------------------------------------
@@ -31,9 +32,13 @@ def make_env(n_pred=1, n_prey=1, size=5, seed=0):
         agents.append(
             Agent(agent_type="prey", agent_team=f"prey_{i}", agent_name=f"prey_{i}")
         )
-    return GridWorldEnv(
+    env = GridWorldEnv(
         agents=agents, size=size, perc_num_obstacle=0, render_mode=None, seed=seed
     )
+    # base reward now enters through the plugin pipeline, not gridworld.step();
+    # attach it so training sees the capture/step-cost signal (issue #32)
+    env.reward_fn = BaseReward(weight=1.0).compute
+    return env
 
 
 def base_config(**overrides):

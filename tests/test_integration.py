@@ -188,6 +188,45 @@ class TestBuildEnvironment:
 
 
 # ------------------------------------------------------------------
+# Base reward enters only through the plugin pipeline (issue #32)
+# ------------------------------------------------------------------
+
+
+class TestBaseRewardIsPluginDriven:
+    def _build(self, base_enabled):
+        from multi_agent_package.scripts.run_from_config import (
+            load_all_configs,
+            build_environment,
+        )
+
+        configs = load_all_configs(experiment_file="experiment_iql.yaml")
+        configs["env"]["env"]["render_mode"] = None
+        configs["rewards"]["rewards"]["base"]["enabled"] = base_enabled
+        return build_environment(configs)
+
+    def _first_step_reward(self, env):
+        obs, _ = env.reset()
+        return env.step({aid: 4 for aid in obs})["reward"]
+
+    def test_base_enabled_adds_step_cost(self):
+        # With base enabled, a NOOP predator incurs the negative base step
+        # cost on top of shaping; disabling base removes exactly that
+        # component. This is the single-application-path guarantee of #32.
+        on = self._first_step_reward(self._build(True))
+        off = self._first_step_reward(self._build(False))
+        preds = [k for k in on if k.startswith("pred")]
+        assert preds, "expected predator agents in the IQL config"
+        for k in preds:
+            assert on[k] < off[k], f"base reward not applied for {k}"
+
+    def test_base_disabled_leaves_only_shaping(self):
+        # Disabling base must not zero out shaping (prey survival shaping stays).
+        off = self._first_step_reward(self._build(False))
+        prey = [v for k, v in off.items() if k.startswith("prey")]
+        assert prey and all(v > 0 for v in prey)
+
+
+# ------------------------------------------------------------------
 # End-to-end training: IQL
 # ------------------------------------------------------------------
 
@@ -354,6 +393,7 @@ class TestSpeedWrapper:
         from multi_agent_package.core.agent import Agent
         from multi_agent_package.core.gridworld import GridWorldEnv
         from multi_agent_package.observations.local_only import LocalOnlyObservation
+        from multi_agent_package.actions.discrete_actions import DiscreteActionSpace
         from multi_agent_package.wrappers.speed import SpeedWrapper
 
         agents = [
@@ -369,6 +409,7 @@ class TestSpeedWrapper:
             agents=agents, size=5, perc_num_obstacle=0, render_mode=None, seed=0
         )
         env.observation_builder = LocalOnlyObservation().build
+        env.action_space_plugin = DiscreteActionSpace()
         return SpeedWrapper(env)
 
     def test_max_stamina_read_from_agent(self):
@@ -399,11 +440,12 @@ class TestSpeedWrapper:
         assert wrapped._stamina["pred_1"] == before
 
     def test_stamina_cap_limits_sub_steps(self):
-        # with stamina=2 and speed=3, predator gets only 2 sub-steps
-        from multi_agent_package.actions.speed_discrete import SpeedDiscreteActionSpace
-
-        sp = SpeedDiscreteActionSpace()
-        assert len(sp.to_moves(0, speed=3, stamina=2)) == 2
+        # with stamina=2 and speed=3, predator gets only 2 sub-steps (not 3)
+        wrapped = self._make_wrapped(pred_speed=3, pred_stamina=2)
+        wrapped.reset()
+        wrapped._stamina["pred_1"] = 2   # ensure known start value
+        wrapped.step({"pred_1": 0, "prey_1": 4})
+        assert wrapped._stamina["pred_1"] == 0   # depleted by min(3, 2) = 2
 
     def test_speed1_fast_path_no_stamina_deduction(self):
         wrapped = self._make_wrapped(

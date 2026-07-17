@@ -1,0 +1,11 @@
+observations:
+  params:
+    include_agents: true
+    include_obstacles: true
+    radius: 3
+  per_agent:
+    predator:
+      radius: 4
+    prey:
+      radius: 2
+  type: local_radius
