@@ -281,8 +281,13 @@ class GridWorldEnv(gym.Env):
         self._captures_total += self._captures_this_step
         self._episode_steps += 1
 
-        # rewards
-        rewards = self.base_reward()
+        # rewards: step() applies no reward on its own. All reward signal,
+        # including the base capture/obstacle/step-cost reward, is supplied by
+        # the reward_fn pipeline via the BaseReward plugin (added by
+        # run_from_config when rewards.base.enabled is true). This gives the
+        # base reward exactly one application path, so it can never be
+        # double-counted. See rewards/base_reward.py and issue #32.
+        rewards = {ag.agent_name: 0.0 for ag in self.agents}
 
         if self.reward_fn is not None:
             custom = self.reward_fn(self)

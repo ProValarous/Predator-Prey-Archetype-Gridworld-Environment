@@ -143,9 +143,12 @@ def build_environment(configs: dict) -> GridWorldEnv:
     # -----------------------------
     reward_fns = []
 
-    # base_reward() is called internally by gridworld.step() — do NOT add it
-    # here or every capture/death signal gets counted twice.
-    _ = reward_cfg["rewards"]["base"]["enabled"]  # validate key exists
+    # The base reward is a first-class plugin like any other: it enters the
+    # pipeline here (and only here) when rewards.base.enabled is true.
+    # gridworld.step() applies no reward on its own, so there is exactly one
+    # application path and the base reward cannot be double-counted (issue #32).
+    if reward_cfg["rewards"]["base"]["enabled"]:
+        reward_fns.append(get_reward_function("base"))
 
     for r in reward_cfg["rewards"].get("shaping", []):
         reward_fns.append(

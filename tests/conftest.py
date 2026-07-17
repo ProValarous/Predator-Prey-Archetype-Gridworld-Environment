@@ -162,6 +162,7 @@ def dqn_env(one_predator_one_prey):
     """5×5 env with local_only observation + discrete_5 actions wired for DQN."""
     from multi_agent_package.observations.local_only import LocalOnlyObservation
     from multi_agent_package.actions.discrete_actions import DiscreteActionSpace
+    from multi_agent_package.rewards.base_reward import BaseReward
 
     env = GridWorldEnv(
         agents=one_predator_one_prey,
@@ -174,4 +175,7 @@ def dqn_env(one_predator_one_prey):
     env.observation_builder = observation_builder.build
     env.observation_encoder = observation_builder.encode
     env.action_space_plugin = DiscreteActionSpace()
+    # base reward now enters through the plugin pipeline, not gridworld.step();
+    # attach it so training sees the capture/step-cost signal (issue #32)
+    env.reward_fn = BaseReward(weight=1.0).compute
     return env
