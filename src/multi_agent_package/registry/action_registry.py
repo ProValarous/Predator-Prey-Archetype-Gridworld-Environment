@@ -5,7 +5,6 @@ from multi_agent_package.actions.discrete_actions import DiscreteActionSpace
 from multi_agent_package.actions.cross_actions import CrossActionSpace
 from multi_agent_package.actions.speed_discrete import SpeedDiscreteActionSpace
 
-
 _ACTION_REGISTRY: Dict[str, Type[ActionSpace]] = {
     "discrete_5": DiscreteActionSpace,
     "cross": CrossActionSpace,
@@ -16,8 +15,7 @@ _ACTION_REGISTRY: Dict[str, Type[ActionSpace]] = {
 def get_action_space(name: str, **params) -> ActionSpace:
     if name not in _ACTION_REGISTRY:
         raise KeyError(
-            f"Unknown action space '{name}'. "
-            f"Available: {list(_ACTION_REGISTRY)}"
+            f"Unknown action space '{name}'. " f"Available: {list(_ACTION_REGISTRY)}"
         )
     return _ACTION_REGISTRY[name](**params)
 

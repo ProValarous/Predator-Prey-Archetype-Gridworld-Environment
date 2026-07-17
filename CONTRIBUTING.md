@@ -2,10 +2,13 @@
 
 ## How to contribute
 
-1. Fork -> branch `fix/short-desc` or `feat/short-desc`
-2. Run tests: `pip install -r requirements-dev.txt` && `pytest` (not implemented yet)
+1. Fork -> branch `fix/short-desc` or `feat/short-desc` off of `STRP` (not `main` — see [Git Workflow](docs/git-workflow.md))
+2. Run tests: `pip install -r requirements-dev.txt` && `PYTHONPATH=src python -m pytest tests/ -q`
 3. Follow the code style (Black) and add type hints where possible
-4. Open a PR and link an issue (if any)
+4. Open a PR against `STRP` and link an issue (if any)
+
+For the full branching model, commit conventions, what CI checks on your PR,
+and how to resolve merge conflicts, see **[docs/git-workflow.md](docs/git-workflow.md)**.
 
 
 # Contributing to Predator–Prey GridWorld

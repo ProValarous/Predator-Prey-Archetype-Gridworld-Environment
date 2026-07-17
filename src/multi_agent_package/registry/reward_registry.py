@@ -11,7 +11,6 @@ from multi_agent_package.rewards.base_reward import BaseReward
 from multi_agent_package.rewards.predator_distance import PredatorDistanceReward
 from multi_agent_package.rewards.survival_reward import SurvivalReward
 
-
 _REWARD_REGISTRY: dict[str, Type[RewardFunction]] = {
     "base": BaseReward,
     "predator_distance": PredatorDistanceReward,

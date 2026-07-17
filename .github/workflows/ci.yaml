@@ -1,16 +1,51 @@
-name: CI - Format & Lint
+name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, STRP ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, STRP ]
 
 permissions:
   contents: read
 
 jobs:
   lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', '**/requirements-dev.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Check formatting with Black
+        run: black --check .
+
+      - name: Run Flake8 (PEP8)
+        run: flake8 .
+
+      - name: Run Pylint
+        env:
+          PYTHONPATH: src
+        run: pylint src
+
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -32,13 +67,34 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          pip install -r requirements.txt
 
-      - name: Check formatting with Black
-        run: black --check .
+      - name: Run tests
+        env:
+          PYTHONPATH: src
+        run: pytest tests/ -q
 
-      - name: Run Flake8 (PEP8)
-        run: flake8 .
+  # Enforces CONTRIBUTING.md's "Golden Rule": core/gridworld.py and
+  # core/agent.py are maintainers-only. Students/contributors extend the
+  # system via observations/, rewards/, actions/, wrappers/, or configs/.
+  core-guard:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Run Pylint
-        run: pylint src || exit 1
+      - name: Block PRs that modify the immutable core/
+        run: |
+          CHANGED=$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" -- src/multi_agent_package/core/)
+          if [ -n "$CHANGED" ]; then
+            echo "The following files under src/multi_agent_package/core/ were modified by this PR:"
+            echo "$CHANGED"
+            echo ""
+            echo "core/gridworld.py and core/agent.py are maintainers-only (CONTRIBUTING.md 'Golden Rule')."
+            echo "Extend the system via observations/, rewards/, actions/, wrappers/, or configs/ instead."
+            exit 1
+          fi
+          echo "OK: this PR does not touch src/multi_agent_package/core/."

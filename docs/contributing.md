@@ -51,103 +51,28 @@ source venv/bin/activate
 
 # Install development dependencies
 pip install -r requirements-dev.txt
-
-# Install the package in editable mode
-pip install -e .
-
-# Install pre-commit hooks
-pre-commit install
 ```
+
+`pip install -e .` does **not** work in this repo (no build backend is
+configured) — every command below runs with `PYTHONPATH=src` instead.
 
 ### 5. Verify Setup 
 ```bash
 # Run tests
-pytest tests/ -v # not implemented yet
+PYTHONPATH=src python -m pytest tests/ -q
 
 # Check formatting
-black --check src/
+black --check .
 
 # Check linting
-flake8 src/
+flake8 .
+PYTHONPATH=src pylint src
 ```
 
 ## Development Workflow
 
-### Step 1: Sync with Upstream
-Before starting any work, ensure your fork is up to date
+Branching, commit conventions, what CI checks on your PR, and how to
+resolve conflicts are all covered in one place: **[Git Workflow](git-workflow.md)**.
 
-### Step 2: Create Feature/Fix Branch
-Never work directly on `main`. Always create a new branch:
-```bash 
-git checkout -b feat/short-desc
-```
-or 
-```bash 
-git checkout -b fix/short-desc
-```
-
-### Step 3: Make Your Changes
-Edit the code, add tests, update documentation as needed.
-
-### Step 4: Format and Lint
-Before committing, ensure your code meets our standards:
-```bash
-# Format code with Black
-black src/
-
-# Check for linting errors
-flake8 src/
-
-# Run tests
-pytest tests/ -v
-```
-
-### Step 5: Commit Your Changes 
-```bash 
-git add .
-git commit -m "feat: Add your feature description"
-```
-
-### Step 6: Push to your fork
-```bash
-git push -u origin feat/short-desc
-```
-
-### Step 7: Open a Pull Request
-
-1. Go to the original repository on GitHub
-2. Click "Compare & pull request"
-3. Fill in the PR template with a clear description
-4. Link any related issues
-5. Submit the PR
-
-
-## Quick Reference 
-```bash 
-# Complete workflow in one place
-
-# 1. Setup (one-time)
-git clone https://github.com/YOUR_USERNAME/Predator-Prey-Gridworld-Environment.git
-cd Predator-Prey-Gridworld-Environment
-git remote add upstream https://github.com/ProValarous/Predator-Prey-Gridworld-Environment.git
-pip install -r requirements-dev.txt
-pip install -e .
-pre-commit install
-
-# 2. Start new feature
-git checkout main
-git pull upstream main
-git checkout -b feat/my-feature
-
-# 3. Make changes, then format and test
-black src/
-flake8 src/
-pytest tests/ -v
-
-# 4. Commit and push
-git add .
-git commit -m "feat: Add my feature"
-git push -u origin feat/my-feature
-
-# 5. Open PR on GitHub
-```
+The short version: branch from `STRP` (not `main`), never touch `core/`,
+run the checks above before pushing, and open your PR against `STRP`.

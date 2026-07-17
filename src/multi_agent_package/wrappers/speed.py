@@ -80,7 +80,7 @@ class SpeedWrapper:
             if result["terminated"] or result["truncated"]:
                 break
 
-        # deduct 1 stamina per sub-step taken (NOOP costs 0, so n_steps already excludes it)
+        # deduct 1 stamina per sub-step (NOOP costs 0, already excluded from n_steps)
         for name, n in n_steps.items():
             self._stamina[name] = max(0, self._stamina[name] - n)
 

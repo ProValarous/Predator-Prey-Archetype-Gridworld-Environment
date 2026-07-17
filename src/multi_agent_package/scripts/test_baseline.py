@@ -12,7 +12,7 @@ import sys
 import traceback
 
 # Ensure baselines register themselves
-import baselines
+import baselines  # noqa: F401
 
 
 from baselines.registry import get, list_algorithms
@@ -28,12 +28,12 @@ def build_test_env():
     agents = [
         Agent(agent_type="predator", agent_team="predator_1", agent_name="pred_1"),
         Agent(agent_type="prey", agent_team="prey_1", agent_name="prey_1"),
-        Agent(agent_type="predator", agent_team="predator_2", agent_name="pred_2")
+        Agent(agent_type="predator", agent_team="predator_2", agent_name="pred_2"),
     ]
 
     env = GridWorldEnv(
         agents=agents,
-        size=8,               # small grid
+        size=8,  # small grid
         perc_num_obstacle=10,  # no obstacles for clean learning
         render_mode=None,
         seed=42,
@@ -53,8 +53,8 @@ def test_algorithm(algo_name):
         "alpha": 0.1,
         "gamma": 0.99,
         "epsilon": 0.2,
-        "episodes": 100,       # very small test
-        "cql_alpha": 0.1      # used only by CQL
+        "episodes": 100,  # very small test
+        "cql_alpha": 0.1,  # used only by CQL
     }
 
     algo = algo_cls(env, config)
@@ -71,7 +71,9 @@ def test_algorithm(algo_name):
             print(f"Agent: {agent_name}")
             print(f"  States learned: {len(table)}")
             if len(table) == 0:
-                raise RuntimeError(f"Q-table empty for {agent_name} — learning did not run.")
+                raise RuntimeError(
+                    f"Q-table empty for {agent_name} — learning did not run."
+                )
     elif hasattr(algo, "q_table"):
         # CQL: single shared joint-state table
         print(f"Shared joint Q-table: {len(algo.q_table)} joint states learned")
@@ -106,7 +108,7 @@ def main():
         print("\nALL TESTS PASSED.")
         print("Architecture integrity confirmed.")
 
-    except Exception as e:
+    except Exception:
         print("\nTEST FAILED.")
         traceback.print_exc()
         sys.exit(1)

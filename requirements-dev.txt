@@ -10,6 +10,3 @@ mkdocs
 mkdocs-material
 mkdocstrings[python]
 
-# Logging
-wandb
-

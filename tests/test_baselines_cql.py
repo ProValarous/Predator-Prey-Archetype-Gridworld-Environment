@@ -10,20 +10,35 @@ import pytest
 
 from multi_agent_package.core.agent import Agent
 from multi_agent_package.core.gridworld import GridWorldEnv
+from multi_agent_package.rewards.base_reward import BaseReward
 from baselines.CQL.cql import CQL
-
 
 # ------------------------------------------------------------------
 # Fixtures
 # ------------------------------------------------------------------
 
+
 def make_env(n_pred=1, n_prey=1, size=5, seed=0):
     agents = []
     for i in range(1, n_pred + 1):
-        agents.append(Agent(agent_type="predator", agent_team=f"predator_{i}", agent_name=f"pred_{i}"))
+        agents.append(
+            Agent(
+                agent_type="predator",
+                agent_team=f"predator_{i}",
+                agent_name=f"pred_{i}",
+            )
+        )
     for i in range(1, n_prey + 1):
-        agents.append(Agent(agent_type="prey", agent_team=f"prey_{i}", agent_name=f"prey_{i}"))
-    return GridWorldEnv(agents=agents, size=size, perc_num_obstacle=0, render_mode=None, seed=seed)
+        agents.append(
+            Agent(agent_type="prey", agent_team=f"prey_{i}", agent_name=f"prey_{i}")
+        )
+    env = GridWorldEnv(
+        agents=agents, size=size, perc_num_obstacle=0, render_mode=None, seed=seed
+    )
+    # base reward now enters through the plugin pipeline, not gridworld.step();
+    # attach it so training sees the capture/step-cost signal (issue #32)
+    env.reward_fn = BaseReward(weight=1.0).compute
+    return env
 
 
 def base_config(**overrides):
@@ -45,6 +60,7 @@ def base_config(**overrides):
 # Initialization
 # ------------------------------------------------------------------
 
+
 class TestCQLInit:
     def test_n_agents(self):
         env = make_env(n_pred=1, n_prey=1)
@@ -54,12 +70,12 @@ class TestCQLInit:
     def test_joint_action_space_size(self):
         env = make_env(n_pred=1, n_prey=1)
         algo = CQL(env, base_config(action_dim=5))
-        assert algo.n_joint_actions == 5 ** 2  # 25
+        assert algo.n_joint_actions == 5**2  # 25
 
     def test_joint_action_space_3_agents(self):
         env = make_env(n_pred=2, n_prey=1)
         algo = CQL(env, base_config(action_dim=5))
-        assert algo.n_joint_actions == 5 ** 3  # 125
+        assert algo.n_joint_actions == 5**3  # 125
 
     def test_q_table_starts_empty(self):
         env = make_env()
@@ -75,6 +91,7 @@ class TestCQLInit:
 # ------------------------------------------------------------------
 # Joint state encoding
 # ------------------------------------------------------------------
+
 
 class TestCQLJointState:
     def test_joint_state_is_tuple(self):
@@ -109,6 +126,7 @@ class TestCQLJointState:
 # Joint action encoding
 # ------------------------------------------------------------------
 
+
 class TestCQLJointAction:
     def test_joint_action_in_range(self):
         env = make_env(n_pred=1, n_prey=1)
@@ -140,6 +158,7 @@ class TestCQLJointAction:
 # ------------------------------------------------------------------
 # Action selection (marginalisation)
 # ------------------------------------------------------------------
+
 
 class TestCQLSelectActions:
     def test_returns_all_agents(self):
@@ -178,6 +197,7 @@ class TestCQLSelectActions:
 # Training loop
 # ------------------------------------------------------------------
 
+
 class TestCQLTrain:
     def test_q_table_populated_after_training(self):
         env = make_env()
@@ -213,7 +233,10 @@ class TestCQLTrain:
 
     def test_epsilon_decays_when_decay_set(self):
         env = make_env()
-        algo = CQL(env, base_config(epsilon=1.0, epsilon_decay=0.5, min_epsilon=0.0, episodes=5))
+        algo = CQL(
+            env,
+            base_config(epsilon=1.0, epsilon_decay=0.5, min_epsilon=0.0, episodes=5),
+        )
         algo.train()
         assert algo.epsilon < 1.0
 
@@ -221,6 +244,7 @@ class TestCQLTrain:
 # ------------------------------------------------------------------
 # Save / load
 # ------------------------------------------------------------------
+
 
 class TestCQLPersistence:
     def test_save_creates_file(self):

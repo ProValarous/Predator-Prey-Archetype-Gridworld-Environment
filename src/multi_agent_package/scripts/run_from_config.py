@@ -15,7 +15,7 @@ import yaml
 from pathlib import Path
 
 # Force baseline auto-registration
-import baselines
+import baselines  # noqa: F401
 from baselines.registry import get as get_algorithm
 
 from multi_agent_package.core.gridworld import GridWorldEnv
@@ -37,6 +37,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 # -------------------------------------------------
 # YAML Loader
 # -------------------------------------------------
+
 
 def load_yaml(path: Path) -> dict:
     with open(path, "r") as f:
@@ -62,6 +63,7 @@ def load_all_configs(
 # -------------------------------------------------
 # Agent Builder
 # -------------------------------------------------
+
 
 def build_agents(agent_cfg: dict):
     agents = []
@@ -95,6 +97,7 @@ def build_agents(agent_cfg: dict):
 # -------------------------------------------------
 # Environment Builder
 # -------------------------------------------------
+
 
 def build_environment(configs: dict) -> GridWorldEnv:
     env_cfg = configs["env"]
@@ -140,6 +143,10 @@ def build_environment(configs: dict) -> GridWorldEnv:
     # -----------------------------
     reward_fns = []
 
+    # The base reward is a first-class plugin like any other: it enters the
+    # pipeline here (and only here) when rewards.base.enabled is true.
+    # gridworld.step() applies no reward on its own, so there is exactly one
+    # application path and the base reward cannot be double-counted (issue #32).
     if reward_cfg["rewards"]["base"]["enabled"]:
         reward_fns.append(get_reward_function("base"))
 
@@ -184,6 +191,7 @@ def build_environment(configs: dict) -> GridWorldEnv:
 # -------------------------------------------------
 # Main Entry
 # -------------------------------------------------
+
 
 def main(config_dir: str = "configs"):
     configs = load_all_configs(config_dir)

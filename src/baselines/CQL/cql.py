@@ -64,7 +64,7 @@ class CQL(BaseAlgorithm):
         initial_obs, _ = self.env.reset()
         self.agent_ids = list(initial_obs.keys())
         self.n_agents = len(self.agent_ids)
-        self.n_joint_actions = self.action_dim ** self.n_agents
+        self.n_joint_actions = self.action_dim**self.n_agents
 
         # shape for reshaping the Q-vector into a per-agent tensor
         self._action_shape = (self.action_dim,) * self.n_agents
@@ -90,6 +90,7 @@ class CQL(BaseAlgorithm):
                     return tuple(_convert(v) for v in val)
                 return val
             return obj
+
         return _convert(obs_dict)
 
     def _joint_state(self, observations: dict) -> tuple:
@@ -113,8 +114,8 @@ class CQL(BaseAlgorithm):
 
     def select_actions(self, observations: dict) -> dict:
         joint_s = self._joint_state(observations)
-        q_vals = self.q_table[joint_s]                         # (n_joint_actions,)
-        q_tensor = q_vals.reshape(self._action_shape)          # (a_dim, a_dim, ...)
+        q_vals = self.q_table[joint_s]  # (n_joint_actions,)
+        q_tensor = q_vals.reshape(self._action_shape)  # (a_dim, a_dim, ...)
 
         actions = {}
         for i, aid in enumerate(self.agent_ids):
@@ -157,10 +158,7 @@ class CQL(BaseAlgorithm):
 
                 # centralized TD update on the shared Q-table
                 q_current = self.q_table[joint_s][joint_a]
-                q_next_max = (
-                    0.0 if done
-                    else float(np.max(self.q_table[joint_s_next]))
-                )
+                q_next_max = 0.0 if done else float(np.max(self.q_table[joint_s_next]))
                 td_error = central_r + self.gamma * q_next_max - q_current
                 self.q_table[joint_s][joint_a] += self.alpha * td_error
 
@@ -172,8 +170,11 @@ class CQL(BaseAlgorithm):
                 reward_str = ", ".join(f"{k}={v:.2f}" for k, v in ep_reward.items())
                 LOGGER.info(
                     "Episode %d/%d | eps=%.3f | joint_states=%d | %s",
-                    ep + 1, self.episodes, self.epsilon,
-                    len(self.q_table), reward_str,
+                    ep + 1,
+                    self.episodes,
+                    self.epsilon,
+                    len(self.q_table),
+                    reward_str,
                 )
 
     # ------------------------------------------------------------------
@@ -225,8 +226,12 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser("Tabular CQL (Centralized) — train or evaluate")
     p.add_argument("--mode", choices=["train", "eval"], default="train")
     p.add_argument("--episodes", type=int, default=1000)
-    p.add_argument("--size", type=int, default=6,
-                   help="Grid size. Keep small — joint state space is size^(2*n_agents).")
+    p.add_argument(
+        "--size",
+        type=int,
+        default=6,
+        help="Grid size. Keep small — joint state space is size^(2*n_agents).",
+    )
     p.add_argument("--predators", type=int, default=1)
     p.add_argument("--preys", type=int, default=1)
     p.add_argument("--alpha", type=float, default=0.1)
@@ -237,25 +242,38 @@ if __name__ == "__main__":
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--save-path", type=str, default="trained_cql.pkl")
     p.add_argument("--load-path", type=str, default=None)
-    p.add_argument("--render", action="store_true",
-                   help="Open pygame window during eval (requires a display)")
+    p.add_argument(
+        "--render",
+        action="store_true",
+        help="Open pygame window during eval (requires a display)",
+    )
     args = p.parse_args()
 
     agents = []
     for i in range(1, args.preys + 1):
         agents.append(Agent(agent_name=f"prey_{i}", agent_team=i, agent_type="prey"))
     for i in range(1, args.predators + 1):
-        agents.append(Agent(agent_name=f"predator_{i}", agent_team=i, agent_type="predator"))
+        agents.append(
+            Agent(agent_name=f"predator_{i}", agent_team=i, agent_type="predator")
+        )
 
     render = "human" if (args.mode == "eval" and args.render) else None
-    env = GridWorldEnv(agents=agents, render_mode=render,
-                       size=args.size, perc_num_obstacle=10, seed=args.seed)
+    env = GridWorldEnv(
+        agents=agents,
+        render_mode=render,
+        size=args.size,
+        perc_num_obstacle=10,
+        seed=args.seed,
+    )
 
     config = {
-        "alpha": args.alpha, "gamma": args.gamma,
+        "alpha": args.alpha,
+        "gamma": args.gamma,
         "epsilon": args.epsilon if args.mode == "train" else 0.0,
-        "epsilon_decay": args.epsilon_decay, "min_epsilon": args.min_epsilon,
-        "episodes": args.episodes, "seed": args.seed,
+        "epsilon_decay": args.epsilon_decay,
+        "min_epsilon": args.min_epsilon,
+        "episodes": args.episodes,
+        "seed": args.seed,
     }
 
     if args.mode == "train":

@@ -12,7 +12,6 @@ constructing DQN (run_from_config.build_environment does this).
 
 from __future__ import annotations
 
-import csv
 import logging
 import os
 import pickle
@@ -27,8 +26,9 @@ from numpy.random import default_rng
 
 from baselines.base import BaseAlgorithm
 from baselines.registry.algorithm_registry import register
-from baselines.DQN.q_network import QNetwork
+from baselines.DQN.q_network import QNetwork, DuelingQNetwork
 from baselines.DQN.replay_buffer import ReplayBuffer
+from baselines.DQN.curve_recorder import CurveRecorder
 
 LOGGER = logging.getLogger("dqn")
 
@@ -57,13 +57,15 @@ class DQN(BaseAlgorithm):
         self.debug_first_episode = bool(config.get("debug_first_episode", True))
         self.save_path = config.get("save_path", None)
         self.curves_path: Optional[str] = config.get("curves_path", None)
+        self.double_dqn = bool(config.get("double_dqn", False))  # ADDED
+        self.dueling = bool(config.get("dueling", False))  # ADDED
 
         seed = config.get("seed", None)
         self.rng = default_rng(seed)
         if seed is not None:
             torch.manual_seed(int(seed))
 
-        # -- observation encoder contract (attached by run_from_config.build_environment) --
+        # -- observation encoder contract (attached by build_environment) --
         self.observation_encoder = getattr(self.env, "observation_encoder", None)
         if self.observation_encoder is None:
             raise ValueError(
@@ -74,7 +76,9 @@ class DQN(BaseAlgorithm):
 
         initial_obs, _ = self.env.reset()
         self.agent_ids = list(initial_obs.keys())
-        self.state_dim = self._encode_observation(initial_obs[self.agent_ids[0]]).shape[0]
+        self.state_dim = self._encode_observation(initial_obs[self.agent_ids[0]]).shape[
+            0
+        ]
         self.action_dim = self._resolve_action_dim(config)
 
         if self.buffer_size < self.batch_size:
@@ -99,10 +103,12 @@ class DQN(BaseAlgorithm):
     # ------------------------------------------------------------------
 
     def _resolve_action_dim(self, config: dict) -> int:
-        """Infer action_dim from the env's action plugin, or validate it if configured."""
+        """Infer action_dim from the env's action plugin, or validate if configured."""
         plugin = getattr(self.env, "action_space_plugin", None)
         plugin_n_actions = (
-            int(plugin.n_actions) if plugin is not None else int(self.env.action_space.n)
+            int(plugin.n_actions)
+            if plugin is not None
+            else int(self.env.action_space.n)
         )
 
         configured = config.get("action_dim", None)
@@ -125,13 +131,17 @@ class DQN(BaseAlgorithm):
         self.optimizers = {}
         self.replay_buffers = {}
 
+        network_cls = (
+            DuelingQNetwork if self.dueling else QNetwork
+        )  # flag to enable duel DQN
+
         for i, agent_id in enumerate(self.agent_ids):
             buffer_seed = None if seed is None else int(seed) + i
 
-            self.q_networks[agent_id] = QNetwork(
+            self.q_networks[agent_id] = network_cls(
                 self.state_dim, self.hidden_layers, self.action_dim
             ).to(self.device)
-            self.target_networks[agent_id] = QNetwork(
+            self.target_networks[agent_id] = network_cls(
                 self.state_dim, self.hidden_layers, self.action_dim
             ).to(self.device)
             self.target_networks[agent_id].load_state_dict(
@@ -202,7 +212,22 @@ class DQN(BaseAlgorithm):
 
         q_values = self.q_networks[agent_id](states_t).gather(1, actions_t).squeeze(1)
         with torch.no_grad():
-            next_q_values = self.target_networks[agent_id](next_states_t).max(dim=1)[0]
+            if self.double_dqn:
+                # action selection from the ONLINE network, evaluation from the TARGET
+                # network: fixes vanilla DQN's overestimation bias.
+                next_actions = self.q_networks[agent_id](next_states_t).argmax(
+                    dim=1, keepdim=True
+                )
+                next_q_values = (
+                    self.target_networks[agent_id](next_states_t)
+                    .gather(1, next_actions)
+                    .squeeze(1)
+                )
+            else:
+                next_q_values = self.target_networks[agent_id](next_states_t).max(
+                    dim=1
+                )[0]
+
             targets = rewards_t + self.gamma * (1.0 - dones_t) * next_q_values
 
         loss = nn.SmoothL1Loss()(q_values, targets)
@@ -210,7 +235,9 @@ class DQN(BaseAlgorithm):
         optimizer = self.optimizers[agent_id]
         optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.q_networks[agent_id].parameters(), self.grad_clip)
+        torch.nn.utils.clip_grad_norm_(
+            self.q_networks[agent_id].parameters(), self.grad_clip
+        )
         optimizer.step()
 
         self._train_steps += 1
@@ -230,29 +257,23 @@ class DQN(BaseAlgorithm):
     # ------------------------------------------------------------------
 
     def train(self):
-        csv_file = None
-        csv_writer = None
-        if self.curves_path:
-            os.makedirs(os.path.dirname(self.curves_path) or ".", exist_ok=True)
-            csv_file = open(self.curves_path, "w", newline="")
-            reward_cols = [f"{aid}_reward" for aid in self.agent_ids]
-            loss_cols = [f"{aid}_loss" for aid in self.agent_ids]
-            csv_writer = csv.DictWriter(
-                csv_file, fieldnames=["episode", "epsilon"] + reward_cols + loss_cols
-            )
-            csv_writer.writeheader()
+        recorder = (
+            CurveRecorder(self.curves_path, self.agent_ids)
+            if self.curves_path
+            else None
+        )
 
         self._debug(f"Starting training for {self.episodes} episodes")
         try:
-            self._train_loop(csv_writer)
+            self._train_loop(recorder)
         finally:
-            if csv_file:
-                csv_file.close()
+            if recorder:
+                recorder.close()
 
         if self.save_path:
             self.save(self.save_path)
 
-    def _train_loop(self, csv_writer) -> None:
+    def _train_loop(self, recorder: Optional[CurveRecorder]) -> None:
         for episode in range(self.episodes):
             observations, _ = self.env.reset()
             episode_rewards = {agent_id: 0.0 for agent_id in self.agent_ids}
@@ -274,7 +295,11 @@ class DQN(BaseAlgorithm):
                     self._validate_state_shape(agent_id, next_state)
 
                     self.replay_buffers[agent_id].push(
-                        state, int(actions[agent_id]), float(rewards[agent_id]), next_state, done
+                        state,
+                        int(actions[agent_id]),
+                        float(rewards[agent_id]),
+                        next_state,
+                        done,
                     )
                     episode_rewards[agent_id] += float(rewards[agent_id])
                     loss = self._optimize_agent(agent_id)
@@ -283,8 +308,10 @@ class DQN(BaseAlgorithm):
 
                     if episode == 0 and step_count == 0 and self.debug_first_episode:
                         self._debug(
-                            f"First transition | agent={agent_id} | state_shape={state.shape} | "
-                            f"action={actions[agent_id]} | reward={float(rewards[agent_id]):.3f} | "
+                            f"First transition | agent={agent_id} | "
+                            f"state_shape={state.shape} | "
+                            f"action={actions[agent_id]} | "
+                            f"reward={float(rewards[agent_id]):.3f} | "
                             f"done={done}"
                         )
 
@@ -306,13 +333,10 @@ class DQN(BaseAlgorithm):
                     f"steps={step_count} | rewards: {reward_str} | avg_loss: {loss_str}"
                 )
 
-            if csv_writer:
-                row: dict = {"episode": episode + 1, "epsilon": round(self.epsilon, 4)}
-                for aid in self.agent_ids:
-                    row[f"{aid}_reward"] = round(episode_rewards[aid], 4)
-                    losses = episode_losses[aid]
-                    row[f"{aid}_loss"] = round(sum(losses) / len(losses), 6) if losses else ""
-                csv_writer.writerow(row)
+            if recorder:
+                recorder.record(
+                    episode + 1, self.epsilon, episode_rewards, episode_losses
+                )
 
     # ------------------------------------------------------------------
     # Persistence
@@ -325,7 +349,9 @@ class DQN(BaseAlgorithm):
             "agent_ids": self.agent_ids,
             "state_dim": self.state_dim,
             "action_dim": self.action_dim,
-            "q_state_dicts": {aid: net.state_dict() for aid, net in self.q_networks.items()},
+            "q_state_dicts": {
+                aid: net.state_dict() for aid, net in self.q_networks.items()
+            },
             "target_state_dicts": {
                 aid: net.state_dict() for aid, net in self.target_networks.items()
             },
@@ -343,7 +369,9 @@ class DQN(BaseAlgorithm):
 
         for agent_id in instance.agent_ids:
             if agent_id in payload["q_state_dicts"]:
-                instance.q_networks[agent_id].load_state_dict(payload["q_state_dicts"][agent_id])
+                instance.q_networks[agent_id].load_state_dict(
+                    payload["q_state_dicts"][agent_id]
+                )
             if agent_id in payload["target_state_dicts"]:
                 instance.target_networks[agent_id].load_state_dict(
                     payload["target_state_dicts"][agent_id]
@@ -396,11 +424,17 @@ if __name__ == "__main__":
     for i in range(1, args.preys + 1):
         agents.append(Agent(agent_name=f"prey_{i}", agent_team=i, agent_type="prey"))
     for i in range(1, args.predators + 1):
-        agents.append(Agent(agent_name=f"predator_{i}", agent_team=i, agent_type="predator"))
+        agents.append(
+            Agent(agent_name=f"predator_{i}", agent_team=i, agent_type="predator")
+        )
 
     render = "human" if (args.mode == "eval" and args.render) else None
     env = GridWorldEnv(
-        agents=agents, render_mode=render, size=args.size, perc_num_obstacle=10, seed=args.seed
+        agents=agents,
+        render_mode=render,
+        size=args.size,
+        perc_num_obstacle=10,
+        seed=args.seed,
     )
 
     observation_builder = get_observation_builder(args.observation)

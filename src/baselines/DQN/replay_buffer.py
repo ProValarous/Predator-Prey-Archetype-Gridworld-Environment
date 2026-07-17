@@ -29,8 +29,8 @@ class ReplayBuffer:
         self._rewards = np.zeros(self.capacity, dtype=np.float32)
         self._dones = np.zeros(self.capacity, dtype=bool)
 
-        self._write_ptr = 0   # next write slot, wraps at capacity
-        self._size = 0        # valid entries currently stored
+        self._write_ptr = 0  # next write slot, wraps at capacity
+        self._size = 0  # valid entries currently stored
 
     def push(self, state, action, reward, next_state, done) -> None:
         idx = self._write_ptr
