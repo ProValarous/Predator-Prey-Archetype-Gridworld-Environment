@@ -1,15 +1,7 @@
 """
 Wrapper for GridWorldEnv.base_reward().
 
-DEPRECATED / DO NOT USE VIA reward_fn.
-
-base_reward() is applied directly by GridWorldEnv.step(), gated by the
-include_base_reward constructor flag (wired from rewards.yaml -> base.enabled
-in run_from_config.build_environment()). Toggle the base reward through that
-flag, not by adding this plugin to the reward_fn pipeline.
-
-If you add get_reward_function("base") into the reward_fns list in
-build_environment(), you will double-count every capture/death/obstacle event.
+This allows base rewards to be toggled via config.
 """
 
 from multi_agent_package.rewards.base import RewardFunction

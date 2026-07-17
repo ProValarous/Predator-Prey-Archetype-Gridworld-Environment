@@ -122,7 +122,6 @@ def build_environment(configs: dict) -> GridWorldEnv:
         block_agents_by_obstacles=dynamics.get("block_agents_by_obstacles", True),
         capture_threshold=termination.get("capture_threshold", 1),
         max_steps=termination.get("max_steps", None),
-        include_base_reward=reward_cfg["rewards"]["base"]["enabled"],
     )
 
     # -----------------------------
@@ -144,10 +143,9 @@ def build_environment(configs: dict) -> GridWorldEnv:
     # -----------------------------
     reward_fns = []
 
-    # base_reward() is applied by gridworld.step() itself, gated by the
-    # include_base_reward flag passed above (from rewards.base.enabled). NEVER
-    # add get_reward_function("base") here, or every capture/death signal gets
-    # counted twice.
+    # base_reward() is called internally by gridworld.step() — do NOT add it
+    # here or every capture/death signal gets counted twice.
+    _ = reward_cfg["rewards"]["base"]["enabled"]  # validate key exists
 
     for r in reward_cfg["rewards"].get("shaping", []):
         reward_fns.append(
