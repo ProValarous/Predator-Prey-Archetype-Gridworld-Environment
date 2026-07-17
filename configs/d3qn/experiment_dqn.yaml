@@ -1,0 +1,37 @@
+# D3QN preset -- Dueling Double DQN.
+#
+# D3QN is not a separate algorithm in the registry: it is the `dqn` algorithm
+# with BOTH variant flags enabled. This file is the canonical, named preset for
+# that combination so the flag pairing is discoverable and reproducible.
+#
+#   double_dqn: true  -> bootstrap action chosen by the ONLINE net, valued by
+#                        the TARGET net (reduces overestimation bias)
+#   dueling:    true  -> swaps QNetwork for DuelingQNetwork (separate V(s) and
+#                        A(s,a) streams, recombined as Q = V + (A - mean A))
+#
+# Same 10x10 / 3v3 scenario as the top-level configs, so results are directly
+# comparable to the vanilla `configs/experiment_dqn.yaml` run.
+experiment:
+  algorithm:
+    name: dqn
+    params:
+      gamma: 0.99
+      epsilon: 1.0
+      epsilon_decay: 0.995
+      min_epsilon: 0.05
+      episodes: 5
+      action_dim: 5  
+      batch_size: 32
+      buffer_size: 10000
+      min_replay_size: 32
+      target_update_interval: 100
+      learning_rate: 0.001
+      hidden_layers: [64, 64]
+      grad_clip: 5.0
+      seed: 42
+      device: "cpu"
+
+      double_dqn: true               # enable Double DQN target
+      dueling: true                  # enable Dueling network
+
+      curves_path: "training_curves_d3qn.csv"
