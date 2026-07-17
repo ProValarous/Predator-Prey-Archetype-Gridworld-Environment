@@ -9,6 +9,7 @@ import numpy as np
 
 from multi_agent_package.core.agent import Agent
 from multi_agent_package.core.gridworld import GridWorldEnv
+from multi_agent_package.rewards.base_reward import BaseReward
 from baselines.IQL.iql import IQL
 
 # ------------------------------------------------------------------
@@ -21,9 +22,13 @@ def make_env(seed=42):
         Agent(agent_type="predator", agent_team="predator_1", agent_name="pred_1"),
         Agent(agent_type="prey", agent_team="prey_1", agent_name="prey_1"),
     ]
-    return GridWorldEnv(
+    env = GridWorldEnv(
         agents=agents, size=5, perc_num_obstacle=0, render_mode=None, seed=seed
     )
+    # base reward now enters through the plugin pipeline, not gridworld.step();
+    # attach it so training sees the capture/step-cost signal (issue #32)
+    env.reward_fn = BaseReward(weight=1.0).compute
+    return env
 
 
 def base_config(**overrides):

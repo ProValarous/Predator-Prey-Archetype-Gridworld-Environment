@@ -188,6 +188,45 @@ class TestBuildEnvironment:
 
 
 # ------------------------------------------------------------------
+# Base reward enters only through the plugin pipeline (issue #32)
+# ------------------------------------------------------------------
+
+
+class TestBaseRewardIsPluginDriven:
+    def _build(self, base_enabled):
+        from multi_agent_package.scripts.run_from_config import (
+            load_all_configs,
+            build_environment,
+        )
+
+        configs = load_all_configs(experiment_file="experiment_iql.yaml")
+        configs["env"]["env"]["render_mode"] = None
+        configs["rewards"]["rewards"]["base"]["enabled"] = base_enabled
+        return build_environment(configs)
+
+    def _first_step_reward(self, env):
+        obs, _ = env.reset()
+        return env.step({aid: 4 for aid in obs})["reward"]
+
+    def test_base_enabled_adds_step_cost(self):
+        # With base enabled, a NOOP predator incurs the negative base step
+        # cost on top of shaping; disabling base removes exactly that
+        # component. This is the single-application-path guarantee of #32.
+        on = self._first_step_reward(self._build(True))
+        off = self._first_step_reward(self._build(False))
+        preds = [k for k in on if k.startswith("pred")]
+        assert preds, "expected predator agents in the IQL config"
+        for k in preds:
+            assert on[k] < off[k], f"base reward not applied for {k}"
+
+    def test_base_disabled_leaves_only_shaping(self):
+        # Disabling base must not zero out shaping (prey survival shaping stays).
+        off = self._first_step_reward(self._build(False))
+        prey = [v for k, v in off.items() if k.startswith("prey")]
+        assert prey and all(v > 0 for v in prey)
+
+
+# ------------------------------------------------------------------
 # End-to-end training: IQL
 # ------------------------------------------------------------------
 
