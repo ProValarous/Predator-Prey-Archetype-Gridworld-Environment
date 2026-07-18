@@ -207,6 +207,15 @@ class TestActionRegistry:
         with pytest.raises(KeyError):
             get_action_space("nonexistent_action")
 
+    def test_register_non_subclass_raises_type_error(self):
+        from multi_agent_package.registry.action_registry import register_action_space
+
+        class NotAnActionSpace:
+            pass
+
+        with pytest.raises(TypeError):
+            register_action_space("bad_action", NotAnActionSpace)
+
 
 # ------------------------------------------------------------------
 # ActionSpace.is_noop() — base-class default, all concrete spaces

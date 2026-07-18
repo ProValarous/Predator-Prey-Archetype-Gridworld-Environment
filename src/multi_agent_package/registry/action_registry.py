@@ -21,4 +21,6 @@ def get_action_space(name: str, **params) -> ActionSpace:
 
 
 def register_action_space(name: str, cls: Type[ActionSpace]) -> None:
+    if not (isinstance(cls, type) and issubclass(cls, ActionSpace)):
+        raise TypeError("Action space must inherit from ActionSpace")
     _ACTION_REGISTRY[name] = cls
