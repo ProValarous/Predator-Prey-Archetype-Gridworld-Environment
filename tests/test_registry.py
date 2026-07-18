@@ -212,36 +212,43 @@ class TestActionRegistry:
 # ActionSpace.is_noop() — base-class default, all concrete spaces
 # ------------------------------------------------------------------
 
+
 class TestActionSpaceIsNoop:
     def test_discrete_noop_action(self):
         from multi_agent_package.actions.discrete_actions import DiscreteActionSpace
+
         sp = DiscreteActionSpace()
         assert sp.is_noop(4) is True
 
     def test_discrete_movement_action(self):
         from multi_agent_package.actions.discrete_actions import DiscreteActionSpace
+
         sp = DiscreteActionSpace()
         for a in range(4):
             assert sp.is_noop(a) is False
 
     def test_cross_noop_action(self):
         from multi_agent_package.actions.cross_actions import CrossActionSpace
+
         sp = CrossActionSpace()
         assert sp.is_noop(4) is True
 
     def test_cross_movement_action(self):
         from multi_agent_package.actions.cross_actions import CrossActionSpace
+
         sp = CrossActionSpace()
         for a in range(4):
             assert sp.is_noop(a) is False
 
     def test_speed_discrete_noop_action(self):
         from multi_agent_package.actions.speed_discrete import SpeedDiscreteActionSpace
+
         sp = SpeedDiscreteActionSpace()
         assert sp.is_noop(4) is True
 
     def test_speed_discrete_movement_action(self):
         from multi_agent_package.actions.speed_discrete import SpeedDiscreteActionSpace
+
         sp = SpeedDiscreteActionSpace()
         for a in range(4):
             assert sp.is_noop(a) is False
