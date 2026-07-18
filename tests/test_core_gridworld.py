@@ -181,6 +181,32 @@ class TestObstacles:
         for obs in env._obstacle_location:
             assert tuple(obs) not in agent_positions
 
+    def test_cell_sharing_disabled_blocks_same_role(self):
+        # Two predators cannot stack when allow_cell_sharing=False.
+        env = make_env(n_pred=2, n_prey=1, perc_obstacle=0, allow_cell_sharing=False)
+        env.reset()
+        p1, p2 = env.agents[0], env.agents[1]
+        p1._agent_location = np.array([2, 2], dtype=np.int32)
+        p2._agent_location = np.array([3, 2], dtype=np.int32)
+        env.agents[2]._agent_location = np.array([0, 0], dtype=np.int32)
+        # pred_2 moves LEFT (action 2) onto pred_1's cell -> blocked
+        env.step({"pred_1": 4, "pred_2": 2, "prey_1": 4})
+        assert tuple(p2._agent_location) != tuple(p1._agent_location)
+
+    def test_cell_sharing_disabled_still_allows_capture(self):
+        # Cross-role overlap (capture) is allowed even with sharing disabled.
+        env = make_env(
+            n_pred=1, n_prey=1, perc_obstacle=0, allow_cell_sharing=False,
+            capture_threshold=1,
+        )
+        env.reset()
+        pred, prey = env.agents[0], env.agents[1]
+        pred._agent_location = np.array([2, 2], dtype=np.int32)
+        prey._agent_location = np.array([1, 2], dtype=np.int32)
+        out = env.step({"pred_1": 2, "prey_1": 4})  # predator LEFT onto prey
+        assert "prey_1" in env._captured_this_step
+        assert out["terminated"]
+
     def test_block_by_obstacle(self):
         """Agent cannot move onto obstacle when block_agents_by_obstacles=True."""
         import numpy as np
