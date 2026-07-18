@@ -6,7 +6,7 @@ import pytest
 import torch
 
 from baselines.DQN.replay_buffer import ReplayBuffer
-from baselines.DQN.q_network import QNetwork
+from baselines.DQN.q_network import QNetwork, DuelingQNetwork
 from baselines.DQN.curve_recorder import CurveRecorder
 
 # ------------------------------------------------------------------
@@ -137,6 +137,8 @@ class TestDuelingQNetwork:
             value = net.value_head(features)  # (2, 1)
             q_out = net(x)  # (2, 5)
         assert torch.allclose(q_out.mean(dim=1, keepdim=True), value, atol=1e-5)
+
+
 # CurveRecorder
 # ------------------------------------------------------------------
 
@@ -147,7 +149,10 @@ class TestCurveRecorder:
         rec = CurveRecorder(str(path), ["pred_1", "prey_1"])
         rec.close()
         header = path.read_text().strip().splitlines()[0]
-        assert header == "episode,epsilon,pred_1_reward,prey_1_reward,pred_1_loss,prey_1_loss"
+        assert (
+            header
+            == "episode,epsilon,pred_1_reward,prey_1_reward,pred_1_loss,prey_1_loss"
+        )
 
     def test_record_rounds_and_writes_row(self, tmp_path):
         path = tmp_path / "curves.csv"
