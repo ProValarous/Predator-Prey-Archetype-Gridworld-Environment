@@ -6,7 +6,7 @@ import pytest
 import torch
 
 from baselines.DQN.replay_buffer import ReplayBuffer
-from baselines.DQN.q_network import QNetwork
+from baselines.DQN.q_network import QNetwork, DuelingQNetwork
 from baselines.DQN.curve_recorder import CurveRecorder
 
 # ------------------------------------------------------------------
@@ -100,6 +100,45 @@ class TestQNetwork:
 
 
 # ------------------------------------------------------------------
+# DuelingQNetwork
+# ------------------------------------------------------------------
+
+
+class TestDuelingQNetwork:
+    def test_rejects_non_positive_input_dim(self):
+        with pytest.raises(ValueError):
+            DuelingQNetwork(0, [8], 5)
+
+    def test_rejects_non_positive_output_dim(self):
+        with pytest.raises(ValueError):
+            DuelingQNetwork(4, [8], 0)
+
+    def test_rejects_empty_hidden_layers(self):
+        with pytest.raises(ValueError):
+            DuelingQNetwork(4, [], 5)
+
+    def test_forward_output_shape(self):
+        net = DuelingQNetwork(4, [8, 8], 5)
+        out = net(torch.zeros((3, 4)))
+        assert out.shape == (3, 5)
+
+    def test_variable_depth_hidden_layers(self):
+        net = DuelingQNetwork(2, [16, 8, 4], 3)
+        out = net(torch.zeros((1, 2)))
+        assert out.shape == (1, 3)
+
+    def test_advantage_mean_centred(self):
+        # Q = V + (A - mean(A)), so mean(Q) across actions must equal V(s).
+        net = DuelingQNetwork(4, [8], 5)
+        net.eval()
+        x = torch.randn((2, 4))
+        with torch.no_grad():
+            features = net.trunk(x)
+            value = net.value_head(features)  # (2, 1)
+            q_out = net(x)  # (2, 5)
+        assert torch.allclose(q_out.mean(dim=1, keepdim=True), value, atol=1e-5)
+
+
 # CurveRecorder
 # ------------------------------------------------------------------
 
@@ -110,7 +149,10 @@ class TestCurveRecorder:
         rec = CurveRecorder(str(path), ["pred_1", "prey_1"])
         rec.close()
         header = path.read_text().strip().splitlines()[0]
-        assert header == "episode,epsilon,pred_1_reward,prey_1_reward,pred_1_loss,prey_1_loss"
+        assert (
+            header
+            == "episode,epsilon,pred_1_reward,prey_1_reward,pred_1_loss,prey_1_loss"
+        )
 
     def test_record_rounds_and_writes_row(self, tmp_path):
         path = tmp_path / "curves.csv"
@@ -208,6 +250,25 @@ class TestDQNInit:
         with pytest.warns(UserWarning):
             DQN(dqn_env, dqn_config)
 
+    def test_dueling_flag_uses_dueling_network(self, dqn_env, dqn_config):
+        from baselines.DQN.dqn import DQN
+
+        dqn_config["dueling"] = True
+        algo = DQN(dqn_env, dqn_config)
+        for net in algo.q_networks.values():
+            assert isinstance(net, DuelingQNetwork)
+        for net in algo.target_networks.values():
+            assert isinstance(net, DuelingQNetwork)
+
+    def test_no_dueling_flag_uses_plain_network(self, dqn_env, dqn_config):
+        from baselines.DQN.dqn import DQN
+
+        dqn_config["dueling"] = False
+        algo = DQN(dqn_env, dqn_config)
+        for net in algo.q_networks.values():
+            assert isinstance(net, QNetwork)
+            assert not isinstance(net, DuelingQNetwork)
+
 
 class TestDQNSelectActions:
     def test_epsilon_one_is_fully_random(self, dqn_env, dqn_config):
@@ -249,6 +310,31 @@ class TestDQNTrain:
         algo = DQN(dqn_env, dqn_config)
         algo.train()
         assert algo.epsilon < 1.0
+
+    def test_trains_with_double_dqn_enabled(self, dqn_env, dqn_config):
+        from baselines.DQN.dqn import DQN
+
+        dqn_config["double_dqn"] = True
+        algo = DQN(dqn_env, dqn_config)
+        algo.train()
+        assert all(len(buf) > 0 for buf in algo.replay_buffers.values())
+
+    def test_trains_with_dueling_enabled(self, dqn_env, dqn_config):
+        from baselines.DQN.dqn import DQN
+
+        dqn_config["dueling"] = True
+        algo = DQN(dqn_env, dqn_config)
+        algo.train()
+        assert all(len(buf) > 0 for buf in algo.replay_buffers.values())
+
+    def test_trains_with_double_dqn_and_dueling(self, dqn_env, dqn_config):
+        from baselines.DQN.dqn import DQN
+
+        dqn_config["double_dqn"] = True
+        dqn_config["dueling"] = True
+        algo = DQN(dqn_env, dqn_config)
+        algo.train()
+        assert all(len(buf) > 0 for buf in algo.replay_buffers.values())
 
     def test_writes_curve_csv_when_configured(self, dqn_env, dqn_config, tmp_path):
         from baselines.DQN.dqn import DQN

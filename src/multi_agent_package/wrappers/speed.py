@@ -60,7 +60,8 @@ class SpeedWrapper:
         # compute sub-step budget: NOOP costs 0, movement costs min(speed, stamina)
         n_steps: Dict[str, int] = {
             name: (
-                0 if self._plugin.is_noop(act)
+                0
+                if self._plugin.is_noop(act)
                 else min(max(self._speeds[name], 1), max(self._stamina[name], 0))
             )
             for name, act in actions.items()

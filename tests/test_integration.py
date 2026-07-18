@@ -443,9 +443,9 @@ class TestSpeedWrapper:
         # with stamina=2 and speed=3, predator gets only 2 sub-steps (not 3)
         wrapped = self._make_wrapped(pred_speed=3, pred_stamina=2)
         wrapped.reset()
-        wrapped._stamina["pred_1"] = 2   # ensure known start value
+        wrapped._stamina["pred_1"] = 2  # ensure known start value
         wrapped.step({"pred_1": 0, "prey_1": 4})
-        assert wrapped._stamina["pred_1"] == 0   # depleted by min(3, 2) = 2
+        assert wrapped._stamina["pred_1"] == 0  # depleted by min(3, 2) = 2
 
     def test_speed1_fast_path_no_stamina_deduction(self):
         wrapped = self._make_wrapped(
