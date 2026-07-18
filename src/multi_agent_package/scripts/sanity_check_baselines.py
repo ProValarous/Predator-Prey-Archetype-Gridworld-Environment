@@ -34,7 +34,7 @@ def build_test_env():
     env = GridWorldEnv(
         agents=agents,
         size=8,  # small grid
-        perc_num_obstacle=10,  # no obstacles for clean learning
+        perc_num_obstacle=10,  # light obstacle density
         render_mode=None,
         seed=42,
     )
@@ -54,7 +54,6 @@ def test_algorithm(algo_name):
         "gamma": 0.99,
         "epsilon": 0.2,
         "episodes": 100,  # very small test
-        "cql_alpha": 0.1,  # used only by CQL
     }
 
     algo = algo_cls(env, config)
