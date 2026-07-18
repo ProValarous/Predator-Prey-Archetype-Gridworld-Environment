@@ -258,6 +258,21 @@ class GridWorldEnv(gym.Env):
             if self.block_agents_by_obstacles and tuple(candidate) in obstacle_set:
                 continue
 
+            # When cell-sharing is disabled, an agent may not move onto a cell
+            # held by another same-role agent (predator/predator or prey/prey).
+            # Cross-role overlap is still allowed so predator-prey capture works.
+            if not self.allow_cell_sharing:
+                cand_t = tuple(candidate)
+                blocked = any(
+                    other is not ag
+                    and other.agent_name not in already_captured
+                    and tuple(other._agent_location) == cand_t
+                    and self._same_role(other, ag)
+                    for other in self.agents
+                )
+                if blocked:
+                    continue
+
             ag._agent_location = candidate.copy()
 
         # capture detection — exclude already-captured prey
@@ -315,6 +330,15 @@ class GridWorldEnv(gym.Env):
     # ------------------------------------------------------------------
     def _get_info(self) -> Dict[str, Dict]:
         return {ag.agent_name: ag._get_info() for ag in self.agents}
+
+    @staticmethod
+    def _same_role(a, b) -> bool:
+        """True if both agents are predators or both are prey."""
+
+        def role(x):
+            return "predator" if x.agent_type.startswith("predator") else "prey"
+
+        return role(a) == role(b)
 
     # ------------------------------------------------------------------
     # Rendering
