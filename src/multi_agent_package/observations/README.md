@@ -39,3 +39,10 @@ If your observation:
 - leaks global state → it’s invalid
 - is hard to explain → simplify it
 - cannot be ablated → rethink it
+
+## Contract for partial-observability builders:
+
+`encode()` must:
+- assign a fixed slot per identity (agent name / obstacle index), not per presence.
+- Iterate over the full, stable set of possible identities and zero-fill absent ones
+- never pack present entries first and pad afterward, since that lets one identity's slot shift depending on who else is visible.

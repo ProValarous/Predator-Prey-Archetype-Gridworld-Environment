@@ -256,6 +256,91 @@ class TestLocalRadiusObservation:
         assert not np.array_equal(enc_a, enc_b)
 
 
+class TestLocalRadiusObservationSlotStability:
+    """
+    Regression test for the identity-slot bug: an agent's feature slot in
+    the encoded vector must stay at the same index regardless of which
+    other agents are currently visible. Visibility should only zero/non-zero
+    a slot, never shift another agent into it.
+    """
+
+    def _make_three_agent_env(self, size=20, seed=1):
+        agents = [
+            Agent(agent_type="predator", agent_team="predator_1", agent_name="pred_1"),
+            Agent(agent_type="prey", agent_team="prey_1", agent_name="prey_1"),
+            Agent(agent_type="prey", agent_team="prey_2", agent_name="prey_2"),
+        ]
+        env = GridWorldEnv(
+            agents=agents,
+            size=size,
+            perc_num_obstacle=0,
+            render_mode=None,
+            seed=seed,
+        )
+        env.reset()
+        return env
+
+    def _slot_index(self, env, observer_idx, target_name):
+        """Index in the encoded vector where target_name's block starts."""
+        agent_names_sorted = sorted(a.agent_name for a in env.agents)
+        pos = agent_names_sorted.index(target_name)
+        # 2 floats for local pos + 1 for radius, then 5 floats per agent slot
+        return 3 + pos * 5
+
+    def test_slot_index_stable_as_visibility_changes(self):
+        builder = LocalRadiusObservation(radius=3)
+        env = self._make_three_agent_env()
+
+        observer = env.agents[0]  # pred_1
+        other_far = env.agents[1]  # prey_1
+        other_near = env.agents[2]  # prey_2
+
+        observer._agent_location = np.array([0, 0], dtype=np.int32)
+        other_near._agent_location = np.array([1, 0], dtype=np.int32)  # visible
+        other_far._agent_location = np.array([15, 15], dtype=np.int32)  # not visible
+
+        obs = builder.build(env)
+        encoded_step1 = builder.encode(obs[observer.agent_name], env)
+
+        near_slot = self._slot_index(env, 0, other_near.agent_name)
+        far_slot = self._slot_index(env, 0, other_far.agent_name)
+
+        # prey_2 (near) should be present (presence flag == 1.0)
+        assert encoded_step1[near_slot] == 1.0
+        # prey_1 (far) should be absent (presence flag == 0.0)
+        assert encoded_step1[far_slot] == 0.0
+
+        # Now move prey_1 into radius and prey_2 out of radius.
+        other_near._agent_location = np.array([15, 15], dtype=np.int32)  # now far
+        other_far._agent_location = np.array([1, 0], dtype=np.int32)  # now near
+
+        obs = builder.build(env)
+        encoded_step2 = builder.encode(obs[observer.agent_name], env)
+
+        # Slot indices must be identical to step 1 -- only the flag flips.
+        assert encoded_step2[near_slot] == 0.0  # prey_2 now absent, same slot
+        assert encoded_step2[far_slot] == 1.0  # prey_1 now present, same slot
+
+        # Vector length must not change between steps either.
+        assert encoded_step1.shape == encoded_step2.shape
+
+    def test_encoded_length_includes_self_slot(self):
+        """state_dim now includes one always-zero self slot per agent."""
+        builder = LocalRadiusObservation(radius=3)
+        env = self._make_three_agent_env()
+        obs = builder.build(env)
+        encoded = builder.encode(obs[env.agents[0].agent_name], env)
+
+        n_agents = len(env.agents)
+        n_obstacles = len(env._obstacle_location)
+        expected_len = 3 + n_agents * 5 + n_obstacles * 4
+        assert encoded.shape[0] == expected_len
+
+        # The observer's own slot must always be all zeros.
+        self_slot = self._slot_index(env, 0, env.agents[0].agent_name)
+        assert list(encoded[self_slot:self_slot + 5]) == [0.0, 0.0, 0.0, 0.0, 0.0]
+
+
 # ------------------------------------------------------------------
 # encode() contract: every observation builder must produce a fixed-
 # length, finite, numeric vector -- this is what DQN relies on.
