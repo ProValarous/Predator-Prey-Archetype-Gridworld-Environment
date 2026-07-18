@@ -71,28 +71,35 @@ class LocalRadiusObservation(ObservationBuilder):
         values.append(radius)
 
         visible_agents = observation.get("visible_agents", {}) if include_agents else {}
-        max_agents = max(0, len(env.agents) - 1)
-        for name in sorted(visible_agents.keys()):
-            entry = visible_agents[name]
-            values.append(1.0)
-            values.extend(self._vector(entry.get("rel_pos", [0.0, 0.0])).tolist())
-            values.append(float(entry.get("dist", 0.0)))
-            values.append(float(self._agent_type_id(entry.get("type"))))
-
-        missing_agents = max(0, max_agents - len(visible_agents))
-        values.extend([0.0] * (missing_agents * 5))
+        # Fixed slot per agent identity: iterate over every agent name in a
+        # stable order and write zeros for any not currently within radius. The
+        # observing agent never appears in visible_agents, so its own slot stays
+        # zero. This keeps each identity in the same slot regardless of which
+        # others are visible, instead of packing visible agents first (issue
+        # #34: the old present-first packing made a slot mean different agents
+        # on different steps, silently corrupting learning).
+        for name in sorted(a.agent_name for a in env.agents):
+            entry = visible_agents.get(name)
+            if entry is None:
+                values.extend([0.0, 0.0, 0.0, 0.0, 0.0])
+            else:
+                values.append(1.0)
+                values.extend(self._vector(entry.get("rel_pos", [0.0, 0.0])).tolist())
+                values.append(float(entry.get("dist", 0.0)))
+                values.append(float(self._agent_type_id(entry.get("type"))))
 
         visible_obstacles = (
             observation.get("visible_obstacles", {}) if include_obstacles else {}
         )
-        max_obstacles = len(env._obstacle_location)
-        for name in sorted(visible_obstacles.keys()):
-            entry = visible_obstacles[name]
-            values.append(1.0)
-            values.extend(self._vector(entry.get("rel_pos", [0.0, 0.0])).tolist())
-            values.append(float(entry.get("dist", 0.0)))
-
-        missing_obstacles = max(0, max_obstacles - len(visible_obstacles))
-        values.extend([0.0] * (missing_obstacles * 4))
+        # Obstacle indices are assigned once per reset() and never reordered
+        # within an episode, so "obstacle_i" is a stable identity too.
+        for i in range(len(env._obstacle_location)):
+            entry = visible_obstacles.get(f"obstacle_{i}")
+            if entry is None:
+                values.extend([0.0, 0.0, 0.0, 0.0])
+            else:
+                values.append(1.0)
+                values.extend(self._vector(entry.get("rel_pos", [0.0, 0.0])).tolist())
+                values.append(float(entry.get("dist", 0.0)))
 
         return np.asarray(values, dtype=np.float32)

@@ -228,6 +228,33 @@ class TestLocalRadiusObservation:
 
         assert len(encoded_lengths) == 1
 
+    def test_encode_slot_is_identity_stable(self):
+        # A given prey must occupy the same fixed slot regardless of which prey
+        # is currently within radius (issue #34). Two different prey at the same
+        # position must therefore produce DIFFERENT encodings, not identical
+        # ones (which was the old present-first-packing bug).
+        builder = LocalRadiusObservation(radius=2, include_obstacles=False)
+        agents = [
+            Agent(agent_type="predator", agent_team="predator_1", agent_name="pred_1"),
+            Agent(agent_type="prey", agent_team="prey_1", agent_name="prey_1"),
+            Agent(agent_type="prey", agent_team="prey_2", agent_name="prey_2"),
+        ]
+        env = GridWorldEnv(
+            agents=agents, size=9, perc_num_obstacle=0, render_mode=None, seed=0
+        )
+        env.reset()
+        pred, p1, p2 = env.agents
+        # Case A: only prey_1 within radius, at (1,0)
+        pred._agent_location = np.array([0, 0], dtype=np.int32)
+        p1._agent_location = np.array([1, 0], dtype=np.int32)
+        p2._agent_location = np.array([8, 8], dtype=np.int32)
+        enc_a = builder.encode(builder.build(env)["pred_1"], env)
+        # Case B: only prey_2 within radius, at the same (1,0)
+        p1._agent_location = np.array([8, 8], dtype=np.int32)
+        p2._agent_location = np.array([1, 0], dtype=np.int32)
+        enc_b = builder.encode(builder.build(env)["pred_1"], env)
+        assert not np.array_equal(enc_a, enc_b)
+
 
 # ------------------------------------------------------------------
 # encode() contract: every observation builder must produce a fixed-
