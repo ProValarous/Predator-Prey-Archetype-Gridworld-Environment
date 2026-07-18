@@ -29,7 +29,7 @@ class DefaultObservation(ObservationBuilder):
             values.append(float(dist_agents[name]))
 
         dist_obstacles = global_obs.get("dist_obstacles", {})
-        for name in sorted(dist_obstacles.keys()):
+        for name in sorted(dist_obstacles.keys(), key=lambda k: int(k.split("_")[1])):
             values.append(float(dist_obstacles[name]))
 
         return np.asarray(values, dtype=np.float32)

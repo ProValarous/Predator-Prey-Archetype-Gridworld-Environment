@@ -126,7 +126,7 @@ class RelativeObservation(ObservationBuilder):
 
         obstacles_obs = observation.get("obstacles", {}) if include_obstacles else {}
         max_obstacles = len(env._obstacle_location)
-        for name in sorted(obstacles_obs.keys()):
+        for name in sorted(obstacles_obs.keys(), key=lambda k: int(k.split("_")[1])):
             entry = obstacles_obs[name]
             values.extend(self._vector(entry.get("rel_pos", [0.0, 0.0])).tolist())
             values.append(float(entry.get("dist", 0.0)))
