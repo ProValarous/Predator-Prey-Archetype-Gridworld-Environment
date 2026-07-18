@@ -41,6 +41,15 @@ class SpeedWrapper:
         self._max_speed: int = max(self._speeds.values(), default=1)
         # use the configured plugin for NOOP detection — avoids hardcoding a class
         self._plugin = env.action_space_plugin
+        # action index used to idle a sub-step, derived from the plugin so a
+        # custom action space whose NOOP index is not 4 still sub-steps
+        # correctly. Falls back to the legacy constant if no plugin is attached.
+        self._noop_action = self.NOOP
+        if self._plugin is not None:
+            self._noop_action = next(
+                (a for a in range(self._plugin.n_actions) if self._plugin.is_noop(a)),
+                self.NOOP,
+            )
         # stamina remaining this episode; reset on env.reset()
         self._stamina: Dict[str, int] = dict(self._max_stamina)
 
@@ -72,7 +81,7 @@ class SpeedWrapper:
 
         for sub in range(self._max_speed):
             sub_actions = {
-                name: (act if sub < n_steps[name] else self.NOOP)
+                name: (act if sub < n_steps[name] else self._noop_action)
                 for name, act in actions.items()
             }
             result = self.env.step(sub_actions)
