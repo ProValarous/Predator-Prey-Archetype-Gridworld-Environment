@@ -19,7 +19,9 @@ from multi_agent_package.scripts.run_from_config import (
 LOGGER = logging.getLogger("evaluate")
 
 
-def evaluate(config_dir: str = "configs", episodes: int = 10) -> dict:
+def evaluate(
+    config_dir: str = "configs", episodes: int = 10, load_path: str = None
+) -> dict:
     configs = load_all_configs(config_dir)
     configs["env"]["env"]["render_mode"] = None  # headless evaluation
 
@@ -27,7 +29,21 @@ def evaluate(config_dir: str = "configs", episodes: int = 10) -> dict:
 
     algo_cfg = configs["experiment"]["experiment"]["algorithm"]
     algo_cls = get_algorithm(algo_cfg["name"])
-    algo = algo_cls(env, algo_cfg.get("params", {}))
+    algo_params = algo_cfg.get("params", {})
+
+    if load_path:
+        algo = algo_cls.load(env, algo_params, load_path)
+    else:
+        algo = algo_cls(env, algo_params)
+        LOGGER.warning(
+            "No --load-path given: evaluating an UNTRAINED %s (random / zero-"
+            "initialised policy). Pass --load-path to evaluate a trained model.",
+            algo_cfg["name"],
+        )
+
+    # greedy evaluation regardless of the configured training epsilon
+    if hasattr(algo, "epsilon"):
+        algo.epsilon = 0.0
 
     episode_lengths = []
     agent_returns = defaultdict(list)
@@ -73,11 +89,25 @@ def evaluate(config_dir: str = "configs", episodes: int = 10) -> dict:
 
 
 if __name__ == "__main__":
+    import argparse
+
     logging.basicConfig(
         level=logging.INFO,
         format="[%(asctime)s] %(levelname)s - %(message)s",
     )
-    result = evaluate("configs", episodes=10)
+
+    p = argparse.ArgumentParser("Evaluate a trained policy from YAML configs")
+    p.add_argument("--config-dir", default="configs")
+    p.add_argument("--episodes", type=int, default=10)
+    p.add_argument(
+        "--load-path",
+        default=None,
+        help="Trained checkpoint (.pkl) to evaluate. Without it, an untrained "
+        "policy is evaluated and a warning is printed.",
+    )
+    args = p.parse_args()
+
+    result = evaluate(args.config_dir, episodes=args.episodes, load_path=args.load_path)
     print("\n=== Evaluation Summary ===")
     for k, v in result.items():
         print(f"  {k}: {v:.3f}")
