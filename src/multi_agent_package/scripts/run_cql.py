@@ -57,7 +57,11 @@ def main():
         if not args.load_path:
             raise SystemExit("--load-path is required for --mode eval")
         algo = CQL.load(env, algo_params, args.load_path)
-        algo.evaluate()
+        algo.epsilon = 0.0  # greedy evaluation
+        summary = algo.evaluate()
+        print("\n=== Evaluation Summary ===")
+        for k, v in summary.items():
+            print(f"  {k}: {v}")
 
     env.close()
 
