@@ -101,6 +101,10 @@ class IQL(BaseAlgorithm):
                 next_obs = step_out["obs"]
                 rewards = step_out["reward"]
                 done = step_out["terminated"] or step_out["truncated"]
+                # Only a true terminal state cuts the bootstrap; a timeout
+                # truncation does not (the episode is cut for time, not because
+                # the world ended), so keep bootstrapping through it.
+                terminal = bool(step_out["terminated"])
 
                 for agent_id in self.agent_ids:
                     s = self._encode_state(obs[agent_id])
@@ -111,7 +115,9 @@ class IQL(BaseAlgorithm):
 
                     q_current = self.q_tables[agent_id][s][a]
                     q_next_max = (
-                        0.0 if done else float(np.max(self.q_tables[agent_id][s_next]))
+                        0.0
+                        if terminal
+                        else float(np.max(self.q_tables[agent_id][s_next]))
                     )
                     td_error = r + self.gamma * q_next_max - q_current
                     self.q_tables[agent_id][s][a] += self.alpha * td_error
