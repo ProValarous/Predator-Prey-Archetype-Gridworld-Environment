@@ -196,7 +196,10 @@ class TestObstacles:
     def test_cell_sharing_disabled_still_allows_capture(self):
         # Cross-role overlap (capture) is allowed even with sharing disabled.
         env = make_env(
-            n_pred=1, n_prey=1, perc_obstacle=0, allow_cell_sharing=False,
+            n_pred=1,
+            n_prey=1,
+            perc_obstacle=0,
+            allow_cell_sharing=False,
             capture_threshold=1,
         )
         env.reset()
