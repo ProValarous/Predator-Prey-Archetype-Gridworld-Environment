@@ -289,6 +289,10 @@ class DQN(BaseAlgorithm):
                 next_observations = step_out["obs"]
                 rewards = step_out["reward"]
                 done = bool(step_out["terminated"] or step_out["truncated"])
+                # Store the true-terminal flag (not truncation) so the Bellman
+                # target keeps bootstrapping through timeout cut-offs; `done`
+                # only ends the episode loop.
+                terminal = bool(step_out["terminated"])
 
                 for agent_id in self.agent_ids:
                     state = self._encode_observation(observations[agent_id])
@@ -301,7 +305,7 @@ class DQN(BaseAlgorithm):
                         int(actions[agent_id]),
                         float(rewards[agent_id]),
                         next_state,
-                        done,
+                        terminal,
                     )
                     episode_rewards[agent_id] += float(rewards[agent_id])
                     loss = self._optimize_agent(agent_id)

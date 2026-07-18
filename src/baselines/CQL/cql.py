@@ -144,6 +144,9 @@ class CQL(BaseAlgorithm):
                 next_obs = step_out["obs"]
                 rewards = step_out["reward"]
                 done = step_out["terminated"] or step_out["truncated"]
+                # Only a true terminal state cuts the bootstrap; a timeout
+                # truncation does not.
+                terminal = bool(step_out["terminated"])
 
                 joint_s = self._joint_state(obs)
                 joint_s_next = self._joint_state(next_obs)
@@ -158,7 +161,9 @@ class CQL(BaseAlgorithm):
 
                 # centralized TD update on the shared Q-table
                 q_current = self.q_table[joint_s][joint_a]
-                q_next_max = 0.0 if done else float(np.max(self.q_table[joint_s_next]))
+                q_next_max = (
+                    0.0 if terminal else float(np.max(self.q_table[joint_s_next]))
+                )
                 td_error = central_r + self.gamma * q_next_max - q_current
                 self.q_table[joint_s][joint_a] += self.alpha * td_error
 
