@@ -197,9 +197,7 @@ This environment is meant for:
 
 ## ⚡ Quickstart
 
-The package uses a standard `src/` layout with a `pyproject.toml` build backend,
-so an editable install makes `multi_agent_package` and `baselines` importable
-without setting `PYTHONPATH`.
+The build backend isn't wired up yet, so `pip install -e .` does **not** make the package importable — use `PYTHONPATH=src` instead. This is the only setup path actually verified to work.
 
 ```bash
 git clone https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment.git
@@ -208,13 +206,13 @@ cd Predator-Prey-Archetype-Gridworld-Environment
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\Activate.ps1
 
-pip install -e .
+pip install -r requirements.txt
 
 # Run the default experiment (3 predators vs 3 prey, IQL, configs/experiment.yaml)
-python -m multi_agent_package.scripts.run_from_config
+PYTHONPATH=src python -m multi_agent_package.scripts.run_from_config
 
 # Or one of the ready-made DQN experiments
-python -m multi_agent_package.scripts.run_dqn --config-dir configs/dqn_1v1
+PYTHONPATH=src python -m multi_agent_package.scripts.run_dqn --config-dir configs/dqn_1v1
 ```
 
 All experiments are launched from the repository root.
@@ -222,8 +220,8 @@ All experiments are launched from the repository root.
 ### Running the tests
 
 ```bash
-pip install -e ".[dev]"
-python -m pytest tests/ -q
+pip install -r requirements-dev.txt
+PYTHONPATH=src python -m pytest tests/ -q
 ```
 
 CI (`.github/workflows/ci.yaml`) runs this same suite plus Black/flake8/pylint on every push and PR to `main`/`STRP`, and blocks any PR that touches `core/` (see below).
