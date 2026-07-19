@@ -34,7 +34,8 @@ nav:
     - CQL & MixedTrainer: algorithms/cql-mixed.md
     - DQN (Deep Q-Network): algorithms/dqn.md
     - DQN Variants: concepts/dqn-variants.md
-  - Guides:
+  - Tutorials &amp; Guides:
+    - First Experiment: tutorials/first-experiment.md
     - Custom Observation Builder: guides/custom-observation.md
     - Custom Reward Function: guides/custom-reward.md
     - Custom Action Space: guides/custom-action.md

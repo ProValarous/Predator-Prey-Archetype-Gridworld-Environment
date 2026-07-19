@@ -35,7 +35,7 @@ flowchart LR
 | 2. **Concepts** | The gridworld, agents, observations, rewards, actions, wrappers | [GridWorld](concepts/gridworld.md) |
 | 3. **Architecture** | The layered design and how a step flows through it | [Architecture](overview/architecture.md) |
 | 4. **Implementation** | How each learning algorithm works, with code pointers | [Algorithms](algorithms/index.md) |
-| 5. **Examples** | Train, watch, interpret, and extend an experiment | [Quickstart](guides/quickstart.md) |
+| 5. **Examples** | Train, watch, interpret, and extend an experiment | [First Experiment](tutorials/first-experiment.md) |
 
 New to the project? The [Student Reading Guide](student-guide.md) gives a
 week-by-week path.
@@ -94,8 +94,8 @@ env.close()
 ```
 
 See the [Quickstart](guides/quickstart.md) for a full install → train → evaluate
-walkthrough, and the [First Experiment tutorial](guides/quickstart.md) to watch
-agents learn.
+walkthrough, and the [First Experiment tutorial](tutorials/first-experiment.md) to
+watch agents learn.
 
 ---
 

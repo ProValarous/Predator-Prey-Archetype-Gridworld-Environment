@@ -1,5 +1,9 @@
 # Project Overview
 
+<p align="center">
+  <img src="../assets/images/PPAGE_overview.png" alt="High-level overview of the Predator-Prey Archetype Gridworld environment" width="640"/>
+</p>
+
 ## Purpose
 
 The Predator-Prey Archetype Gridworld is a **discrete, deterministic multi-agent reinforcement learning (MARL) environment** built as a controlled research testbed. Its primary purpose is to enable mechanistic study of coordination, pursuit-evasion, and emergent behavior in multi-agent settings without the confounding variables present in more complex simulators.
