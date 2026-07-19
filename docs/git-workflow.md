@@ -58,7 +58,7 @@ pip install -r requirements-dev.txt
 > an editable install won't make `multi_agent_package` importable even though
 > `pip` may report success. Every command below uses `PYTHONPATH=src`
 > instead, which is the only verified-working setup. See the
-> [Quickstart](../README.md#-quickstart) for details.
+> [Quickstart](guides/quickstart.md) for details.
 
 ---
 
@@ -84,7 +84,7 @@ branch scoped to one change — small, reviewable PRs merge faster.
 This isn't just a guideline — it's enforced automatically. The `core-guard`
 CI job diffs your PR against `STRP` and **fails the check if any file under
 `core/` changed**, regardless of how small the change looks. See
-[CONTRIBUTING.md](../CONTRIBUTING.md) for the full rationale and the layered
+[contributing guide](contributing.md) for the full rationale and the layered
 architecture this protects.
 
 If you find yourself needing to touch `core/`, that's a signal to open an
@@ -135,7 +135,7 @@ submitting — it's easy to accidentally target `main`).
 
 ## What CI actually checks
 
-Defined in [`.github/workflows/ci.yaml`](../.github/workflows/ci.yaml),
+Defined in `.github/workflows/ci.yaml`,
 triggered on every push and PR to `main`, `master`, or `STRP`:
 
 | Job | Runs on | What it does |

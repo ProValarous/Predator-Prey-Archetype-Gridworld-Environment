@@ -39,8 +39,8 @@ a*  = argmax_a' Q_online(s', a')
 y   = r + γ · (1 − done) · Q_target(s', a*)
 ```
 
-**Where it lives.** [`src/baselines/DQN/dqn.py`](../../src/baselines/DQN/dqn.py),
-in `_optimize_agent`, guarded by `self.double_dqn`:
+**Where it lives.** `src/baselines/DQN/dqn.py`, in `_optimize_agent`, guarded by
+`self.double_dqn`:
 
 ```python
 if self.double_dqn:
@@ -69,9 +69,9 @@ the network learn the value of a state independently of which action is taken,
 which helps when many actions have similar value (common in a gridworld where
 most cells are unremarkable).
 
-**Where it lives.** [`src/baselines/DQN/q_network.py`](../../src/baselines/DQN/q_network.py),
-class `DuelingQNetwork` (shared trunk → `value_head` + `advantage_head`, combined
-in `forward`). DQN swaps it in for the plain `QNetwork` in `_build_learners`:
+**Where it lives.** `src/baselines/DQN/q_network.py`, class `DuelingQNetwork`
+(shared trunk → `value_head` + `advantage_head`, combined in `forward`). DQN swaps
+it in for the plain `QNetwork` in `_build_learners`:
 
 ```python
 network_cls = DuelingQNetwork if self.dueling else QNetwork
@@ -82,9 +82,8 @@ network_cls = DuelingQNetwork if self.dueling else QNetwork
 ## D3QN (both together)
 
 Setting both flags gives Dueling Double DQN. A ready-made preset lives at
-[`configs/d3qn/`](../../configs/d3qn) so the combination is discoverable and
-reproducible. It is the same `dqn` algorithm — D3QN is not a separate registry
-entry, just both flags on.
+`configs/d3qn/` so the combination is discoverable and reproducible. It is the
+same `dqn` algorithm — D3QN is not a separate registry entry, just both flags on.
 
 ## Config example
 
