@@ -24,11 +24,16 @@ nav:
     - Rewards: concepts/rewards.md
     - Actions: concepts/actions.md
     - Wrappers: concepts/wrappers.md
-    - DQN Variants: concepts/dqn-variants.md
   - Data Flows:
     - Initialization: flows/init-flow.md
     - Per-Step Pipeline: flows/step-flow.md
     - Training Loop: flows/training-loop.md
+  - Algorithms:
+    - Overview: algorithms/index.md
+    - IQL (Independent Q-Learning): algorithms/iql.md
+    - CQL & MixedTrainer: algorithms/cql-mixed.md
+    - DQN (Deep Q-Network): algorithms/dqn.md
+    - DQN Variants: concepts/dqn-variants.md
   - Guides:
     - Custom Observation Builder: guides/custom-observation.md
     - Custom Reward Function: guides/custom-reward.md
@@ -43,6 +48,7 @@ nav:
   - Reference:
     - API Reference: reference/api-reference.md
     - Config Reference: reference/config-reference.md
+    - Papers & Further Reading: reference/papers.md
     - Agent Class: api/agents.md
     - GridWorldEnv Class: api/gridworld.md
     - Baselines Classes: api/baselines.md

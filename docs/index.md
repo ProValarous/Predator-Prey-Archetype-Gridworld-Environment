@@ -34,7 +34,7 @@ flowchart LR
 | 1. **Theory** | MDPs, the Bellman equation, Q-learning, then what changes with many agents | [RL Foundations](concepts/rl-foundations.md) → [MARL Theory](concepts/marl.md) |
 | 2. **Concepts** | The gridworld, agents, observations, rewards, actions, wrappers | [GridWorld](concepts/gridworld.md) |
 | 3. **Architecture** | The layered design and how a step flows through it | [Architecture](overview/architecture.md) |
-| 4. **Implementation** | How each learning algorithm works, with code pointers | [Algorithms](concepts/dqn-variants.md) |
+| 4. **Implementation** | How each learning algorithm works, with code pointers | [Algorithms](algorithms/index.md) |
 | 5. **Examples** | Train, watch, interpret, and extend an experiment | [Quickstart](guides/quickstart.md) |
 
 New to the project? The [Student Reading Guide](student-guide.md) gives a
