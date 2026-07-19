@@ -4,6 +4,5 @@ target-version = ["py310", "py311", "py312"]
 extend-exclude = '''
 /(
     \.new_venv
-    | src/multi_agent_package/core
 )/
 '''

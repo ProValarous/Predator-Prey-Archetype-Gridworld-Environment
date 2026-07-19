@@ -15,12 +15,13 @@ from multi_agent_package.observations.local_radius import LocalRadiusObservation
 from multi_agent_package.observations.absolute import AbsoluteObservation
 from multi_agent_package.observations.relative import RelativeObservation
 
+
 _OBSERVATION_REGISTRY: dict[str, Type[ObservationBuilder]] = {
     "default": DefaultObservation,
     "local_only": LocalOnlyObservation,
     "local_radius": LocalRadiusObservation,
     "absolute": AbsoluteObservation,
-    "relative": RelativeObservation,
+    "relative": RelativeObservation
 }
 
 

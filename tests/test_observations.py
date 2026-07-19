@@ -13,23 +13,17 @@ from multi_agent_package.observations.absolute import AbsoluteObservation
 from multi_agent_package.observations.relative import RelativeObservation
 from multi_agent_package.observations.local_radius import LocalRadiusObservation
 
+
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
-
 
 def make_env(size=6, perc_obstacle=0, seed=1):
     agents = [
         Agent(agent_type="predator", agent_team="predator_1", agent_name="pred_1"),
         Agent(agent_type="prey", agent_team="prey_1", agent_name="prey_1"),
     ]
-    env = GridWorldEnv(
-        agents=agents,
-        size=size,
-        perc_num_obstacle=perc_obstacle,
-        render_mode=None,
-        seed=seed,
-    )
+    env = GridWorldEnv(agents=agents, size=size, perc_num_obstacle=perc_obstacle, render_mode=None, seed=seed)
     env.reset()
     return env
 
@@ -45,7 +39,6 @@ def assert_no_env_mutation(env, builder):
 # ------------------------------------------------------------------
 # DefaultObservation
 # ------------------------------------------------------------------
-
 
 class TestDefaultObservation:
     def setup_method(self):
@@ -86,7 +79,6 @@ class TestDefaultObservation:
 # LocalOnlyObservation
 # ------------------------------------------------------------------
 
-
 class TestLocalOnlyObservation:
     def setup_method(self):
         self.env = make_env()
@@ -115,7 +107,6 @@ class TestLocalOnlyObservation:
 # AbsoluteObservation
 # ------------------------------------------------------------------
 
-
 class TestAbsoluteObservation:
     def setup_method(self):
         self.env = make_env()
@@ -138,7 +129,6 @@ class TestAbsoluteObservation:
 # ------------------------------------------------------------------
 # RelativeObservation
 # ------------------------------------------------------------------
-
 
 class TestRelativeObservation:
     def setup_method(self):
@@ -163,7 +153,6 @@ class TestRelativeObservation:
 # ------------------------------------------------------------------
 # LocalRadiusObservation
 # ------------------------------------------------------------------
-
 
 class TestLocalRadiusObservation:
     def setup_method(self):
@@ -234,7 +223,6 @@ class TestLocalRadiusObservation:
 # length, finite, numeric vector -- this is what DQN relies on.
 # ------------------------------------------------------------------
 
-
 class TestObservationEncoding:
     @pytest.mark.parametrize(
         "builder_cls,builder_kwargs,env_size",
@@ -246,9 +234,7 @@ class TestObservationEncoding:
             (LocalRadiusObservation, {"radius": 3}, 8),
         ],
     )
-    def test_encode_returns_numeric_vectors(
-        self, builder_cls, builder_kwargs, env_size
-    ):
+    def test_encode_returns_numeric_vectors(self, builder_cls, builder_kwargs, env_size):
         env = make_env(size=env_size)
         builder = builder_cls(**builder_kwargs)
         obs = builder.build(env)

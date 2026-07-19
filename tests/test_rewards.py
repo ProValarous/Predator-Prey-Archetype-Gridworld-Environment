@@ -11,28 +11,18 @@ from multi_agent_package.rewards.base_reward import BaseReward
 from multi_agent_package.rewards.predator_distance import PredatorDistanceReward
 from multi_agent_package.rewards.survival_reward import SurvivalReward
 
+
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
 
-
 def make_env(n_pred=1, n_prey=1, size=6, seed=0):
     agents = []
     for i in range(1, n_pred + 1):
-        agents.append(
-            Agent(
-                agent_type="predator",
-                agent_team=f"predator_{i}",
-                agent_name=f"pred_{i}",
-            )
-        )
+        agents.append(Agent(agent_type="predator", agent_team=f"predator_{i}", agent_name=f"pred_{i}"))
     for i in range(1, n_prey + 1):
-        agents.append(
-            Agent(agent_type="prey", agent_team=f"prey_{i}", agent_name=f"prey_{i}")
-        )
-    env = GridWorldEnv(
-        agents=agents, size=size, perc_num_obstacle=0, render_mode=None, seed=seed
-    )
+        agents.append(Agent(agent_type="prey", agent_team=f"prey_{i}", agent_name=f"prey_{i}"))
+    env = GridWorldEnv(agents=agents, size=size, perc_num_obstacle=0, render_mode=None, seed=seed)
     env.reset()
     return env
 
@@ -40,7 +30,6 @@ def make_env(n_pred=1, n_prey=1, size=6, seed=0):
 # ------------------------------------------------------------------
 # BaseReward
 # ------------------------------------------------------------------
-
 
 class TestBaseReward:
     def test_returns_all_agent_keys(self):
@@ -79,7 +68,6 @@ class TestBaseReward:
 # ------------------------------------------------------------------
 # PredatorDistanceReward
 # ------------------------------------------------------------------
-
 
 class TestPredatorDistanceReward:
     def test_returns_all_agent_keys(self):
@@ -127,12 +115,8 @@ class TestPredatorDistanceReward:
         assert r2 == pytest.approx(r1 * 2)
 
     def test_no_prey_gives_zero_to_all(self):
-        agents = [
-            Agent(agent_type="predator", agent_team="predator_1", agent_name="pred_1")
-        ]
-        env = GridWorldEnv(
-            agents=agents, size=5, perc_num_obstacle=0, render_mode=None, seed=0
-        )
+        agents = [Agent(agent_type="predator", agent_team="predator_1", agent_name="pred_1")]
+        env = GridWorldEnv(agents=agents, size=5, perc_num_obstacle=0, render_mode=None, seed=0)
         env.reset()
         reward_fn = PredatorDistanceReward(weight=1.0)
         rewards = reward_fn.compute(env)
@@ -142,7 +126,6 @@ class TestPredatorDistanceReward:
 # ------------------------------------------------------------------
 # SurvivalReward
 # ------------------------------------------------------------------
-
 
 class TestSurvivalReward:
     def test_returns_all_agent_keys(self):

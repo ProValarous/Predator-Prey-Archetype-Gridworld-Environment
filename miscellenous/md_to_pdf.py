@@ -1,5 +1,4 @@
 """Convert a markdown file to PDF using markdown + xhtml2pdf."""
-
 import sys
 import markdown
 from xhtml2pdf import pisa
@@ -64,7 +63,6 @@ blockquote {
 a { color: #2980b9; }
 hr { border: none; border-top: 1px solid #ccc; margin: 12pt 0; }
 """
-
 
 def convert(md_path: str, pdf_path: str) -> None:
     with open(md_path, encoding="utf-8") as f:

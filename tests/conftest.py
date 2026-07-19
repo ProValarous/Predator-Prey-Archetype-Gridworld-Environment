@@ -9,13 +9,13 @@ import pytest
 # Make src/ importable without installing the package
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from multi_agent_package.core.agent import Agent  # noqa: E402
-from multi_agent_package.core.gridworld import GridWorldEnv  # noqa: E402
+from multi_agent_package.core.agent import Agent
+from multi_agent_package.core.gridworld import GridWorldEnv
+
 
 # ------------------------------------------------------------------
 # Agent fixtures
 # ------------------------------------------------------------------
-
 
 @pytest.fixture
 def predator():
@@ -47,7 +47,6 @@ def one_predator_one_prey():
 # ------------------------------------------------------------------
 # Environment fixtures
 # ------------------------------------------------------------------
-
 
 @pytest.fixture
 def small_env(one_predator_one_prey):
@@ -91,7 +90,6 @@ def obstacle_env(one_predator_one_prey):
 # ------------------------------------------------------------------
 # Baseline config fixtures
 # ------------------------------------------------------------------
-
 
 @pytest.fixture
 def iql_config():

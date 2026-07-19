@@ -8,39 +8,23 @@ import pytest
 from multi_agent_package.core.agent import Agent
 from multi_agent_package.core.gridworld import GridWorldEnv
 
+
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
 
-
 def make_env(size=5, n_pred=1, n_prey=1, perc_obstacle=0, seed=42, **kwargs):
     agents = []
     for i in range(1, n_pred + 1):
-        agents.append(
-            Agent(
-                agent_type="predator",
-                agent_team=f"predator_{i}",
-                agent_name=f"pred_{i}",
-            )
-        )
+        agents.append(Agent(agent_type="predator", agent_team=f"predator_{i}", agent_name=f"pred_{i}"))
     for i in range(1, n_prey + 1):
-        agents.append(
-            Agent(agent_type="prey", agent_team=f"prey_{i}", agent_name=f"prey_{i}")
-        )
-    return GridWorldEnv(
-        agents=agents,
-        size=size,
-        perc_num_obstacle=perc_obstacle,
-        render_mode=None,
-        seed=seed,
-        **kwargs,
-    )
+        agents.append(Agent(agent_type="prey", agent_team=f"prey_{i}", agent_name=f"prey_{i}"))
+    return GridWorldEnv(agents=agents, size=size, perc_num_obstacle=perc_obstacle, render_mode=None, seed=seed, **kwargs)
 
 
 # ------------------------------------------------------------------
 # Reset postconditions
 # ------------------------------------------------------------------
-
 
 class TestReset:
     def test_returns_obs_and_info(self):
@@ -87,13 +71,14 @@ class TestReset:
         obs_a, _ = env_a.reset()
         obs_b, _ = env_b.reset()
         for aid in obs_a:
-            np.testing.assert_array_equal(obs_a[aid]["local"], obs_b[aid]["local"])
+            np.testing.assert_array_equal(
+                obs_a[aid]["local"], obs_b[aid]["local"]
+            )
 
 
 # ------------------------------------------------------------------
 # Step output structure
 # ------------------------------------------------------------------
-
 
 class TestStepStructure:
     def test_step_keys(self):
@@ -138,7 +123,6 @@ class TestStepStructure:
 # Step cost from base_reward
 # ------------------------------------------------------------------
 
-
 class TestStepCost:
     def test_predator_gets_step_cost(self):
         env = make_env(perc_obstacle=0)
@@ -151,7 +135,6 @@ class TestStepCost:
 # ------------------------------------------------------------------
 # Obstacle mechanics
 # ------------------------------------------------------------------
-
 
 class TestObstacles:
     def test_obstacle_count(self):
@@ -170,7 +153,6 @@ class TestObstacles:
     def test_block_by_obstacle(self):
         """Agent cannot move onto obstacle when block_agents_by_obstacles=True."""
         import numpy as np
-
         env = make_env(perc_obstacle=0, seed=42, block_agents_by_obstacles=True)
         env.reset()
         agent = env.agents[0]
@@ -188,7 +170,6 @@ class TestObstacles:
 # Capture mechanics
 # ------------------------------------------------------------------
 
-
 class TestCapture:
     def test_capture_on_same_cell(self):
         env = make_env(perc_obstacle=0, seed=0)
@@ -198,6 +179,8 @@ class TestCapture:
         # Force both agents onto the same cell
         pred._agent_location = np.array([2, 2], dtype=np.int32)
         prey._agent_location = np.array([3, 2], dtype=np.int32)
+        # noop everyone
+        obs = {ag.agent_name: ag._get_obs() for ag in env.agents}
         # step predator right (into prey cell would require setup)
         # Just confirm capture when already on same cell after location override
         pred._agent_location = np.array([3, 2], dtype=np.int32)
@@ -214,21 +197,15 @@ class TestCapture:
         assert not out["terminated"]
 
     def test_capture_threshold_not_met(self):
-        """threshold=2, 2 predators + 1 prey: one capture is not enough to terminate."""
+        """With threshold=2 and 2 predators + 1 prey: one capture is not enough to terminate."""
         agents = [
             Agent(agent_type="predator", agent_team="predator_1", agent_name="pred_1"),
             Agent(agent_type="predator", agent_team="predator_2", agent_name="pred_2"),
             Agent(agent_type="prey", agent_team="prey_1", agent_name="prey_1"),
             Agent(agent_type="prey", agent_team="prey_2", agent_name="prey_2"),
         ]
-        env = GridWorldEnv(
-            agents=agents,
-            size=6,
-            perc_num_obstacle=0,
-            render_mode=None,
-            seed=0,
-            capture_threshold=2,
-        )
+        env = GridWorldEnv(agents=agents, size=6, perc_num_obstacle=0,
+                           render_mode=None, seed=0, capture_threshold=2)
         env.reset()
         pred = next(a for a in env.agents if a.agent_name == "pred_1")
         prey = next(a for a in env.agents if a.agent_name == "prey_1")
@@ -241,7 +218,6 @@ class TestCapture:
 # ------------------------------------------------------------------
 # Truncation
 # ------------------------------------------------------------------
-
 
 class TestTruncation:
     def test_truncation_at_max_steps(self):
@@ -266,7 +242,6 @@ class TestTruncation:
 # Extension hooks
 # ------------------------------------------------------------------
 
-
 class TestExtensionHooks:
     def test_custom_reward_fn_added(self):
         env = make_env(perc_obstacle=0)
@@ -279,11 +254,9 @@ class TestExtensionHooks:
     def test_custom_observation_builder_called(self):
         env = make_env(perc_obstacle=0)
         called = []
-
         def custom_builder(e):
             called.append(True)
             return {ag.agent_name: {"custom": True} for ag in e.agents}
-
         env.observation_builder = custom_builder
         obs, _ = env.reset()
         assert called  # builder was invoked during reset

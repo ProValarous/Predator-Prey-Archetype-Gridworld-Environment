@@ -6,24 +6,23 @@ import os
 import tempfile
 
 import numpy as np
+import pytest
 
 from multi_agent_package.core.agent import Agent
 from multi_agent_package.core.gridworld import GridWorldEnv
 from baselines.IQL.iql import IQL
 
+
 # ------------------------------------------------------------------
 # Fixtures
 # ------------------------------------------------------------------
-
 
 def make_env(seed=42):
     agents = [
         Agent(agent_type="predator", agent_team="predator_1", agent_name="pred_1"),
         Agent(agent_type="prey", agent_team="prey_1", agent_name="prey_1"),
     ]
-    return GridWorldEnv(
-        agents=agents, size=5, perc_num_obstacle=0, render_mode=None, seed=seed
-    )
+    return GridWorldEnv(agents=agents, size=5, perc_num_obstacle=0, render_mode=None, seed=seed)
 
 
 def base_config(**overrides):
@@ -44,7 +43,6 @@ def base_config(**overrides):
 # ------------------------------------------------------------------
 # Initialization
 # ------------------------------------------------------------------
-
 
 class TestIQLInit:
     def test_agent_ids_discovered(self):
@@ -74,7 +72,6 @@ class TestIQLInit:
 # ------------------------------------------------------------------
 # State encoding
 # ------------------------------------------------------------------
-
 
 class TestIQLEncodeState:
     def test_returns_hashable(self):
@@ -119,7 +116,6 @@ class TestIQLEncodeState:
 # Action selection
 # ------------------------------------------------------------------
 
-
 class TestIQLSelectActions:
     def test_returns_dict_for_all_agents(self):
         env = make_env()
@@ -163,7 +159,6 @@ class TestIQLSelectActions:
 # Training loop
 # ------------------------------------------------------------------
 
-
 class TestIQLTrain:
     def test_q_tables_populated_after_training(self):
         env = make_env()
@@ -174,20 +169,14 @@ class TestIQLTrain:
 
     def test_epsilon_decays(self):
         env = make_env()
-        algo = IQL(
-            env,
-            base_config(epsilon=1.0, epsilon_decay=0.5, min_epsilon=0.0, episodes=5),
-        )
+        algo = IQL(env, base_config(epsilon=1.0, epsilon_decay=0.5, min_epsilon=0.0, episodes=5))
         initial_eps = algo.epsilon
         algo.train()
         assert algo.epsilon < initial_eps
 
     def test_epsilon_respects_min(self):
         env = make_env()
-        algo = IQL(
-            env,
-            base_config(epsilon=1.0, epsilon_decay=0.1, min_epsilon=0.05, episodes=20),
-        )
+        algo = IQL(env, base_config(epsilon=1.0, epsilon_decay=0.1, min_epsilon=0.05, episodes=20))
         algo.train()
         assert algo.epsilon >= 0.05
 
@@ -197,7 +186,10 @@ class TestIQLTrain:
         algo = IQL(env, base_config(episodes=1, epsilon=1.0))
         algo.train()
         all_values = [
-            v for table in algo.q_tables.values() for arr in table.values() for v in arr
+            v
+            for table in algo.q_tables.values()
+            for arr in table.values()
+            for v in arr
         ]
         assert any(v != 0.0 for v in all_values)
 
@@ -205,7 +197,6 @@ class TestIQLTrain:
 # ------------------------------------------------------------------
 # Save / load
 # ------------------------------------------------------------------
-
 
 class TestIQLPersistence:
     def test_save_creates_file(self):

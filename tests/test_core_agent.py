@@ -3,6 +3,7 @@ Tests for multi_agent_package.core.agent.Agent
 """
 
 import numpy as np
+import pytest
 
 from multi_agent_package.core.agent import Agent
 
