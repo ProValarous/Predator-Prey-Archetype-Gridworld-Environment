@@ -55,9 +55,8 @@ pip install -e ".[dev]"
 ```
 
 > `pip install -e .` makes `multi_agent_package` and `baselines` importable
-> without `PYTHONPATH` (see the [Quickstart](guides/quickstart.md)). The CI
-> commands below still invoke `pylint`/`pytest` with `PYTHONPATH=src`, which is
-> how the current `ci.yaml` is written — either form works locally.
+> without setting `PYTHONPATH` (see the [Quickstart](guides/quickstart.md)), so the
+> commands below can be run as-is from the repository root.
 
 ---
 
@@ -97,8 +96,8 @@ Run the exact same checks CI will run, locally, before pushing:
 ```bash
 black --check .
 flake8 .
-PYTHONPATH=src pylint src
-PYTHONPATH=src python -m pytest tests/ -q
+pylint src
+python -m pytest tests/ -q
 ```
 
 If `black --check` fails, just run `black .` (no `--check`) to auto-fix
@@ -139,8 +138,8 @@ triggered on every push and PR to `main`, `master`, or `STRP`:
 
 | Job | Runs on | What it does |
 | --- | --- | --- |
-| `lint` | push + PR | `black --check .`, `flake8 .`, `PYTHONPATH=src pylint src`. Fails on any formatting or lint violation. `core/`, `miscellenous/`, and `slides/` are excluded from linting by design (see comments in `.flake8` / `.pylintrc`). |
-| `test` | push + PR | `PYTHONPATH=src pytest tests/ -q` — the full test suite (registries, plugin contracts, end-to-end training, architecture rules). |
+| `lint` | push + PR | `black --check .`, `flake8 .`, `pylint src`. Fails on any formatting or lint violation. `core/`, `miscellenous/`, and `slides/` are excluded from linting by design (see comments in `.flake8` / `.pylintrc`). |
+| `test` | push + PR | `pytest tests/ -q` — the full test suite (registries, plugin contracts, end-to-end training, architecture rules). |
 | `core-guard` | **PR only** | Diffs the PR's base and head SHAs; fails if any file under `src/multi_agent_package/core/` was touched. Never runs on plain pushes (there's no "PR diff" to check). |
 
 All three must pass before merging. There is currently no branch protection
@@ -170,7 +169,7 @@ git fetch origin
 git merge origin/STRP        # or: git rebase origin/STRP
 # resolve conflicts, then:
 black .
-PYTHONPATH=src python -m pytest tests/ -q
+python -m pytest tests/ -q
 git push
 ```
 
@@ -210,7 +209,7 @@ git checkout -b fix/my-fix
 # ... make changes ...
 
 # Verify before pushing
-black --check . && flake8 . && PYTHONPATH=src pylint src && PYTHONPATH=src python -m pytest tests/ -q
+black --check . && flake8 . && pylint src && python -m pytest tests/ -q
 
 git add <files>
 git commit -m "fix: short description"

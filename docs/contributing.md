@@ -54,8 +54,8 @@ pip install -e ".[dev]"
 ```
 
 `pip install -e .` makes `multi_agent_package` and `baselines` importable without
-`PYTHONPATH`. (CI still runs `pylint`/`pytest` with `PYTHONPATH=src` as its
-`ci.yaml` is written; either form works locally once installed.)
+setting `PYTHONPATH`, so the verification commands below run as-is from the
+repository root.
 
 ### 5. Verify Setup 
 ```bash
