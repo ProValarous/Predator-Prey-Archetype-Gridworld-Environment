@@ -70,7 +70,6 @@ class GridWorldEnv(gym.Env):
         max_steps: Optional[int] = None,
         allow_cell_sharing: bool = True,
         block_agents_by_obstacles: bool = True,
-        include_base_reward: bool = True,
     ) -> None:
         assert render_mode is None or render_mode in self.metadata["render_modes"]
 
@@ -111,11 +110,6 @@ class GridWorldEnv(gym.Env):
         # behavior flags (configurable)
         self.allow_cell_sharing: bool = allow_cell_sharing
         self.block_agents_by_obstacles: bool = block_agents_by_obstacles
-
-        # Whether step() includes base_reward() (capture/obstacle/step-cost
-        # signal). This is the ONLY switch for the base reward: shaping plugins
-        # wired through reward_fn must never re-add it, or it is double-counted.
-        self.include_base_reward: bool = bool(include_base_reward)
 
         # extension hooks (students plug logic here)
         self.reward_fn = None
@@ -288,10 +282,7 @@ class GridWorldEnv(gym.Env):
         self._episode_steps += 1
 
         # rewards
-        if self.include_base_reward:
-            rewards = self.base_reward()
-        else:
-            rewards = {ag.agent_name: 0.0 for ag in self.agents}
+        rewards = self.base_reward()
 
         if self.reward_fn is not None:
             custom = self.reward_fn(self)
