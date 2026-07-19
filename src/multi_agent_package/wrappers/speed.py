@@ -3,13 +3,11 @@ Speed wrapper for GridWorldEnv.
 
 The core environment moves every agent exactly one cell per env.step() call,
 regardless of the agent_speed field stored on each Agent. This wrapper honours
-agent_speed by replaying each logical step as up to min(speed, stamina)
-sub-steps:
-  - if the action is NOOP (env.action_space_plugin.is_noop()), no sub-steps
-    are taken and stamina is unchanged
-  - otherwise the agent acts min(speed, stamina) times, each sub-step
-    deducting 1 from stamina; remaining slots in the max-speed budget are
-    filled with NOOP
+agent_speed by replaying each logical step as multiple sub-steps determined by
+SpeedDiscreteActionSpace.to_moves():
+  - to_moves(action, speed, stamina) returns up to min(speed, stamina) direction
+    vectors; the wrapper sends the original action for each vector and NOOP for
+    any remaining sub-steps in the max-speed budget
   - stamina depletes across the episode and resets to its max on env.reset()
 
 Rewards are summed across all sub-steps; observations and the done flag are
@@ -18,16 +16,17 @@ signals terminated or truncated so faster agents cannot overshoot past a
 capture or timeout.
 
 Usage (automatic via run_from_config.build_environment):
-    env.action_space_plugin = get_action_space(...)   # must be set first
     env = SpeedWrapper(env)
     # env.step / env.reset / all attributes work identically to GridWorldEnv
 """
 
 from typing import Dict
 
+from multi_agent_package.actions.speed_discrete import SpeedDiscreteActionSpace
+
 
 class SpeedWrapper:
-    # action integer sent for idle slots in the sub-step budget
+    # action 4 in discrete_5 = stay in place
     NOOP: int = 4
 
     def __init__(self, env):
@@ -39,8 +38,7 @@ class SpeedWrapper:
             ag.agent_name: int(ag.stamina) for ag in env.agents
         }
         self._max_speed: int = max(self._speeds.values(), default=1)
-        # use the configured plugin for NOOP detection — avoids hardcoding a class
-        self._plugin = env.action_space_plugin
+        self._action_space = SpeedDiscreteActionSpace()
         # stamina remaining this episode; reset on env.reset()
         self._stamina: Dict[str, int] = dict(self._max_stamina)
 
@@ -57,11 +55,12 @@ class SpeedWrapper:
         if self._max_speed == 1:
             return self.env.step(actions)
 
-        # compute sub-step budget: NOOP costs 0, movement costs min(speed, stamina)
+        # delegate step-count decision to the action plugin
         n_steps: Dict[str, int] = {
-            name: (
-                0 if self._plugin.is_noop(act)
-                else min(max(self._speeds[name], 1), max(self._stamina[name], 0))
+            name: len(
+                self._action_space.to_moves(
+                    act, self._speeds[name], self._stamina[name]
+                )
             )
             for name, act in actions.items()
         }

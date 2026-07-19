@@ -55,7 +55,3 @@ class ActionSpace(ABC):
         Number of discrete actions.
         """
         raise NotImplementedError
-
-    def is_noop(self, action: int) -> bool:
-        """Return True if this action produces no movement (zero direction vector)."""
-        return not self.to_direction(action).any()
