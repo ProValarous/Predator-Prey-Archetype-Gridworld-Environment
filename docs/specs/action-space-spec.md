@@ -118,7 +118,11 @@ env.action_space_plugin = get_action_space("discrete_5")
 
 `step()` calls `env.action_space_plugin.to_direction(a)` when the plugin is set, and falls back to `ag._actions_to_directions[a]` otherwise.
 
-> ⚠️ **`SpeedWrapper` does not use `env.action_space_plugin`.** It hardcodes its own `SpeedDiscreteActionSpace()` instance to compute sub-step counts via `to_moves()`. This works today because every shipped action space treats action `4` as NOOP, but a custom action space with a different NOOP index or action count would desync from the wrapper's counting. See [concepts/wrappers.md](../concepts/wrappers.md).
+> **`SpeedWrapper` uses `env.action_space_plugin`.** It reads NOOP-ness via
+> `plugin.is_noop(action)` and derives the idle-slot action index from the same
+> configured plugin, so a custom action space with a different NOOP index works
+> correctly. (`to_moves()` on `SpeedDiscreteActionSpace` still exists but the
+> wrapper no longer uses it.) See [Wrappers](../concepts/wrappers.md).
 
 ---
 

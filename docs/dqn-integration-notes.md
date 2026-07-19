@@ -1,5 +1,11 @@
 # DQN Integration Notes — merging PR #22, #23, #24
 
+> **Historical maintainer note.** This records how the DQN baseline was assembled
+> from three early PRs (now merged). It is kept for provenance and is intentionally
+> not in the site navigation. For current DQN docs see [DQN](algorithms/dqn.md) and
+> [DQN Variants](concepts/dqn-variants.md).
+
+
 Working notes for assembling one DQN baseline out of the three open PRs. Source PRs reviewed at their current heads (`pr22-head` = affan002:feat/vanila-dqn-affan, `pr23-head` = afshadGit:ssd-pipeline, `pr24-head` = Areesha06:pipeline-sdd), diffed against merge-base `df8c828`. See [pr-comparison-22-23-24.md](pr-comparison-22-23-24.md) for the full three-way review this builds on.
 
 ## Component checklist
@@ -25,7 +31,7 @@ None of the three `dqn.py` files should be adopted wholesale; the right base is 
 
 All three DQN PRs *technically* deviate from that in the same direction — they all need a fixed-length numeric vector, which a hashable-tuple scheme doesn't give them — but they diverge in how:
 
-- **#22** attaches the encoding responsibility to the environment (`env.observation_encoder`, wired externally in `run_from_config.py`) and fails fast if it's missing. This makes DQN generic across every observation plugin (`default`, `local_only`, `local_radius`, `absolute`, `relative`) with zero DQN-side code per plugin — the strongest modularity story of the three — at the cost of DQN no longer being usable against a bare `GridWorldEnv` the way `IQL` is; it now requires whatever constructs the env (a script, a test, a notebook) to also attach `observation_encoder`.
+- **#22** attaches the encoding responsibility to the environment (`env.observation_encoder`, wired externally in `run_from_config.py`) and fails fast if it's missing. This makes DQN generic across every observation plugin (`default`, `local_only`, `local_radius`, `absolute`, `relative`) with zero DQN-side code per plugin — the strongest modularity story of the three — at the cost of DQN no longer being usable against a bare `GridWorldEnv` the way `IQL` is; it now requires whatever constructs the env (a script or a test) to also attach `observation_encoder`.
 - **#23** and **#24** each embed their own bespoke `_encode_observation`/`_encode_state` directly inside the `DQN` class — closer to `IQL`'s "self-contained, no external wiring" spirit, but at the cost of being hardcoded to one observation shape each (#23: `local_radius`'s `visible_agents`/`visible_obstacles` dict layout; #24: `relative`'s 1v1 `agents` dict, via `next(iter(...))`, which breaks for anything but exactly 2 agents).
 
 Since the observation-plugin checklist above already locks in **#22's `build`/`encode` contract**, the DQN core has to consume it through `env.observation_encoder` — that makes **#22's `dqn.py` the only one of the three actually designed around the encoder contract we're keeping**, so it's the correct base, not a stylistic preference. The `IQL`-style "no external wiring" property is worth a one-line callout in the class docstring as a known, deliberate deviation, but isn't worth abandoning the generic-encoder design over — the alternative is re-hardcoding DQN to one observation shape, which is strictly worse now that five plugins exist.

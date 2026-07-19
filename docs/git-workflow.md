@@ -51,14 +51,13 @@ git checkout STRP
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\Activate.ps1
 
-pip install -r requirements-dev.txt
+pip install -e ".[dev]"
 ```
 
-> **`pip install -e .` does not work** — the build backend isn't wired up, so
-> an editable install won't make `multi_agent_package` importable even though
-> `pip` may report success. Every command below uses `PYTHONPATH=src`
-> instead, which is the only verified-working setup. See the
-> [Quickstart](guides/quickstart.md) for details.
+> `pip install -e .` makes `multi_agent_package` and `baselines` importable
+> without `PYTHONPATH` (see the [Quickstart](guides/quickstart.md)). The CI
+> commands below still invoke `pylint`/`pytest` with `PYTHONPATH=src`, which is
+> how the current `ci.yaml` is written — either form works locally.
 
 ---
 

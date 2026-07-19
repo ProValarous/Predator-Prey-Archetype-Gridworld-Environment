@@ -25,15 +25,20 @@ class SpeedWrapper:
         self._speeds = {ag.agent_name: int(ag.agent_speed) for ag in env.agents}
         self._max_stamina = {ag.agent_name: int(ag.stamina) for ag in env.agents}
         self._max_speed = max(self._speeds.values(), default=1)
-        self._action_space = SpeedDiscreteActionSpace()   # hardcoded — see Quirks below
+        self._plugin = env.action_space_plugin              # the configured action space
+        # NOOP index read from that plugin (falls back to 4 if none is attached)
+        self._noop_action = next(
+            (a for a in range(self._plugin.n_actions) if self._plugin.is_noop(a)),
+            self.NOOP,
+        ) if self._plugin is not None else self.NOOP
         self._stamina = dict(self._max_stamina)
 ```
 
 On `step(actions)`:
 
 1. **Fast path:** if every agent's `agent_speed` is `1` (`self._max_speed == 1`), delegate straight to `self.env.step(actions)` — no sub-stepping overhead when speed isn't in play.
-2. Otherwise, for each agent compute a sub-step budget: `n_steps[name] = len(self._action_space.to_moves(action, speed, stamina))`, which resolves to `0` for NOOP or `min(max(speed, 1), max(stamina, 0))` otherwise.
-3. Loop `sub` from `0` to `max_speed - 1`: each agent acts with its real action while `sub < n_steps[name]`, and `NOOP` for any remaining sub-steps in the shared budget. Each sub-step calls the real `self.env.step(sub_actions)`.
+2. Otherwise, for each agent compute a sub-step budget: `0` if the configured plugin reports the action is a NOOP (`self._plugin.is_noop(action)`), else `min(max(speed, 1), max(stamina, 0))`.
+3. Loop `sub` from `0` to `max_speed - 1`: each agent acts with its real action while `sub < n_steps[name]`, and `self._noop_action` (the plugin's NOOP index) for any remaining sub-steps in the shared budget. Each sub-step calls the real `self.env.step(sub_actions)`.
 4. Rewards are **summed** across all sub-steps. Observations, `terminated`, and `truncated` come from the **final** sub-step that ran.
 5. The loop breaks **immediately** if any sub-step signals `terminated` or `truncated` — a fast agent can't overshoot past a capture or a timeout mid-budget.
 6. After the loop, stamina is deducted once per agent: `stamina -= n_steps[name]` (NOOP already costs `0` since it's excluded from `n_steps`).
@@ -54,9 +59,13 @@ On `step(actions)`:
 
 ## Quirks Worth Knowing
 
-> ⚠️ **`SpeedWrapper` hardcodes its own `SpeedDiscreteActionSpace()` instance** (`self._action_space` in `__init__`) rather than reading `env.action_space_plugin`. This means the wrapper's sub-step-count decision is made by a *different* `ActionSpace` object than the one actually used for movement inside `GridWorldEnv.step()` (which uses whatever `env.action_space_plugin` was configured — `discrete_5`, `cross`, or `speed_discrete_5`). In practice this hasn't caused a bug because all three shipped action spaces treat action index `4` as NOOP `[0,0]`, so the wrapper's sub-step counting is consistent regardless of which plugin is actually configured. But it means the wrapper isn't truly decoupled from the action-space abstraction the way observations and rewards are — a future action space with a different NOOP convention (or a different number of actions) could desync the wrapper's counting from the real movement semantics.
->
-> `SpeedDiscreteActionSpace.to_moves()` computes real direction vectors (`[direction] * n`) but `SpeedWrapper` only ever consumes `len(...)` of that list — the vectors themselves are discarded. The wrapper re-sends the original action integer to `self.env.step()` for each sub-step instead.
+> `SpeedWrapper` reads NOOP-ness from the **configured** action plugin
+> (`env.action_space_plugin.is_noop(...)`) and derives the idle-slot action index
+> from it, rather than hardcoding a `SpeedDiscreteActionSpace`. So the wrapper's
+> sub-step counting uses the same action space that actually moves the agents, and
+> a custom action space with a different NOOP index works correctly. (This closes
+> the earlier decoupling gap; `SpeedDiscreteActionSpace.to_moves()` still exists as
+> a standalone helper but is no longer used by the wrapper.)
 
 ---
 

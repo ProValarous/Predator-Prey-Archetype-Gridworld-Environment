@@ -16,7 +16,7 @@ GridWorldEnv(
     seed:                     Optional[int]  = None,
     capture_threshold:        int            = 1,
     max_steps:                Optional[int]  = None,
-    allow_cell_sharing:       bool           = True,   # accepted and stored, but never read anywhere — currently dead
+    allow_cell_sharing:       bool           = True,   # False forbids same-role agents sharing a cell (capture overlap still allowed)
     block_agents_by_obstacles: bool          = True,
 )
 ```
@@ -245,7 +245,7 @@ from multi_agent_package.registry.reward_registry import (
 # Action registry
 from multi_agent_package.registry.action_registry import (
     get_action_space,             # (name: str, **params) -> ActionSpace
-    register_action_space,        # (name: str, cls: Type[ActionSpace]) -> None  (does NOT validate issubclass)
+    register_action_space,        # (name: str, cls: Type[ActionSpace]) -> None  (validates issubclass, raises TypeError)
 )
 
 # Algorithm registry

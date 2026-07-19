@@ -4,28 +4,43 @@
 
 A reward signal maps the current environment state to a per-agent scalar. It is the **incentive structure** of the experiment — the thing that tells agents what behavior is desirable.
 
-This system separates rewards into two layers:
-1. **Base rewards** — hardcoded physics penalties/bonuses baked into the environment
-2. **Shaping rewards** — pluggable, configurable signals that layer on top
+Every reward in this system now flows through **one path** — the `reward_fn`
+pipeline of `RewardFunction` plugins. There are two kinds of plugin:
+1. **The base reward** — the canonical capture / step-cost / obstacle signal,
+   supplied by the `BaseReward` plugin.
+2. **Shaping rewards** — additional pluggable signals that layer on top.
 
 ---
 
-## Base Rewards (Hardcoded)
+## The Base Reward (the `BaseReward` plugin)
 
-These values live in `GridWorldEnv.base_reward()` and cannot be changed via config:
+The base reward encodes the environment's core incentives. Its values are computed
+by `GridWorldEnv.base_reward()`:
 
 | Event | Agent | Value |
 |-------|-------|-------|
 | Captures a prey (this step) | Predator | `+100.0` |
 | Is captured (this step) | Prey | `−100.0` |
-| Move blocked by obstacle | Any | `−200.0` |
+| On an obstacle cell | Any | `−200.0` |
 | Each timestep | **Predator only** | `−5.0` |
 
-The obstacle penalty (`−200`) exceeds the capture bonus (`+100`) to strongly discourage wall-hugging. The step cost (`−5`) applies **only to predators** — it incentivizes faster capture. Prey pay no per-step cost; the `SurvivalReward` shaper can be added to give prey a positive per-step signal instead.
+The obstacle penalty (`−200`) exceeds the capture bonus (`+100`) to strongly
+discourage wall-hugging. The step cost (`−5`) applies **only to predators** — it
+incentivizes faster capture. Prey pay no per-step cost; the `SurvivalReward`
+shaper can give prey a positive per-step signal instead.
 
-`GridWorldEnv.step()` calls `self.base_reward()` **unconditionally, every step** — it is not routed through the plugin/registry system at all. You cannot disable or replace these signals without modifying core code.
+**How it is applied.** `GridWorldEnv.step()` applies **no** reward on its own —
+`rewards` starts at zero for every agent, and the only source is `reward_fn`.
+`run_from_config.build_environment()` adds the `BaseReward` plugin (registry key
+`"base"`) to that pipeline **when `rewards.base.enabled` is true**, and shaping
+plugins after it. `BaseReward.compute()` just calls `env.base_reward()` and scales
+by its `weight`.
 
-> ⚠️ There is a `BaseReward` reward-function class (registry key `"base"`) that wraps `env.base_reward()` and scales it by `weight`. It is **not** part of the active reward chain — `run_from_config.build_environment()` deliberately does not add it, because `base_reward()` is already unconditionally applied inside `step()` (see above); chaining `BaseReward` on top would double-count every capture/step-cost/obstacle-penalty signal (this was a real bug, fixed in PR #26). `rewards.yaml`'s `base.enabled` flag is consequently **inert** post-fix: `run_from_config.py` reads it only to assert the key exists, never to gate anything — `base_reward()` runs regardless of what it's set to.
+> This is the fix for issue #32. Because the base reward has a **single
+> application path** (the plugin, added once), it can never be double-counted, and
+> `rewards.base.enabled` genuinely turns it on or off. Do **not** also list `base`
+> in the `shaping` section — that would add it twice. See
+> [DQN Variants](dqn-variants.md) and the [Training Loop](../flows/training-loop.md).
 
 ---
 
@@ -48,16 +63,20 @@ Without shaping, predators only receive signal when they capture prey (`+100`). 
 
 ## Reward Composition
 
-Composition happens in two tiers:
+All reward is summed in one closure, `env.reward_fn`, built by
+`run_from_config.py`:
 
 ```
-total_reward[agent] = base_reward[agent]              ← computed directly by gridworld.step(),
-                                                          always on, never via a plugin
-                    + sum(shaping_fn.compute(env)[agent]
-                          for shaping_fn in configured_shapers)  ← env.reward_fn, added on top
+total_reward[agent] = sum(plugin.compute(env)[agent] for plugin in reward_fns)
+
+# reward_fns = [BaseReward]  (if rewards.base.enabled)  +  configured shaping plugins
 ```
 
-The shaping sum happens in a closure built by `run_from_config.py` and assigned to `env.reward_fn`; `gridworld.step()` adds its output onto the already-computed base reward (`rewards[k] += custom.get(k, 0.0)`). Adding a new **shaping** component means adding an entry to `rewards.yaml`'s `shaping` list — no code change needed. The base reward itself cannot be added/removed this way (see above).
+`gridworld.step()` starts every agent at `0.0` and adds only `reward_fn`'s output
+(`rewards[k] += custom.get(k, 0.0)`) — it contributes nothing itself. Adding a
+shaping component means adding an entry to `rewards.yaml`'s `shaping` list; the
+base reward is toggled with `rewards.base.enabled`. No code change is needed for
+either.
 
 **Limitation:** The current composition gives no visibility into individual components during training. If you need per-component logging, you must modify the closure or add a wrapper.
 

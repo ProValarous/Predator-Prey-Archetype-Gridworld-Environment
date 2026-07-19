@@ -1,5 +1,10 @@
 # Comparative Review: PR #22 vs #23 vs #24 (DQN implementations)
 
+> **Historical maintainer note.** A three-way review of early DQN PRs (now merged),
+> kept for provenance and intentionally not in the site navigation. For current DQN
+> docs see [DQN](algorithms/dqn.md) and [DQN Variants](concepts/dqn-variants.md).
+
+
 Reviewed against merge-base `df8c828` (`pipeline-sdd`) using local diffs (`git diff <merge-base> <pr-head>`), since PR #22's GitHub diff exceeds the API's 300-file limit (caused by an accidentally committed/removed `.new_venv/` — noise, not real changes).
 
 | | PR #22 | PR #23 | PR #24 |

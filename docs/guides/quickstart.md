@@ -4,18 +4,20 @@ Five steps from a fresh clone to a trained agent.
 
 ---
 
-## 1. Install dependencies
+## 1. Install
+
+The package uses a standard `src/` layout with a `pyproject.toml` build backend,
+so an editable install makes `multi_agent_package` and `baselines` importable
+without setting `PYTHONPATH`. Run commands from the repository root.
 
 ```bash
-pip install -r requirements.txt
+pip install -e .            # add ".[dev]" for the test/lint tools
 ```
-
-> `pip install -e .` does **not** work in this repo — no build backend is configured, so an editable install won't make `multi_agent_package` importable even if `pip` reports success. Every command below uses `PYTHONPATH=src` instead; run them from the repository root, not `src/`.
 
 Verify the install:
 
 ```bash
-PYTHONPATH=src python -c "from multi_agent_package.core.gridworld import GridWorldEnv; print('OK')"
+python -c "from multi_agent_package.core.gridworld import GridWorldEnv; print('OK')"
 ```
 
 ---
@@ -37,22 +39,22 @@ Each algorithm has its own dedicated runner script that reads the matching exper
 
 ```bash
 # IQL — reads configs/experiment_iql.yaml
-PYTHONPATH=src python -m multi_agent_package.scripts.run_iql
+python -m multi_agent_package.scripts.run_iql
 
 # CQL — reads configs/experiment_cql.yaml
-PYTHONPATH=src python -m multi_agent_package.scripts.run_cql
+python -m multi_agent_package.scripts.run_cql
 
 # MixedTrainer — reads configs/experiment_mixed.yaml
-PYTHONPATH=src python -m multi_agent_package.scripts.run_mixed
+python -m multi_agent_package.scripts.run_mixed
 
 # DQN — reads configs/experiment_dqn.yaml
-PYTHONPATH=src python -m multi_agent_package.scripts.run_dqn
+python -m multi_agent_package.scripts.run_dqn
 
 # Or a ready-made DQN experiment set (1 predator vs 1 prey, double+dueling enabled)
-PYTHONPATH=src python -m multi_agent_package.scripts.run_dqn --config-dir configs/dqn_1v1
+python -m multi_agent_package.scripts.run_dqn --config-dir configs/dqn_1v1
 
 # Generic launcher — reads configs/experiment.yaml, whatever algorithm.name it specifies (default: iql)
-PYTHONPATH=src python -m multi_agent_package.scripts.run_from_config
+python -m multi_agent_package.scripts.run_from_config
 ```
 
 ---
@@ -63,16 +65,16 @@ Each `run_<algo>.py` script trains and saves a checkpoint by default:
 
 ```bash
 # IQL, 1000 episodes (override via experiment_iql.yaml, not a CLI flag)
-PYTHONPATH=src python -m multi_agent_package.scripts.run_iql --save-path my_iql.pkl
+python -m multi_agent_package.scripts.run_iql --save-path my_iql.pkl
 
 # CQL
-PYTHONPATH=src python -m multi_agent_package.scripts.run_cql --save-path my_cql.pkl
+python -m multi_agent_package.scripts.run_cql --save-path my_cql.pkl
 
 # MixedTrainer (predator/prey algorithm assignment comes from experiment_mixed.yaml)
-PYTHONPATH=src python -m multi_agent_package.scripts.run_mixed --save-path my_mixed.pkl
+python -m multi_agent_package.scripts.run_mixed --save-path my_mixed.pkl
 
 # DQN
-PYTHONPATH=src python -m multi_agent_package.scripts.run_dqn --save-path my_dqn.pkl
+python -m multi_agent_package.scripts.run_dqn --save-path my_dqn.pkl
 ```
 
 Each algorithm also has its own standalone CLI with hyperparameters as flags (e.g. `python -m baselines.IQL.iql --episodes 1000 --alpha 0.1 ...`), which builds its own `GridWorldEnv` directly rather than going through `run_from_config` — see [reference/api-reference.md](../reference/api-reference.md).
@@ -149,4 +151,4 @@ experiment:
 | `KeyError: 'experiment'` | Config nested as `configs["experiment"]["experiment"]["algorithm"]` — two levels |
 | Training finishes instantly (0 steps) | `max_steps: 0` or `capture_threshold: 0` in `env.yaml` |
 | Q-tables always empty | `episodes` too low or env always truncating before any step |
-| `pip install -e .` doesn't make `multi_agent_package` importable | No build backend is configured yet — use `PYTHONPATH=src` instead (see [docs/git-workflow.md](../git-workflow.md#setup)) |
+| `ModuleNotFoundError: multi_agent_package` | The package isn't installed — run `pip install -e .` from the repository root |
