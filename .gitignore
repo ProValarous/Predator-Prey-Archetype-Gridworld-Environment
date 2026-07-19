@@ -31,6 +31,16 @@ __pycache__/
 *.pyo
 *.pyd
 
+# Python build / packaging artifacts
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Large local wiki archive / scratch files (not source)
+wiki_compressed.zip
+test_file.md
+
 # Ignore logs and temporary files
 *.log
 *.tmp
