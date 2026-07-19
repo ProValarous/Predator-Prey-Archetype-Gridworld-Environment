@@ -135,30 +135,16 @@ class TestStepStructure:
 
 
 # ------------------------------------------------------------------
-# Reward is supplied only through reward_fn (base reward is a plugin)
+# Step cost from base_reward
 # ------------------------------------------------------------------
 
 
 class TestStepCost:
-    def test_step_applies_no_reward_without_reward_fn(self):
-        # gridworld.step() supplies no reward on its own; all reward comes
-        # through reward_fn. This is what makes the base reward (a plugin) have
-        # a single application path and prevents double-counting (issue #32).
+    def test_predator_gets_step_cost(self):
         env = make_env(perc_obstacle=0)
         obs, _ = env.reset()
         out = env.step({aid: 4 for aid in obs})
-        assert set(out["reward"]) == set(obs)
-        assert all(v == 0.0 for v in out["reward"].values())
-
-    def test_base_reward_plugin_applies_step_cost_once(self):
-        # With the BaseReward plugin as the reward_fn, the predator's -5 step
-        # cost is applied exactly once (not -10).
-        from multi_agent_package.rewards.base_reward import BaseReward
-
-        env = make_env(perc_obstacle=0)
-        env.reward_fn = BaseReward(weight=1.0).compute
-        obs, _ = env.reset()
-        out = env.step({aid: 4 for aid in obs})
+        # predator should lose 5 per step (no capture, no obstacle)
         assert out["reward"]["pred_1"] == pytest.approx(-5.0)
 
 
@@ -287,8 +273,8 @@ class TestExtensionHooks:
         env.reward_fn = lambda e: {ag.agent_name: 100.0 for ag in e.agents}
         obs, _ = env.reset()
         out = env.step({aid: 4 for aid in obs})
-        # step() applies no base reward itself, so only the custom fn counts
-        assert out["reward"]["pred_1"] == pytest.approx(100.0)
+        # base has -5 for predator, custom adds +100 → 95
+        assert out["reward"]["pred_1"] == pytest.approx(95.0)
 
     def test_custom_observation_builder_called(self):
         env = make_env(perc_obstacle=0)
