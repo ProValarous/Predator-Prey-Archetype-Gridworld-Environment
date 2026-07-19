@@ -1,3 +1,72 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "predator-prey-gridworld"
+version = "1.0.0"
+description = "A deterministic, modular multi-agent predator-prey gridworld testbed for controlled MARL experiments"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "Muhammad Ahmed Atif" },
+    { name = "Nehal Naeem Haji" },
+    { name = "Muhammad Affan" },
+    { name = "Areesha Kashif" },
+]
+keywords = [
+    "reinforcement-learning",
+    "multi-agent",
+    "marl",
+    "gridworld",
+    "predator-prey",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "gymnasium",
+    "numpy",
+    "pygame",
+    "pyyaml",
+    "torch",
+    "tensorboard",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "flake8",
+    "pylint",
+    "pre-commit",
+]
+docs = [
+    "mkdocs",
+    "mkdocs-material",
+    "mkdocstrings[python]",
+]
+
+[project.urls]
+Homepage = "https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment"
+Documentation = "https://provalarous.github.io/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/"
+Repository = "https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment"
+Issues = "https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment/issues"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [tool.black]
 line-length = 88
 target-version = ["py310", "py311", "py312"]
