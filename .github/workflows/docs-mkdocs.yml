@@ -2,7 +2,7 @@ name: Build and Deploy Docs (MkDocs)
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, STRP ]
 
 permissions:
   contents: read
