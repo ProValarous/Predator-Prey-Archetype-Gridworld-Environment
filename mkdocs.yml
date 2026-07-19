@@ -21,6 +21,7 @@ nav:
     - Rewards: concepts/rewards.md
     - Actions: concepts/actions.md
     - Wrappers: concepts/wrappers.md
+    - DQN Variants: concepts/dqn-variants.md
     - MARL Theory: concepts/marl.md
   - Data Flows:
     - Initialization: flows/init-flow.md
