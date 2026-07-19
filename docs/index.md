@@ -91,7 +91,7 @@ If you use this environment in your research, teaching, or project, please cite 
 
 ```bibtex
 @misc{predatorpreygridworld,
-  author       = {Ahmed Atif and Nehal Naeem Haji and Muhammad Affan and Areesha Kashif and Musab1Blaser and afshadGit},
+  author       = {Ahmed Atif},
   title        = {Predator-Prey Gridworld Environment},
   year         = {2025},
   howpublished = {\url{https://github.com/ProValarous/Predator-Prey-Gridworld-Environment}},
