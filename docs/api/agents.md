@@ -1,8 +1,8 @@
-# Agent API Reference
+<!-- # Agent API Reference
 
-This page details the technical specifications of the `Agent` class, generated directly from its docstrings and source.
+This page details the technical specifications of the `Agent` class.
 
-::: agent.Agent
+::: multi_agent_package.core.agents.Agent
     options:
         show_root_heading: true
-        show_source: true
+        show_source: true -->
