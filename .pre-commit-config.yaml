@@ -1,0 +1,39 @@
+# Pre-commit hooks. Install locally with:  pre-commit install
+# Black and flake8 run as "local" hooks so they use the versions from
+# `pip install -e ".[dev]"` (matching CI) rather than a separately pinned copy.
+#
+# The global exclude skips vendored/immutable/binary paths: a committed virtualenv
+# (if present), the immutable core/, media and slides, the wiki archive, and
+# build artifacts. This mirrors the .flake8 / pyproject Black excludes.
+exclude: |
+  (?x)^(
+      \.new_venv/
+    | src/multi_agent_package/core/
+    | miscellenous/
+    | slides/
+    | wiki_compressed\.zip
+    | .*\.egg-info/
+  )
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+        args: [--unsafe]          # allow mkdocs.yml's !!python/name tags
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: check-merge-conflict
+
+  - repo: local
+    hooks:
+      - id: black
+        name: black
+        entry: black
+        language: system
+        types: [python]
+      - id: flake8
+        name: flake8
+        entry: flake8
+        language: system
+        types: [python]
