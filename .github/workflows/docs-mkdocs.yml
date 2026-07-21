@@ -33,7 +33,7 @@ jobs:
 
       # Official GitHub Pages flow: configure -> upload artifact -> deploy
       - name: Configure Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v6
 
       - name: Upload artifact for deployment
         uses: actions/upload-pages-artifact@v3   # ⬅️ UPDATED VERSION
