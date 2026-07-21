@@ -15,6 +15,7 @@ nav:
     - MARL Theory: concepts/marl.md
   - Overview:
     - Project Overview: overview/index.md
+    - Scope & Roadmap: overview/scope-and-roadmap.md
     - Architecture: overview/architecture.md
     - Glossary: overview/glossary.md
   - Concepts:
