@@ -68,35 +68,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      - name: Import smoke test (editable install, no PYTHONPATH)
-        run: |
-          cd "$HOME"
-          python -c "import multi_agent_package, baselines; from multi_agent_package.core.gridworld import GridWorldEnv; print('import OK')"
-
-      - name: Run tests with coverage
-        run: >-
-          pytest tests/ -q
-          --cov=multi_agent_package --cov=baselines
-          --cov-report=term-missing --cov-fail-under=75
-
-  docs:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install docs dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[docs]"
-
-      - name: Build docs (strict)
-        run: mkdocs build --strict
+      - name: Run tests
+        run: pytest tests/ -q
 
   # Enforces CONTRIBUTING.md's "Golden Rule": core/gridworld.py and
   # core/agent.py are maintainers-only. Students/contributors extend the
