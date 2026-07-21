@@ -2,7 +2,7 @@
 
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](contributing.md)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-enforced-orange.svg)](CODE_OF_CONDUCT.md)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment/blob/main/LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/blob/main/LICENSE)
 
 A **discrete, grid-based multi-agent predator–prey environment** built as a
 controlled, interpretable, and reproducible testbed for studying coordination,
@@ -59,7 +59,7 @@ training platform. See the [Mission](mission.md) for the full rationale.
 ## Quick start
 
 ```bash
-git clone https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment.git
+git clone https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment.git
 cd Predator-Prey-Archetype-Gridworld-Environment
 
 python -m venv .venv
@@ -108,11 +108,11 @@ If you use this environment in your research, teaching, or projects, please cite
   author       = {Ahmed Atif and Nehal Naeem Haji and Muhammad Affan and Areesha Kashif and Musab1Blaser and afshadGit},
   title        = {Predator-Prey Gridworld Environment},
   year         = {2025},
-  howpublished = {\url{https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment}},
+  howpublished = {\url{https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment}},
   note         = {A discrete testbed for studying Multi-Agent Reinforcement Learning dynamics.}
 }
 ```
 
 ## License
 
-Licensed under the [Apache-2.0 License](https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment/blob/main/LICENSE).
+Licensed under the [Apache-2.0 License](https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/blob/main/LICENSE).
