@@ -60,9 +60,14 @@ src/baselines/IQL/prey/
 
 src/baselines/MIXED/*.npz
 src/baselines/MIXED/predator_1/
-src/baselines/MIXED/predator_2/     
+src/baselines/MIXED/predator_2/
 src/baselines/MIXED/prey_1/
-src/baselines/MIXED/prey_2/   
+src/baselines/MIXED/prey_2/
+
+# IQL trained artifacts (checkpoints and per-agent Q-tables)
+src/baselines/IQL/*.npz
+src/baselines/IQL/predator/
+src/baselines/IQL/prey/
 
 
 
