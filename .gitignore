@@ -69,6 +69,10 @@ src/baselines/IQL/*.npz
 src/baselines/IQL/predator/
 src/baselines/IQL/prey/
 
+# Generated slide decks (regenerated from slides/*.py and miscellenous/*.py)
+slides/*.pdf
+slides/*.pptx
+
 
 
 # logs
