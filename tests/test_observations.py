@@ -338,7 +338,7 @@ class TestLocalRadiusObservationSlotStability:
 
         # The observer's own slot must always be all zeros.
         self_slot = self._slot_index(env, 0, env.agents[0].agent_name)
-        assert list(encoded[self_slot:self_slot + 5]) == [0.0, 0.0, 0.0, 0.0, 0.0]
+        assert list(encoded[self_slot : self_slot + 5]) == [0.0, 0.0, 0.0, 0.0, 0.0]
 
 
 # ------------------------------------------------------------------

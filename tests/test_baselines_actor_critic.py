@@ -63,9 +63,7 @@ class TestActorCriticInit:
         assert set(algo.networks.keys()) == {"pred_1", "prey_1"}
         assert set(algo.optimizers.keys()) == {"pred_1", "prey_1"}
 
-    def test_missing_observation_encoder_raises(
-        self, one_predator_one_prey, ac_config
-    ):
+    def test_missing_observation_encoder_raises(self, one_predator_one_prey, ac_config):
         from multi_agent_package.core.gridworld import GridWorldEnv
         from multi_agent_package.actions.discrete_actions import DiscreteActionSpace
         from baselines.AC.actor_critic import ActorCritic
@@ -132,7 +130,9 @@ class TestActorCriticUpdate:
         obs, _ = dqn_env.reset()
         state = algo._encode_observation(obs[agent_id])
 
-        loss = algo._update(agent_id, state, 0, 1.0, state, terminal=False, discount=1.0)
+        loss = algo._update(
+            agent_id, state, 0, 1.0, state, terminal=False, discount=1.0
+        )
         assert isinstance(loss, float)
 
     def test_update_changes_network_weights(self, dqn_env, ac_config):
@@ -143,9 +143,7 @@ class TestActorCriticUpdate:
         obs, _ = dqn_env.reset()
         state = algo._encode_observation(obs[agent_id])
 
-        before = {
-            k: v.clone() for k, v in algo.networks[agent_id].state_dict().items()
-        }
+        before = {k: v.clone() for k, v in algo.networks[agent_id].state_dict().items()}
         algo._update(agent_id, state, 0, 1.0, state, terminal=False, discount=1.0)
         after = algo.networks[agent_id].state_dict()
         assert any(not torch.equal(before[k], after[k]) for k in before)
@@ -168,9 +166,7 @@ class TestActorCriticTrain:
 
         algo = ActorCritic(dqn_env, ac_config)
         agent_id = algo.agent_ids[0]
-        before = {
-            k: v.clone() for k, v in algo.networks[agent_id].state_dict().items()
-        }
+        before = {k: v.clone() for k, v in algo.networks[agent_id].state_dict().items()}
 
         algo.train()
 

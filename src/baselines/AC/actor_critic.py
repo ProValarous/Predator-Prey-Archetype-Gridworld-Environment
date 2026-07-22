@@ -36,7 +36,8 @@ LOGGER = logging.getLogger("actor_critic")
 
 
 class ActorCritic(BaseAlgorithm):
-    """Independent one-step online actor-critic: one network per agent, no replay buffer."""
+    """Independent one-step online actor-critic: one network per agent,
+    no replay buffer."""
 
     def __init__(self, env, config: dict):
         super().__init__(env, config)
@@ -199,7 +200,11 @@ class ActorCritic(BaseAlgorithm):
 
         actor_loss = -(discount * delta.detach() * log_prob).mean()
         critic_loss = delta.pow(2).mean()
-        loss = actor_loss + self.value_coef * critic_loss - self.entropy_coef * entropy.mean()
+        loss = (
+            actor_loss
+            + self.value_coef * critic_loss
+            - self.entropy_coef * entropy.mean()
+        )
 
         optimizer = self.optimizers[agent_id]
         optimizer.zero_grad()
