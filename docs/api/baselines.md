@@ -40,3 +40,11 @@ Generated directly from docstrings and source. See [concepts/marl.md](../concept
         show_root_heading: true
         show_source: true
         members_order: source
+
+## ActorCritic
+
+::: actor_critic.ActorCritic
+    options:
+        show_root_heading: true
+        show_source: true
+        members_order: source

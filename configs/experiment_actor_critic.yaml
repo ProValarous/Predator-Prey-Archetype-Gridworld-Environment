@@ -1,0 +1,17 @@
+experiment:
+  algorithm:
+    name: actor_critic
+    params:
+      gamma: 0.99
+      episodes: 1000
+      # action_dim is optional -- inferred from the env's action_space_plugin
+      # if omitted; set it explicitly to fail fast on a stale value after
+      # changing configs/actions.yaml.
+      learning_rate: 0.001
+      hidden_layers: [128, 128]
+      value_coef: 0.5     # weight on the critic's MSE loss in the combined loss
+      entropy_coef: 0.0   # weight on the policy entropy bonus (0 = vanilla Algorithm 13.5)
+      grad_clip: 5.0
+      seed: 42
+      device: "cpu"
+      curves_path: "training_curves_actor_critic.csv"

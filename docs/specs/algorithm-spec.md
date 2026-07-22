@@ -131,7 +131,7 @@ experiment:
       episodes: 1000
 ```
 
-Registered algorithms: `iql`, `cql`, `mixed` (MixedTrainer — assign IQL or CQL per team), `dqn`.
+Registered algorithms: `iql`, `cql`, `mixed` (MixedTrainer — assign IQL or CQL per team), `dqn`, `actor_critic`.
 
 ---
 
@@ -155,6 +155,54 @@ Unlike IQL/CQL/MixedTrainer (tabular), `DQN` (`baselines/DQN/dqn.py`) uses one i
 
 ---
 
+## ActorCritic — the On-Policy Algorithm
+
+Unlike IQL/CQL/MixedTrainer/DQN (all value-based, act greedy-over-Q), `ActorCritic`
+(`baselines/AC/actor_critic.py`) is a **policy-gradient** method: it learns a
+stochastic policy directly and uses a state-value critic only to reduce gradient
+variance. It is architecturally closest to DQN — one independent `ActorCriticNetwork`
+plus optimizer per agent — but learns fully **on-policy**: every `_update()` call
+happens immediately after the env step that produced its transition, with **no
+replay buffer and no target network**.
+
+This is the vanilla, per-step online variant — Sutton & Barto's Algorithm 13.5, not
+the batched A2C or asynchronous A3C variants (both still on the roadmap, see
+`docs/algorithms/index.md`).
+
+**Same preconditions as DQN:** requires `env.observation_encoder` (raises
+`ValueError` if missing), and resolves `action_dim` from
+`env.action_space_plugin.n_actions` with the same fail-fast mismatch check as DQN.
+
+**No epsilon-greedy exploration:** `select_actions()` always samples from
+`Categorical(logits=...)` — the stochastic policy itself is the exploration
+mechanism, so there is no `epsilon`/`epsilon_decay`/`min_epsilon` in its config.
+
+**Config keys** (`experiment_actor_critic.yaml`): `gamma`, `episodes`,
+`learning_rate`, `hidden_layers`, `value_coef`, `entropy_coef`, `grad_clip`,
+`device`, `verbose`, `log_interval`, `debug_first_episode`, `save_path`,
+`curves_path`, `seed`.
+
+**The TD error `δ` drives both networks at once:**
+`δ = r + γ·(1 - terminal)·v(s') - v(s)` (true termination only, same
+terminal-vs-truncated distinction as DQN's replay buffer). The critic minimizes
+`δ²`; the actor's loss is `-I·δ·log π(a|s)`, where `I` starts at `1` each episode and
+decays by `I *= gamma` every step (Sutton & Barto's discount-weighting term — it is
+what makes this the correct on-policy gradient estimator rather than an arbitrary
+TD-error weighting). `δ` is detached before entering the actor's loss, so the
+policy gradient does not backpropagate through the critic's own error.
+
+**Loss/optimization:** combined `actor_loss + value_coef * critic_loss -
+entropy_coef * entropy`, one Adam optimizer per agent, gradient-clipped via
+`grad_clip` — same clipping mechanism as DQN, just no `SmoothL1Loss`/Bellman-max
+since there is no Q-value to take a max over.
+
+**Behavior matches DQN, not the tabular baselines:** `train()` auto-saves to
+`save_path` if configured, and supports the same `curves_path` per-episode CSV
+export (columns: `episode`, `<agent>_reward`, `<agent>_loss` — no `epsilon` column,
+since there is no epsilon schedule).
+
+---
+
 ## MARL Constraints and Limitations
 
 ### Non-Stationarity
@@ -170,7 +218,18 @@ Each algorithm instance sees the environment as a single-agent MDP from its pers
 Centralized Training with Decentralized Execution (CTDE) — where a centralized critic uses global state during training but agents execute independently — is intentionally out of scope for all four baselines.
 
 ### Exploration
-Epsilon-greedy exploration is applied **independently per agent**. This means agents may simultaneously explore in conflicting directions. There is no joint exploration or coordinated strategy. In cooperative tasks, independent exploration can slow convergence compared to approaches that coordinate exploratory actions.
+Epsilon-greedy exploration is applied **independently per agent** for the
+value-based baselines (IQL, CQL, MixedTrainer, DQN). This means agents may
+simultaneously explore in conflicting directions. There is no joint exploration or
+coordinated strategy. In cooperative tasks, independent exploration can slow
+convergence compared to approaches that coordinate exploratory actions.
+
+`ActorCritic` explores differently: it has no epsilon schedule at all. Its
+stochastic policy samples actions from `Categorical(logits=...)` directly, so
+exploration is intrinsic to the policy and naturally anneals as the policy
+sharpens toward confident (low-entropy) action distributions — still independent
+per agent, still uncoordinated across agents, just without an explicit epsilon
+knob to tune.
 
 ### Captured Agents
 After a prey is captured, IQL/CQL continue updating its Q-table for the remainder of the episode (it still receives observations and zero-step reward). This wastes computation but does not break training — the agent is frozen and its updates do not affect the episode outcome.
