@@ -1,0 +1,198 @@
+================================================================================
+  ACTORCRITIC BASELINE — PRESENTATION SCRIPT
+  (Follow along with PROGRESS_REPORT.md open beside you)
+================================================================================
+
+--------------------------------------------------------------------------------
+SECTION 8 — NEW WORK: ACTORCRITIC BASELINE (FIRST LOOK)
+--------------------------------------------------------------------------------
+
+"We've added a second baseline alongside DQN: ActorCritic, a one-step online
+actor-critic — Sutton and Barto's Algorithm 13.5. Where DQN is off-policy with a
+replay buffer and a target network, this is fully on-policy: one network per
+agent with a shared trunk feeding a policy head and a value head, and every
+single environment step immediately triggers one gradient update from that
+step's TD error. No replay buffer, no target network, and no epsilon schedule —
+the stochastic policy itself provides the exploration.
+
+It's wired in exactly like every other baseline: registered in the algorithm
+registry, driven by its own YAML config, with 21 new tests, and the full suite
+of 344 tests still passes.
+
+
+--------------------------------------------------------------------------------
+SECTION 9 — FIRST VERIFICATION RUN (BEFORE A KNOWN FIX)
+--------------------------------------------------------------------------------
+
+"Before reporting anything as a real result, we wanted to actually watch it train
+and check the numbers made sense — not just that the code runs without error.
+We ran it on the shared 3-predator-vs-3-prey config: 10x10 grid, 20% obstacles,
+predator speed 1, prey speed 3, 1000 episodes.
+
+The predator showed a U-shape similar to the old DQN speed sweep — reward
+improves from Q1 to Q3, then drops back down by Q4. But we found something that
+made us hold off calling that confirmed: the critic's loss was enormous —
+hundreds of thousands for the predators — and it was not shrinking over the
+full 1000 episodes.
+
+We tracked this down: the critic was using plain squared-error loss, but DQN
+deliberately uses Huber loss instead, specifically because it's robust to large
+TD errors. This environment's rewards accumulate into the thousands per
+episode, so squared error on targets that large produces huge, destabilizing
+gradients — and since the policy and value heads share the same trunk, that
+instability could be dragging down the policy's learning too."
+
+
+--------------------------------------------------------------------------------
+SECTION 10 — AFTER THE HUBER LOSS FIX
+--------------------------------------------------------------------------------
+
+"We made the fix and re-ran the identical config. The loss fix worked exactly as
+expected: predator loss dropped from the hundreds of thousands down to the low
+hundreds, prey loss from about 14,800 down to about 33 — roughly a thousand-fold
+drop, confirming the diagnosis rather than reflecting noise between runs.
+
+But reward still didn't show a clean learning trend for either species, before
+or after the fix. So fixing the critic's loss function fixed the instability,
+but it didn't by itself produce a clear 'reward improves with training' story.
+
+We didn't yet know if that was because this is a genuinely hard setup — 3v3,
+predators three times slower than prey — or because the algorithm itself needed
+more tuning. So we ran one more check."
+
+
+--------------------------------------------------------------------------------
+SECTION 11 — 1v1 SANITY CHECK: FULL 2000-EPISODE RESULTS
+--------------------------------------------------------------------------------
+
+"To separate 'hard task' from 'needs tuning,' we ran ActorCritic on a config
+where we already have real DQN data to compare against directly: the 1v1 setup
+with predator speed 2, prey speed 1, matching DQN's own 2000-episode horizon.
+
+[Point to the DQN vs ActorCritic table]
+
+DQN on this config shows a clear, monotonic trend — predator reward goes from
+-970 in Q1 down to -2078 in Q4. That's the same co-evolutionary collapse we saw
+in the original speed sweep, but it IS a trend — the Q-values are systematically
+changing as both agents adapt.
+
+ActorCritic's reward is flat across all four quarters, and starts already worse
+than DQN's Q1. No trend up, no trend down. Just flat.
+
+[Point to the capture rate table]
+
+Here's the number that actually answers our question, though: capture rate.
+Q1 it's 6.4%. Q4 it's 0.6%. That's not flat — that's a real decline, and we
+checked it decile-by-decile to make sure it wasn't just quarter-level noise. It
+holds up: 9% early, down to about 0.5% by the end.
+
+The predator is getting WORSE at catching prey as training goes on. That
+settles the question — this is a tuning issue, not just task difficulty.
+
+Here's the subtle part: the critic's loss is dropping smoothly the whole time,
+20 down to 0.33. In isolation that looks like convergence. But combined with
+capture rate collapsing to near zero, it's actually a red flag — the critic is
+learning to predict a boring, predictable outcome, because the policy has
+stopped trying to do anything interesting. No captures means no surprises,
+which means low loss, even while the actual behavior is getting worse."
+
+
+--------------------------------------------------------------------------------
+SECTION 12 — DIAGNOSIS AND NEXT STEP
+--------------------------------------------------------------------------------
+
+"Our diagnosis: entropy_coef is set to zero, so the policy has nothing pushing
+back against this collapse. Look at DQN's own config for this exact scenario —
+it deliberately slows epsilon decay so both agents keep exploring for almost
+the entire 2000-episode run. That's a documented, deliberate choice that made
+DQN work here. ActorCritic has no equivalent right now.
+
+So the next step is a one-line, isolated change: raise entropy_coef from 0 to
+0.01 — the standard default in the A2C and A3C literature — and re-run the
+identical config, same seed, nothing else changed. If that prevents the
+capture-rate collapse, that confirms the diagnosis and gives us clean
+before/after evidence."
+
+
+--------------------------------------------------------------------------------
+SECTION 13 — ENTROPY FIX: CONFIRMED
+--------------------------------------------------------------------------------
+
+"We ran it. Same config, same seed, one parameter changed.
+
+[Point to the before/after capture rate table]
+
+Before: capture rate collapses from 6.4% down to 0.6%. After: it holds steady
+at 35 to 36 percent across all four quarters. We checked it decile by decile
+too — 33.5 to 37.5 percent throughout, no late-training decay anywhere in the
+run. Overall capture rate went from 4 percent to 35.4 percent. Roughly a
+nine-times improvement, and the collapse is just gone.
+
+That confirms the diagnosis. One parameter, entropy_coef, zero to 0.01, and the
+predator stops forgetting how to hunt.
+
+One thing we want to be upfront about rather than gloss over: predator reward
+itself is still deeply negative and roughly flat, even with the much higher
+capture rate. The accumulated distance-shaping penalty across the episodes that
+still end in a timeout is dominating the reward number. So reward and actual
+task performance are telling two different stories right now — capture rate is
+the metric that actually shows what changed. That's a separate reward-shaping
+question we still need to look at, not something this fix solved.
+
+Our next steps: update the default config to entropy_coef 0.01 instead of 0,
+since 0 is now a demonstrated-bad default, not just an untested one. Re-test
+the harder 3v3 config with the same fix. Carry entropy regularization into A2C
+from the start instead of rediscovering this. And separately dig into why
+reward doesn't track capture rate the way we'd expect."
+
+
+--------------------------------------------------------------------------------
+SECTION 14 — 3v3 RETEST: MIXED BUT HONEST RESULT
+--------------------------------------------------------------------------------
+
+"We updated the default config and re-ran the original 3-predator-vs-3-prey
+setup with entropy_coef at 0.01.
+
+[Point to the aggregate table]
+
+The headline reward and loss numbers are basically unchanged from the entropy
+0.0 run. Unlike 1v1, this fix doesn't visibly move the aggregate metrics here.
+
+But we went back to the raw training log and counted actual captures by hand,
+using episode length the same way we did for 1v1. And captures are happening
+steadily through the whole run — roughly 16 to 28 percent of sampled episodes
+across every quarter, no collapse. All three predators land captures at
+different points, not just one agent carrying the team.
+
+Here's the honest part: we don't have the same capture-count breakdown for the
+original entropy 0.0 run on this config, because we only pulled reward and loss
+aggregates from that one. So we can't give you a clean before-and-after capture
+number for 3v3 the way we can for 1v1. We can tell you captures aren't
+collapsing at 0.01. We can't tell you for certain that they would have
+collapsed at 0.0.
+
+So our conclusion, stated the way we actually mean it: the entropy fix is
+cleanly validated on 1v1, with a dramatic, well-evidenced before and after. On
+3v3, it's not hurting, and captures look healthy — but we're not going to claim
+it's confirmed to help 3v3 specifically, because that's not what we actually
+measured. Directionally consistent, not conclusively confirmed."
+
+
+--------------------------------------------------------------------------------
+SECTION 15 — WHERE THIS LEAVES US
+--------------------------------------------------------------------------------
+
+"ActorCritic is done for this round: implemented, the loss bug found and fixed,
+the exploration collapse found and fixed, validated on two configs, documented
+throughout. That's ready to commit.
+
+A2C is a separate track from here — we're merging a teammate's existing
+implementation into its own branch, then combining it with this ActorCritic
+work before moving on to A3C. Two things we're carrying forward into that:
+start A2C's config with entropy_coef 0.01 from day one instead of rediscovering
+today's collapse, and keep an eye on the reward-versus-capture-rate disconnect
+we haven't explained yet."
+
+================================================================================
+END OF SCRIPT
+================================================================================

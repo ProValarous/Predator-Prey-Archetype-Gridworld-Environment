@@ -31,7 +31,8 @@ class ActorNetwork(nn.Module):
             raise ValueError(f"output_dim must be positive, got {output_dim}")
         if not hidden_layers or any(h <= 0 for h in hidden_layers):
             raise ValueError(
-                f"hidden_layers must be a non-empty list of positive ints, got {hidden_layers}"
+                "hidden_layers must be a non-empty list of positive ints, "
+                f"got {hidden_layers}"
             )
 
         layers: List[nn.Module] = []

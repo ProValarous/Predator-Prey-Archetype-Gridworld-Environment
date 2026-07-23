@@ -17,10 +17,10 @@ from baselines.A2C.a2c import A2C
 from baselines.A2C.actor_network import ActorNetwork
 from baselines.A2C.critic_network import CriticNetwork
 
-
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
+
 
 def make_env(n_pred=1, n_prey=1, size=5, seed=0, perc_obstacle=0, max_steps=50):
     """
@@ -32,16 +32,30 @@ def make_env(n_pred=1, n_prey=1, size=5, seed=0, perc_obstacle=0, max_steps=50):
     """
     agents = []
     for i in range(1, n_pred + 1):
-        agents.append(Agent(agent_type="predator", agent_team=f"predator_{i}", agent_name=f"pred_{i}"))
+        agents.append(
+            Agent(
+                agent_type="predator",
+                agent_team=f"predator_{i}",
+                agent_name=f"pred_{i}",
+            )
+        )
     for i in range(1, n_prey + 1):
-        agents.append(Agent(agent_type="prey", agent_team=f"prey_{i}", agent_name=f"prey_{i}"))
+        agents.append(
+            Agent(agent_type="prey", agent_team=f"prey_{i}", agent_name=f"prey_{i}")
+        )
 
     env = GridWorldEnv(
-        agents=agents, size=size, perc_num_obstacle=perc_obstacle,
-        render_mode=None, seed=seed, max_steps=max_steps,
+        agents=agents,
+        size=size,
+        perc_num_obstacle=perc_obstacle,
+        render_mode=None,
+        seed=seed,
+        max_steps=max_steps,
     )
     observation_builder = RelativeObservation(
-        include_agents=True, include_obstacles=False, include_walls=False,
+        include_agents=True,
+        include_obstacles=False,
+        include_walls=False,
         distance_type="manhattan",
     )
     env.observation_builder = observation_builder.build
@@ -79,6 +93,7 @@ def base_config(**overrides):
 # ------------------------------------------------------------------
 # ActorNetwork -- tested in isolation from the env
 # ------------------------------------------------------------------
+
 
 class TestActorNetworkValidation:
     def test_rejects_non_positive_input_dim(self):
@@ -126,6 +141,7 @@ class TestActorNetworkValidation:
 # CriticNetwork -- tested in isolation from the env
 # ------------------------------------------------------------------
 
+
 class TestCriticNetworkValidation:
     def test_rejects_non_positive_input_dim(self):
         with pytest.raises(ValueError):
@@ -154,6 +170,7 @@ class TestCriticNetworkValidation:
 # ------------------------------------------------------------------
 # A2C initialization
 # ------------------------------------------------------------------
+
 
 class TestA2CInit:
     def test_agent_ids_discovered(self):
@@ -205,6 +222,7 @@ class TestA2CInit:
 # Action selection
 # ------------------------------------------------------------------
 
+
 class TestA2CSelectActions:
     def test_returns_action_for_every_agent(self):
         env = make_env()
@@ -248,6 +266,7 @@ class TestA2CSelectActions:
 # ------------------------------------------------------------------
 # Training
 # ------------------------------------------------------------------
+
 
 class TestA2CTrain:
     def test_actor_weights_change_after_training(self):
@@ -299,6 +318,7 @@ class TestA2CTrain:
 # ------------------------------------------------------------------
 # Persistence
 # ------------------------------------------------------------------
+
 
 class TestA2CPersistence:
     def test_save_creates_file(self):

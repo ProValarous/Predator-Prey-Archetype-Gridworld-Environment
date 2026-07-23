@@ -7,8 +7,8 @@ each learner is now a (actor, critic) pair:
 
     A2C   : per agent -> actor network + critic network               (on-policy)
 
-A2C collects a short ROLLOUT of `n_steps` transitions, computes an 
-n-step bootstrapped return for each one, and updates immediately. 
+A2C collects a short ROLLOUT of `n_steps` transitions, computes an
+n-step bootstrapped return for each one, and updates immediately.
 
 Observations are converted to fixed-length numeric vectors via the
 environment's observation_encoder: attach an
@@ -19,12 +19,10 @@ before constructing A2C (run_from_config.build_environment does this).
 from __future__ import annotations
 
 
-
 import csv
 import logging
 import os
 import pickle
-import warnings
 from typing import Optional
 
 import numpy as np
@@ -42,7 +40,8 @@ LOGGER = logging.getLogger("a2c")
 
 
 class A2C(BaseAlgorithm):
-    """Independent A2C: one actor + one critic per agent, updated on an n-step rollout."""
+    """Independent A2C: one actor + one critic per agent, updated on an
+    n-step rollout."""
 
     def __init__(self, env, config: dict):
         super().__init__(env, config)
@@ -61,7 +60,9 @@ class A2C(BaseAlgorithm):
         # more stably than the actor, since the actor's gradient direction
         # depends on the critic already being roughly correct.
         actor_lr = config.get("actor_learning_rate", config.get("learning_rate", 3e-4))
-        critic_lr = config.get("critic_learning_rate", config.get("learning_rate", 1e-3))
+        critic_lr = config.get(
+            "critic_learning_rate", config.get("learning_rate", 1e-3)
+        )
         self.actor_lr = float(actor_lr)
         self.critic_lr = float(critic_lr)
 
@@ -73,7 +74,7 @@ class A2C(BaseAlgorithm):
         self.curves_path: Optional[str] = config.get("curves_path", None)
 
         # If True, select_actions() acts greedily (argmax over the policy's
-        # probabilities) instead of sampling. Exploration comes from sampling 
+        # probabilities) instead of sampling. Exploration comes from sampling
         # the stochastic policy. Evaluation scripts set this to True.
         self.greedy_eval = bool(config.get("greedy_eval", False))
 
@@ -97,7 +98,9 @@ class A2C(BaseAlgorithm):
 
         initial_obs, _ = self.env.reset()
         self.agent_ids = list(initial_obs.keys())
-        self.state_dim = self._encode_observation(initial_obs[self.agent_ids[0]]).shape[0]
+        self.state_dim = self._encode_observation(initial_obs[self.agent_ids[0]]).shape[
+            0
+        ]
         self.action_dim = self._resolve_action_dim(config)
 
         self._build_learners()
@@ -119,7 +122,9 @@ class A2C(BaseAlgorithm):
         Identical logic to DQN's, kept local so A2C stays self-contained."""
         plugin = getattr(self.env, "action_space_plugin", None)
         plugin_n_actions = (
-            int(plugin.n_actions) if plugin is not None else int(self.env.action_space.n)
+            int(plugin.n_actions)
+            if plugin is not None
+            else int(self.env.action_space.n)
         )
 
         configured = config.get("action_dim", None)
@@ -231,7 +236,7 @@ class A2C(BaseAlgorithm):
             returns.insert(0, R)
         returns_t = torch.tensor(returns, dtype=torch.float32, device=self.device)
 
-        values_t = torch.cat(traj["values"])      # keeps grad -> critic params
+        values_t = torch.cat(traj["values"])  # keeps grad -> critic params
         log_probs_t = torch.cat(traj["log_probs"])  # keeps grad -> actor params
         entropies_t = torch.cat(traj["entropies"])
 
@@ -240,22 +245,32 @@ class A2C(BaseAlgorithm):
         # not by trying to change the critic's value through this path.
         advantages = returns_t - values_t.detach()
 
-        actor_loss = -(log_probs_t * advantages).mean() - self.entropy_coef * entropies_t.mean()
+        actor_loss = (
+            -(log_probs_t * advantages).mean() - self.entropy_coef * entropies_t.mean()
+        )
         critic_loss = nn.MSELoss()(values_t, returns_t)
 
         self.actor_optimizers[agent_id].zero_grad()
         actor_loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.actors[agent_id].parameters(), self.grad_clip)
+        torch.nn.utils.clip_grad_norm_(
+            self.actors[agent_id].parameters(), self.grad_clip
+        )
         self.actor_optimizers[agent_id].step()
 
         self.critic_optimizers[agent_id].zero_grad()
         (self.value_loss_coef * critic_loss).backward()
-        torch.nn.utils.clip_grad_norm_(self.critics[agent_id].parameters(), self.grad_clip)
+        torch.nn.utils.clip_grad_norm_(
+            self.critics[agent_id].parameters(), self.grad_clip
+        )
         self.critic_optimizers[agent_id].step()
 
         self._train_steps += 1
 
-        return float(actor_loss.item()), float(critic_loss.item()), float(entropies_t.mean().item())
+        return (
+            float(actor_loss.item()),
+            float(critic_loss.item()),
+            float(entropies_t.mean().item()),
+        )
 
     # ------------------------------------------------------------------
     # Training loop (BaseAlgorithm interface)
@@ -273,8 +288,11 @@ class A2C(BaseAlgorithm):
             entropy_cols = [f"{aid}_entropy" for aid in self.agent_ids]
             csv_writer = csv.DictWriter(
                 csv_file,
-                fieldnames=["episode"] + reward_cols + actor_loss_cols
-                + critic_loss_cols + entropy_cols,
+                fieldnames=["episode"]
+                + reward_cols
+                + actor_loss_cols
+                + critic_loss_cols
+                + entropy_cols,
             )
             csv_writer.writeheader()
 
@@ -346,7 +364,7 @@ class A2C(BaseAlgorithm):
                 observations = next_observations
                 step_count += 1
 
-                # Update every n_steps, or immediately at episode end (bootstraps 
+                # Update every n_steps, or immediately at episode end (bootstraps
                 # from 0 instead of from V(s_next)).
                 ready_to_update = (step_count % self.n_steps == 0) or done
                 if ready_to_update:
@@ -358,8 +376,15 @@ class A2C(BaseAlgorithm):
                             bootstrap_value = 0.0
                         else:
                             with torch.no_grad():
-                                next_state = self._encode_observation(observations[agent_id])
-                                next_state_t = torch.from_numpy(next_state).float().unsqueeze(0).to(self.device)
+                                next_state = self._encode_observation(
+                                    observations[agent_id]
+                                )
+                                next_state_t = (
+                                    torch.from_numpy(next_state)
+                                    .float()
+                                    .unsqueeze(0)
+                                    .to(self.device)
+                                )
                                 bootstrap_value = float(
                                     self.critics[agent_id](next_state_t).item()
                                 )
@@ -389,8 +414,12 @@ class A2C(BaseAlgorithm):
                     a_losses = episode_actor_losses[aid]
                     c_losses = episode_critic_losses[aid]
                     ent = episode_entropies[aid]
-                    row[f"{aid}_actor_loss"] = round(float(np.mean(a_losses)), 6) if a_losses else ""
-                    row[f"{aid}_critic_loss"] = round(float(np.mean(c_losses)), 6) if c_losses else ""
+                    row[f"{aid}_actor_loss"] = (
+                        round(float(np.mean(a_losses)), 6) if a_losses else ""
+                    )
+                    row[f"{aid}_critic_loss"] = (
+                        round(float(np.mean(c_losses)), 6) if c_losses else ""
+                    )
                     row[f"{aid}_entropy"] = round(float(np.mean(ent)), 6) if ent else ""
                 csv_writer.writerow(row)
 
@@ -405,8 +434,12 @@ class A2C(BaseAlgorithm):
             "agent_ids": self.agent_ids,
             "state_dim": self.state_dim,
             "action_dim": self.action_dim,
-            "actor_state_dicts": {aid: net.state_dict() for aid, net in self.actors.items()},
-            "critic_state_dicts": {aid: net.state_dict() for aid, net in self.critics.items()},
+            "actor_state_dicts": {
+                aid: net.state_dict() for aid, net in self.actors.items()
+            },
+            "critic_state_dicts": {
+                aid: net.state_dict() for aid, net in self.critics.items()
+            },
         }
         with open(path, "wb") as fh:
             pickle.dump(payload, fh)
@@ -421,9 +454,13 @@ class A2C(BaseAlgorithm):
 
         for agent_id in instance.agent_ids:
             if agent_id in payload["actor_state_dicts"]:
-                instance.actors[agent_id].load_state_dict(payload["actor_state_dicts"][agent_id])
+                instance.actors[agent_id].load_state_dict(
+                    payload["actor_state_dicts"][agent_id]
+                )
             if agent_id in payload["critic_state_dicts"]:
-                instance.critics[agent_id].load_state_dict(payload["critic_state_dicts"][agent_id])
+                instance.critics[agent_id].load_state_dict(
+                    payload["critic_state_dicts"][agent_id]
+                )
 
         LOGGER.info("Loaded A2C checkpoint from %s", path)
         return instance
@@ -472,11 +509,17 @@ if __name__ == "__main__":
     for i in range(1, args.preys + 1):
         agents.append(Agent(agent_name=f"prey_{i}", agent_team=i, agent_type="prey"))
     for i in range(1, args.predators + 1):
-        agents.append(Agent(agent_name=f"predator_{i}", agent_team=i, agent_type="predator"))
+        agents.append(
+            Agent(agent_name=f"predator_{i}", agent_team=i, agent_type="predator")
+        )
 
     render = "human" if (args.mode == "eval" and args.render) else None
     env = GridWorldEnv(
-        agents=agents, render_mode=render, size=args.size, perc_num_obstacle=10, seed=args.seed
+        agents=agents,
+        render_mode=render,
+        size=args.size,
+        perc_num_obstacle=10,
+        seed=args.seed,
     )
 
     observation_builder = get_observation_builder(args.observation)
