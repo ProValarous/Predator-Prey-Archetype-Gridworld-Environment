@@ -1,0 +1,20 @@
+# configs/experiment_a2c.yaml
+experiment:
+  algorithm:
+    name: a2c
+    params:
+      gamma: 0.99
+      hidden_layers: [128, 128]   # shared shape for both actor and critic networks
+
+      actor_learning_rate: 0.0003
+      critic_learning_rate: 0.001
+
+      n_steps: 5              # rollout length between actor/critic updates
+      entropy_coef: 0.01      # exploration bonus: higher = more random policy for longer
+      value_loss_coef: 0.5    # weight of the critic's MSE loss relative to the actor's loss
+      grad_clip: 5.0
+
+      episodes: 1000
+      seed: 42
+      device: "cpu"
+      curves_path: "training_curves_a2c.csv"
