@@ -1,0 +1,15 @@
+experiment:
+  algorithm:
+    name: actor_critic
+    params:
+      gamma: 0.99
+      episodes: 2000
+      learning_rate: 0.001
+      hidden_layers: [64, 64]
+      value_coef: 0.5
+      entropy_coef: 0.01
+      grad_clip: 5.0
+      seed: 42
+      device: "cpu"
+      log_interval: 10
+      curves_path: "training_curves_actor_critic_1v1.csv"

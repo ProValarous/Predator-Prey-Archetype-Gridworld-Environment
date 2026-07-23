@@ -24,6 +24,7 @@ from typing import Optional
 
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.optim as optim
 from torch.distributions import Categorical
 from numpy.random import default_rng
@@ -199,7 +200,12 @@ class ActorCritic(BaseAlgorithm):
         delta = td_target - value
 
         actor_loss = -(discount * delta.detach() * log_prob).mean()
-        critic_loss = delta.pow(2).mean()
+        # Huber (SmoothL1), not raw squared error -- matches DQN's choice for
+        # the same reason: robust to large TD errors instead of exploding
+        # gradients when reward magnitudes are large. The actor's gradient
+        # still uses the raw signed `delta` above; only the critic's own
+        # regression loss changes.
+        critic_loss = nn.SmoothL1Loss()(value, td_target)
         loss = (
             actor_loss
             + self.value_coef * critic_loss
