@@ -193,6 +193,79 @@ start A2C's config with entropy_coef 0.01 from day one instead of rediscovering
 today's collapse, and keep an eye on the reward-versus-capture-rate disconnect
 we haven't explained yet."
 
+
+--------------------------------------------------------------------------------
+SECTION 16 — A2C INTEGRATION: MERGE AND PRE-PR VERIFICATION
+--------------------------------------------------------------------------------
+
+"We merged Areesha's A2C implementation into an integration branch cut from
+the finished ActorCritic work. Two small conflicts, both just two additions
+landing in the same spot — the registry import and the README — resolved by
+keeping both. Her actual algorithm code merged with zero conflicts. Combined
+test suite: 376 passing.
+
+Before opening a PR, we asked the same question we asked of our own work:
+passing tests don't prove correct learning, only correct code shape — that's
+exactly the lesson from ActorCritic's own two bugs, neither of which any test
+caught. Her config had a specific, testable tell: a comment literally saying
+'weight of the critic's MSE loss.' Same MSE choice ActorCritic originally had.
+So we predicted the same critic-loss problem before even running anything,
+then verified it."
+
+
+--------------------------------------------------------------------------------
+SECTION 17 — A2C: CRITIC LOSS, CONFIRMED AND FIXED
+--------------------------------------------------------------------------------
+
+"The prediction held. Predator critic loss sat at 262,519 down to 191,375
+across quarters — hundreds of thousands, same magnitude and same
+non-shrinking pattern as ActorCritic's pre-fix numbers. Same root cause, same
+fix: swapped plain MSE for Huber loss.
+
+[Point to the before/after table]
+
+Before: 262,519 to 191,375. After: 144 to 154. That's about a 1,500-times
+reduction — even bigger than ActorCritic's own fix. Capture rate came out
+slightly higher too, 22.8 percent versus 18.8 before, and more stable across
+quarters. A saner critic gives the actor cleaner gradient signal.
+
+We also brought her console logging in line with ours for consistency, but
+kept her extra metrics — she tracks actor loss and policy entropy separately,
+which ActorCritic doesn't, and that turned out to matter for what we found
+next."
+
+
+--------------------------------------------------------------------------------
+SECTION 18 — A2C: ENTROPY COLLAPSE, INVESTIGATED BUT NOT SOLVED
+--------------------------------------------------------------------------------
+
+"The same run surfaced something more severe than the critic loss. Predator
+entropy collapses to essentially zero by the second quarter — 0.149 down to
+0.004, 0.004, 0.001 — despite entropy_coef already being set to 0.01 from the
+start. That's the same value that held ActorCritic's capture rate stable at 35
+percent. Here it doesn't hold at all. We checked her actual loss formula
+directly, line by line — it's mechanically correct, same sign convention as
+ours, no bug.
+
+So we tried the obvious next step: raise entropy_coef five times, to 0.05,
+same config, same seed. And the entropy metric still collapses to zero by Q3
+and Q4. Raising the coefficient does not prevent it. That tells us this is
+probably a structural training-dynamics issue — something like the policy's
+logits growing large enough that the softmax saturates, at which point the
+entropy bonus's weight barely matters anymore — not simply 'the number was too
+small.'
+
+[Point to the capture rate table]
+
+Here's the twist, though: capture rate improved substantially anyway. 22.8
+percent at entropy_coef 0.01, roughly 30 percent at 0.05 — consistently higher
+across every quarter, even though the entropy metric itself collapsed either
+way. So we raised the default to 0.05 in the real config, because it
+measurably helps regardless of whether it fixes the thing we thought it would
+fix. The actual root cause of the collapse is still an open question — we're
+documenting it clearly rather than either hiding it or pretending we solved
+it, and leaving it for whoever picks up this thread next."
+
 ================================================================================
 END OF SCRIPT
 ================================================================================

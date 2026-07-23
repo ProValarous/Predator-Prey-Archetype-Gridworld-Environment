@@ -10,7 +10,10 @@ experiment:
       critic_learning_rate: 0.001
 
       n_steps: 5              # rollout length between actor/critic updates
-      entropy_coef: 0.01      # exploration bonus: higher = more random policy for longer
+      entropy_coef: 0.05      # exploration bonus -- 0.01 let the predator's policy entropy
+      # collapse to ~0 by mid-training on configs/dqn_1v1 (see PROGRESS_REPORT.md); 0.05
+      # doesn't stop the collapse either (looks structural, not coefficient-magnitude), but
+      # measurably raised capture rate (~22% -> ~30%) so it's the better default for now
       value_loss_coef: 0.5    # weight of the critic's MSE loss relative to the actor's loss
       grad_clip: 5.0
 

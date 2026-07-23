@@ -1,8 +1,8 @@
 # Predator-Prey MARL Testbed — Progress Report
 
 **Project:** Predator-Prey Archetype Gridworld Environment
-**Branch:** `feat/actor-critic-baseline`
-**Date:** 22 July 2026
+**Branch:** `feat/actor-critic-baseline` → merged with `feat/a2c-integration`
+**Date:** 22 July 2026 (updated 23 July 2026 — A2C integration + verification added)
 
 ---
 
@@ -116,3 +116,49 @@ Counted actual capture events from the console log's `steps=` field (a full non-
 ## Status: AC baseline ready to commit
 
 Implementation, Huber-loss fix, entropy-regularization fix, and both verification runs (1v1 and 3v3) are complete and documented above. Remaining before commit: revert local `device: "cuda"` overrides back to `"cpu"` in both `configs/experiment_actor_critic.yaml` and `configs/dqn_1v1/experiment_actor_critic.yaml` (CI runs CPU-only), and a final full-suite pass. A2C is a separate track — merging a teammate's existing implementation into its own branch, then combining with this AC branch before A3C.
+
+---
+
+## A2C Integration (Areesha's implementation, PR #47)
+
+### Merge
+
+Pulled Areesha's `A2C` branch (`src/baselines/A2C/`: separate actor + critic networks per agent, on-policy `n_steps`-rollout updates) into `feat/a2c-integration`, cut from the finished AC branch. Two conflicts, both purely additive (`src/baselines/__init__.py` registry import, `src/baselines/README.md` directory/algorithm sections) — resolved by keeping both entries. Her actual algorithm code merged with zero conflicts. Combined suite: 376 tests passing (344 AC/existing + 32 hers).
+
+Also fixed pre-existing Black/flake8 findings in her new files (`a2c.py`, `actor_network.py`, `critic_network.py`, `run_a2c.py`, `test_baselines_a2c.py`) — unlike the earlier STRP-wide formatting gap, these were new-to-this-branch issues, not pre-existing upstream debt, so fixed directly rather than just flagged.
+
+### Pre-PR Verification
+
+Same reasoning as AC: passing unit tests don't guarantee correct learning behavior — that lesson came from AC's own critic-loss and entropy bugs, neither of which any test caught. Her config's own comment (`# weight of the critic's MSE loss`) was a specific, testable prediction that A2C likely had the same critic-loss-scale issue AC did, so verified before opening a PR rather than after.
+
+#### Critic loss — confirmed and fixed
+
+Ran `configs/dqn_1v1/experiment_a2c.yaml` (2000 episodes, same config DQN/AC already have data on). Predator critic loss sat at 262,519 → 191,375 across quarters — hundreds of thousands, same magnitude and non-shrinking pattern as AC's pre-fix numbers. Root cause: identical to AC — plain `nn.MSELoss()` on this environment's large reward scale. Fix: swapped to `nn.SmoothL1Loss()` (Huber), matching AC/DQN.
+
+| | Predator critic loss Q1→Q4 | Prey critic loss Q1→Q4 | Capture rate Q1→Q4 |
+|---|---|---|---|
+| Before (MSE) | 262,519 → 191,375 | 630 → 413 | 18.8% → 15.6% |
+| After (Huber, entropy_coef=0.01) | 144 → 154 | 5.7 → 6.5 | 22.8% → 22.4% |
+
+~1,500× reduction in critic loss, and capture rate came out slightly higher and more stable across quarters as a side effect (cleaner advantage estimates from a saner critic).
+
+Also brought her console log format in line with AC's (`Episode X/Y | steps=Z | rewards: ... | avg_*_loss: ...` structure), extended to her three tracked metrics (`avg_critic_loss`, `avg_actor_loss`, `avg_entropy`) rather than collapsed to one number, since she already tracks more than AC does.
+
+#### Entropy collapse — investigated, not solved, flagged as a follow-up
+
+The same 1v1 run also revealed `predator_1_entropy` collapsing to ~0 by Q2 (`0.149 → 0.004 → 0.004 → 0.001`) despite `entropy_coef=0.01` already being set from the start — a more severe manifestation than AC ever showed (AC's entropy-fixed run held a stable ~35% capture rate; this collapses anyway). Checked her actor-loss formula directly — mechanically correct, same sign convention as AC's, no implementation bug found.
+
+Tried raising `entropy_coef` to `0.05` (5×) on the identical config: the entropy metric **still** collapses to ~0 by Q3/Q4 (`0.1715 → 0.0003 → 0.0 → 0.0`) — raising the coefficient does not prevent the collapse, meaning this is likely a structural training-dynamics issue (e.g. logit magnitudes growing large enough that the softmax saturates, at which point the entropy bonus's weight stops mattering much) rather than a simple coefficient-magnitude problem.
+
+**However, capture rate still improved substantially anyway:**
+
+| | Capture rate Q1→Q4 |
+|---|---|
+| entropy_coef=0.01 | 22.8% / 21.0% / 22.4% / 22.4% |
+| entropy_coef=0.05 | 32.2% / 29.2% / 31.0% / 28.8% |
+
+So `entropy_coef` default raised to `0.05` in `configs/experiment_a2c.yaml` — it doesn't fix the underlying collapse, but it measurably and consistently helps task performance regardless. The root cause of the collapse itself is an open question, documented here for Areesha (or whoever picks it up) rather than solved in this branch.
+
+### Status: A2C integration ready to commit
+
+Merge conflicts resolved, lint clean, critic-loss fix applied and verified, entropy-coef default raised (partial fix, documented limitation), console logging made consistent with AC. Remaining before commit: revert local `device: "cuda"` overrides back to `"cpu"` in `configs/dqn_1v1/experiment_a2c.yaml`, and a final full-suite pass.

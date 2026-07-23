@@ -248,7 +248,10 @@ class A2C(BaseAlgorithm):
         actor_loss = (
             -(log_probs_t * advantages).mean() - self.entropy_coef * entropies_t.mean()
         )
-        critic_loss = nn.MSELoss()(values_t, returns_t)
+        # Huber (SmoothL1), not raw MSE -- matches AC/DQN's choice: robust to
+        # large TD errors instead of exploding gradients when this env's
+        # accumulated reward magnitudes run into the thousands per episode.
+        critic_loss = nn.SmoothL1Loss()(values_t, returns_t)
 
         self.actor_optimizers[agent_id].zero_grad()
         actor_loss.backward()
@@ -402,9 +405,22 @@ class A2C(BaseAlgorithm):
                 reward_str = ", ".join(
                     f"{aid}={value:.2f}" for aid, value in episode_rewards.items()
                 )
+                critic_loss_str = ", ".join(
+                    f"{aid}={np.mean(losses):.5f}" if losses else f"{aid}=warmup"
+                    for aid, losses in episode_critic_losses.items()
+                )
+                actor_loss_str = ", ".join(
+                    f"{aid}={np.mean(losses):.5f}" if losses else f"{aid}=warmup"
+                    for aid, losses in episode_actor_losses.items()
+                )
+                entropy_str = ", ".join(
+                    f"{aid}={np.mean(ent):.5f}" if ent else f"{aid}=warmup"
+                    for aid, ent in episode_entropies.items()
+                )
                 self._debug(
                     f"Episode {episode + 1}/{self.episodes} | steps={step_count} | "
-                    f"rewards: {reward_str}"
+                    f"rewards: {reward_str} | avg_critic_loss: {critic_loss_str} | "
+                    f"avg_actor_loss: {actor_loss_str} | avg_entropy: {entropy_str}"
                 )
 
             if csv_writer:
