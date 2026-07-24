@@ -1,7 +1,7 @@
 # configs/dqn_1v1/experiment_a2c.yaml
 # Diagnostic run on the 1v1 config (predator speed 2 / prey speed 1) that
 # already has real DQN and ActorCritic data to compare against on the
-# identical setup -- see PROGRESS_REPORT.md.
+# identical setup.
 experiment:
   algorithm:
     name: a2c
@@ -15,7 +15,7 @@ experiment:
       n_steps: 5
       entropy_coef: 0.05
       actor_weight_decay: 0.001    # diagnostic: 10x stronger than the first try (0.0001),
-      # which delayed but didn't prevent the entropy collapse -- see PROGRESS_REPORT.md
+      # which delayed but didn't prevent the entropy collapse (see docs/algorithms/a2c.md)
       value_loss_coef: 0.5
       grad_clip: 5.0
 

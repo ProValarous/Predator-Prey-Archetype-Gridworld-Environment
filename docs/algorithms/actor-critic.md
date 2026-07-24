@@ -21,7 +21,8 @@ $$
 
 which serves two purposes at once:
 
-- **Critic update** — minimize $\delta^2$, moving $v_w(s)$ toward the TD target.
+- **Critic update** — move $v_w(s)$ toward the TD target by minimizing a loss on
+  $\delta$ (Huber, not raw $\delta^2$ — see below).
 - **Actor update** — treat $\delta$ as an estimate of the advantage of the action
   actually taken, and push $\pi_\theta$ toward actions with positive $\delta$:
 
@@ -53,7 +54,7 @@ flowchart LR
     ENV -->|"(s,a,r,s',terminal)"| UPD["_update(): TD error δ"]
     VAL --> UPD
     UPD -->|"actor loss: -I·δ·log π(a|s)"| OPT["optimizer.step()"]
-    UPD -->|"critic loss: δ²"| OPT
+    UPD -->|"critic loss: Huber(v(s), td_target)"| OPT
 ```
 
 **Implementation:** `src/baselines/AC/`.
@@ -82,8 +83,9 @@ experiment:
       hidden_layers: [128, 128]
       learning_rate: 0.001
       gamma: 0.99
-      value_coef: 0.5     # weight on the critic's MSE loss in the combined loss
-      entropy_coef: 0.0   # weight on the policy entropy bonus (0 = vanilla Algorithm 13.5)
+      value_coef: 0.5     # weight on the critic's Huber loss in the combined loss
+      entropy_coef: 0.01  # weight on the policy entropy bonus -- 0.0 let capture rate
+      # collapse toward 0 over training; see "Fixes found through verification runs" below
       grad_clip: 5.0
       seed: 42
       device: "cpu"
@@ -93,6 +95,65 @@ experiment:
 ```bash
 python -m multi_agent_package.scripts.run_actor_critic
 ```
+
+## Fixes found through verification runs
+
+Passing unit tests confirmed the algorithm *executes* correctly; they didn't catch
+either of the following, which only showed up in real training runs.
+
+**Critic loss originally used plain squared error, not Huber.** On the shared
+3-predator-vs-3-prey config (10x10 grid, 20% obstacles, predator speed 1 / prey
+speed 3, 1000 episodes), predator critic loss sat at ~687,000 in Q1 and was still
+~602,000 by Q4 — not shrinking, three orders of magnitude larger than DQN's loss
+on comparable configs. Root cause: this environment's rewards accumulate into the
+thousands per episode, and squared error on TD targets that large produces
+gradients large enough to destabilize the shared trunk both heads depend on.
+Switching to Huber (`SmoothL1Loss`) — the same fix DQN already uses — dropped
+predator critic loss to ~211 → ~224 on the identical config, roughly a 3000x
+reduction, confirming the diagnosis rather than run-to-run noise.
+
+**`entropy_coef=0.0` let capture rate collapse toward zero.** Isolating the
+question of "hard task vs. under-tuned algorithm" required a config with existing
+DQN data to compare against directly: `configs/dqn_1v1` (1v1, predator speed 2 /
+prey speed 1, 2000 episodes, matching DQN's own horizon on this config). With no
+entropy bonus, capture rate declined steadily rather than staying flat:
+
+| | Q1 | Q2 | Q3 | Q4 |
+|---|:--:|:--:|:--:|:--:|
+| Capture rate, `entropy_coef=0.0` | 6.4% | 5.6% | 3.4% | 0.6% |
+
+Meanwhile critic loss dropped smoothly (20.4 → 0.33) — in isolation that looks like
+convergence, but combined with the collapsing capture rate it's the signature of a
+specific failure mode: the critic learns to predict a boring, predictable outcome
+(timeout, no capture, steady shaping penalty) because the policy has stopped
+attempting anything else. Low surprise = low loss, even as behavior gets worse.
+Raising `entropy_coef` to `0.01` (the standard A2C/A3C default) on the identical
+run fixed it:
+
+| | Q1 | Q4 |
+|---|:--:|:--:|
+| Capture rate, `entropy_coef=0.0` | 6.4% | 0.6% (collapsing) |
+| Capture rate, `entropy_coef=0.01` | 35.6% | 36.4% (stable) |
+
+Confirmed by decile, not just quarter-level noise: `36.5%, 37%, 33.5%, 34.5%,
+36.5%, 33.5%, 34%, 36%, 35%, 37.5%` — flat throughout, no late-training decay
+anywhere in the run.
+
+**One nuance, kept honest rather than smoothed over:** predator *reward* itself
+stays deeply negative and roughly flat (~−3300 to −3450) even with the much
+higher capture rate — the accumulated per-step distance-shaping penalty across
+the ~65% of episodes that still end in timeout dominates the reward signal, so
+"reward improving" and "actual task performance improving" are not the same story
+here. Capture rate is the metric that actually reflects what changed; raw reward
+does not. See [Algorithm Spec → MARL Constraints and Limitations](../specs/algorithm-spec.md#marl-constraints-and-limitations)
+for this pattern confirmed across every baseline, not just ActorCritic.
+
+Both fixes were validated cleanly on 1v1. Re-run on the harder 3v3 config, the
+entropy fix is a wash on aggregate reward/critic-loss numbers, but raw log
+analysis (counting capture events from episode length) shows captures occurring
+steadily across all four quarters (~16-28%) rather than collapsing — so the fix
+is *validated on 1v1, directionally consistent but not conclusively confirmed on
+3v3*.
 
 ## When to use ActorCritic
 

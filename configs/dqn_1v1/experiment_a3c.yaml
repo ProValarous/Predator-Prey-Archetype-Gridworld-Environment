@@ -1,7 +1,7 @@
 # configs/dqn_1v1/experiment_a3c.yaml
 # Diagnostic run on the 1v1 config (predator speed 2 / prey speed 1) that
-# already has real DQN/ActorCritic/A2C data to compare against -- see
-# PROGRESS_REPORT.md.
+# already has real DQN/ActorCritic/A2C data to compare against on the
+# identical setup.
 experiment:
   algorithm:
     name: a3c

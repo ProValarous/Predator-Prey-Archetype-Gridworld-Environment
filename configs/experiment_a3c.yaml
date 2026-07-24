@@ -10,8 +10,8 @@ experiment:
       num_workers: 4          # worker processes; each steps its own independent env copy
       n_steps: 5               # rollout length per worker between syncs with the shared network
 
-      entropy_coef: 0.05       # see PROGRESS_REPORT.md: 0.01 wasn't enough to hold capture
-      # rate up in A2C on this env; 0.05 is the validated starting point for the async setting too
+      entropy_coef: 0.05       # 0.01 wasn't enough to hold capture rate up in A2C on this
+      # env; 0.05 is the validated starting point for the async setting too
       value_coef: 0.5
       grad_clip: 5.0
 

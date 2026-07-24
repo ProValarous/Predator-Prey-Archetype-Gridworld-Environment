@@ -52,9 +52,10 @@ fail-fast mismatch check.
 
 **Critic loss is Huber (`SmoothL1Loss`), not MSE** — this environment's rewards
 accumulate into the thousands per episode, and plain squared error on targets that
-large produces destabilizing gradients (confirmed empirically: the critic loss
-originally exploded into the hundreds of thousands under MSE before this was
-fixed). See `PROGRESS_REPORT.md` for the before/after data.
+large produces destabilizing gradients: critic loss originally exploded into the
+hundreds of thousands under MSE (quarterly average ~262,000 → ~191,000 on the
+diagnostic 1v1 config) before this was fixed; under Huber it stays bounded at
+~140-160 for the same run.
 
 ## Configuration
 
@@ -68,7 +69,8 @@ experiment:
       actor_learning_rate: 0.0003
       critic_learning_rate: 0.001
       n_steps: 5
-      entropy_coef: 0.05   # 0.01 wasn't enough to hold capture rate up on this env
+      entropy_coef: 0.05          # 0.01 wasn't enough to hold capture rate up on this env
+      actor_weight_decay: 0.001   # resolves the entropy collapse -- see below
       value_loss_coef: 0.5
       grad_clip: 5.0
       seed: 42
@@ -89,13 +91,41 @@ python -m multi_agent_package.scripts.run_a2c
   multiple parallel workers updating a shared network asynchronously instead of
   one process updating its own.
 
-## Known limitation
+## The entropy collapse, and how it's actually fixed
 
-Raising `entropy_coef` measurably improves capture rate on this environment but
-does **not** prevent the policy's entropy from collapsing toward zero
-mid-training — that looks like a structural training-dynamics issue (e.g. logit
-magnitudes growing large enough to saturate the softmax) rather than a
-coefficient-magnitude one. Documented in `PROGRESS_REPORT.md`, not yet resolved.
+Raising `entropy_coef` alone measurably improves capture rate on this
+environment but does **not** prevent the policy's entropy from collapsing
+toward zero mid-training. A logit-magnitude diagnostic confirmed why: `max|logit|`
+grows from ~3 (near-random init) to a peak average of ~19 (individual spikes of
+42-64) over training — a logit spread that large makes the softmax over 99.9999%
+certain of one action, indistinguishable from zero entropy. The growth isn't
+monotonic either: it rises, partially resets around rare capture events (whose
+large reward/advantage briefly re-broadens the policy), then rises again — the
+dense per-step distance-shaping reward is what drives the sharpening between
+those resets.
+
+**`actor_weight_decay` (an L2 penalty on the actor's weights) fixes this
+directly**, since it counters the weight/logit growth at its source rather than
+fighting it indirectly through the entropy bonus. Measured on the diagnostic 1v1
+config, 2000 episodes, quarterly averages:
+
+| `actor_weight_decay` | Entropy Q1→Q4 | Capture rate Q1→Q4 |
+|---|---|---|
+| `0.0` | 0.17 → 0.0003 → 0.0 → 0.0 | 32% → 29% → 31% → 29% (flat) |
+| `0.0001` | 0.24 → 0.09 → 0.004 → 0.006 (delays collapse ~2×, doesn't prevent it) | 31% → 29% → 30% → 33% (flat) |
+| **`0.001` (shipped default)** | **0.16 → 0.72 → 0.89 → 0.67 (recovers, stabilizes)** | **28% → 44% → 69% → 74% (climbing)** |
+
+At `0.001`, entropy recovers and stabilizes instead of collapsing, and —
+critically — this shows up as real task performance, not just a healthier-looking
+metric: capture rate climbs steadily instead of staying flat, confirmed by decile
+(not just quarter-level noise) to hold in the 60-77% range for the back half of
+training, with reward improving in lockstep. This is the first sustained
+*improving* trend seen across AC, A2C, or A3C on this diagnostic config.
+
+Untested whether the same fix transfers to [ActorCritic](actor-critic.md) or
+[A3C](a3c.md) (which reuses ActorCritic's network) — AC's shared-trunk design
+means weight decay there would also regularize the critic's parameters, not just
+the actor's, so it may not transfer as directly as it does here.
 
 ## Papers
 

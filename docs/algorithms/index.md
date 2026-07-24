@@ -66,6 +66,21 @@ Rules of thumb:
   necessarily train faster wall-clock than A2C on a small gridworld; the point
   is the decorrelated, asynchronous updates themselves.
 
+## A comparative note: DQN vs. the actor-critic baselines
+
+On the `dqn_1v1` diagnostic config (2000 episodes, identical across all four
+neural baselines), DQN's capture rate (80.3%) comes out dramatically higher than
+any actor-critic variant tested (29–36% for ActorCritic/A2C/A3C once each was
+tuned) — off-policy replay-buffer learning gets substantially more mileage out
+of this task than any on-policy policy-gradient variant tried so far. Relatedly,
+*rising capture rate does not mean rising (less negative) reward* on this
+environment for any algorithm — even captured episodes net negative average
+reward, since the accumulated per-step distance-shaping penalty only gets fully
+offset on unusually fast captures. See [Algorithm Spec → Reward-vs-Capture-Rate
+Disconnect](../specs/algorithm-spec.md#reward-vs-capture-rate-disconnect) for
+the full per-algorithm breakdown — track capture rate (or another task-specific
+metric) alongside raw reward, not in place of it, when comparing baselines here.
+
 ## The shared training contract
 
 Every baseline subclasses `BaseAlgorithm` (`src/baselines/base.py`) and implements:

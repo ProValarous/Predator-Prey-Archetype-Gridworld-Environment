@@ -120,6 +120,38 @@ experiment:
 python -m multi_agent_package.scripts.run_a3c
 ```
 
+## Verification run
+
+Built with both lessons already learned from [ActorCritic](actor-critic.md) and
+[A2C](a2c.md) from day one — Huber critic loss, `entropy_coef=0.05` — rather than
+rediscovering them. Ran `configs/dqn_1v1/experiment_a3c.yaml` (2000 episodes, 4
+workers), the same diagnostic config AC/A2C already have data on:
+
+| | Critic loss (bounded?) | Capture rate Q1→Q4 |
+|---|---|---|
+| AC (`entropy_coef=0.01`, fixed) | ~150–220, stable | 35.6% → 35.6% |
+| A2C (`entropy_coef=0.05`) | ~140–160, stable | 32.2% → 28.8% |
+| **A3C** (`entropy_coef=0.05`) | **~50–78, stable** | **32.8% → 25.2%** |
+
+**Critic loss stayed bounded from the very first run** — it never explored the
+hundreds-of-thousands range AC/A2C originally hit, because Huber loss was built
+in from the start instead of discovered as a fix after the fact. **Capture rate
+lands in the same range as A2C at the same `entropy_coef`** — comparable
+performance to an already-tuned baseline, achieved with zero debugging cycles.
+
+**Worker load was reasonably balanced** across the 4 processes (516/512/497/475
+episodes) — no worker starving or dominating, a real risk with lock-free async
+scheduling that didn't materialize here.
+
+The mild decline in capture rate across quarters is similar in magnitude to
+A2C's at the same entropy setting — not the sharp near-zero collapse
+`entropy_coef=0.01` produces elsewhere (see [A2C's entropy-collapse
+writeup](a2c.md#the-entropy-collapse-and-how-its-actually-fixed)) — so nothing
+alarming, but also not resolved: the same open question about why capture rate
+isn't perfectly flat applies here too. `actor_weight_decay` (A2C's fix for that)
+is untested on A3C — it reuses ActorCritic's shared-trunk network rather than
+A2C's separate actor/critic ones, so the fix may not transfer directly.
+
 ## When to use A3C
 
 Study asynchronous, multi-worker training dynamics specifically. On a small

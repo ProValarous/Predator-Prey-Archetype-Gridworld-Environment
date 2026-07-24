@@ -69,7 +69,7 @@ class A2C(BaseAlgorithm):
         # magnitude growth that drives the policy toward near-zero entropy
         # (confirmed empirically: max|logit| grows from ~3 to 40-60 over
         # training on this env, saturating the softmax; see
-        # PROGRESS_REPORT.md). 0.0 preserves the original behavior.
+        # docs/algorithms/a2c.md). 0.0 preserves the original behavior.
         self.actor_weight_decay = float(config.get("actor_weight_decay", 0.0))
 
         self.device = torch.device(config.get("device", "cpu"))
