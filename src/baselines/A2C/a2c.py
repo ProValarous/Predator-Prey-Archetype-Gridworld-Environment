@@ -65,6 +65,12 @@ class A2C(BaseAlgorithm):
         )
         self.actor_lr = float(actor_lr)
         self.critic_lr = float(critic_lr)
+        # L2 penalty on the actor's weights -- discourages the logit
+        # magnitude growth that drives the policy toward near-zero entropy
+        # (confirmed empirically: max|logit| grows from ~3 to 40-60 over
+        # training on this env, saturating the softmax; see
+        # PROGRESS_REPORT.md). 0.0 preserves the original behavior.
+        self.actor_weight_decay = float(config.get("actor_weight_decay", 0.0))
 
         self.device = torch.device(config.get("device", "cpu"))
         self.verbose = bool(config.get("verbose", True))
@@ -110,7 +116,8 @@ class A2C(BaseAlgorithm):
             "Initialized A2C | "
             f"agents={self.agent_ids} | state_dim={self.state_dim} | "
             f"action_dim={self.action_dim} | device={self.device} | "
-            f"n_steps={self.n_steps} | entropy_coef={self.entropy_coef}"
+            f"n_steps={self.n_steps} | entropy_coef={self.entropy_coef} | "
+            f"actor_weight_decay={self.actor_weight_decay}"
         )
 
     # ------------------------------------------------------------------
@@ -156,7 +163,9 @@ class A2C(BaseAlgorithm):
             ).to(self.device)
 
             self.actor_optimizers[agent_id] = optim.Adam(
-                self.actors[agent_id].parameters(), lr=self.actor_lr
+                self.actors[agent_id].parameters(),
+                lr=self.actor_lr,
+                weight_decay=self.actor_weight_decay,
             )
             self.critic_optimizers[agent_id] = optim.Adam(
                 self.critics[agent_id].parameters(), lr=self.critic_lr
