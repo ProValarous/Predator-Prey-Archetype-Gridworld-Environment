@@ -36,6 +36,8 @@ nav:
     - DQN (Deep Q-Network): algorithms/dqn.md
     - DQN Variants: concepts/dqn-variants.md
     - ActorCritic (On-Policy): algorithms/actor-critic.md
+    - A2C (Batched Actor-Critic): algorithms/a2c.md
+    - A3C (Asynchronous Actor-Critic): algorithms/a3c.md
   - Tutorials &amp; Guides:
     - First Experiment: tutorials/first-experiment.md
     - Custom Observation Builder: guides/custom-observation.md
@@ -118,6 +120,8 @@ plugins:
             - src/baselines/MIXED
             - src/baselines/DQN
             - src/baselines/AC
+            - src/baselines/A2C
+            - src/baselines/A3C
           options:
             docstring_style: numpy
             show_source: true

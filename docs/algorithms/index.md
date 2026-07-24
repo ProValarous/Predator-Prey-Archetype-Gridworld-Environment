@@ -1,16 +1,17 @@
 # Algorithms Overview
 
-This project ships five learning **baselines**, all living under
+This project ships seven learning **baselines**, all living under
 `src/baselines/` and all talking to the environment only through
 `env.reset()` / `env.step()`. Three are tabular (they store a Q-table), one is a
-value-based neural network (DQN), and one is an on-policy policy-gradient method
-(ActorCritic). This page helps you pick one; each has its own deep-dive.
+value-based neural network (DQN), and three are policy-gradient actor-critic
+methods that differ in *how* they update (online, batched, or asynchronous).
+This page helps you pick one; each has its own deep-dive.
 
 Before reading these, make sure you are comfortable with
 [RL Foundations](../concepts/rl-foundations.md) (Q-learning, the Bellman equation)
 and [MARL Theory](../concepts/marl.md) (what changes with many agents).
 
-## The four baselines
+## The seven baselines
 
 | Algorithm | Kind | Coordination | Deep-dive |
 | --- | --- | --- | --- |
@@ -19,12 +20,17 @@ and [MARL Theory](../concepts/marl.md) (what changes with many agents).
 | **MixedTrainer** | tabular | per-team (IQL or CQL each) | [CQL & MixedTrainer](cql-mixed.md) |
 | **DQN** — Deep Q-Network | neural | none — one network per agent | [DQN](dqn.md) → [Variants](../concepts/dqn-variants.md) |
 | **ActorCritic** — one-step online Actor-Critic | neural, on-policy | none — one network per agent | [Actor-Critic](actor-critic.md) |
+| **A2C** — Advantage Actor-Critic | neural, on-policy, batched | none — one actor+critic per agent | [A2C](a2c.md) |
+| **A3C** — Asynchronous Advantage Actor-Critic | neural, on-policy, async | none — shared network per agent, multi-process | [A3C](a3c.md) |
 
-The first four are **value-based** (they learn Q-values and act greedily).
-**ActorCritic** is the exception: an on-policy policy-gradient method that learns a
-stochastic policy directly, alongside a state-value critic used only to reduce
-gradient variance. Batched variants (A2C) and asynchronous variants (A3C), plus
-SAC, are **not implemented** — see [Roadmap](#roadmap) below.
+The first four are **value-based** (they learn Q-values and act greedily). The
+three actor-critic variants all learn a stochastic policy directly, alongside a
+state-value critic used only to reduce gradient variance — they differ in when
+and how updates happen: **ActorCritic** updates once per environment step, no
+buffer; **A2C** accumulates a short rollout before one batched update; **A3C**
+runs multiple worker processes, each updating a *shared* network asynchronously,
+lock-free (Hogwild-style). SAC is **not implemented** — see
+[Roadmap](#roadmap) below.
 
 ## Which one should I use?
 
@@ -53,6 +59,12 @@ Rules of thumb:
 - **Use ActorCritic** when you want a directly-learned stochastic policy instead
   of a greedy-over-Q one, or as the on-policy counterpart to compare against DQN
   in a comparative study.
+- **Use A2C** when you want the same idea as ActorCritic but with batched,
+  lower-variance updates instead of noisy per-step ones.
+- **Use A3C** when you want to study asynchronous, multi-worker training
+  dynamics specifically — it's CPU-parallel, not GPU-accelerated, so it won't
+  necessarily train faster wall-clock than A2C on a small gridworld; the point
+  is the decorrelated, asynchronous updates themselves.
 
 ## The shared training contract
 
@@ -70,14 +82,12 @@ change.
 
 ## Roadmap
 
-`ActorCritic` (above) is the one-step **online** variant (Sutton & Barto,
-Algorithm 13.5) — no rollout buffer, one gradient update per env step. The
-following are documented for context but **not implemented** yet:
+`ActorCritic` is the one-step **online** variant (Sutton & Barto, Algorithm
+13.5) — no rollout buffer, one gradient update per env step. `A2C` batches a
+short rollout before updating. `A3C` (Mnih et al., 2016) runs multiple worker
+processes updating a shared network asynchronously. The following is
+documented for context but **not implemented**:
 
-- **A2C** — batched/rollout Advantage Actor-Critic; same policy-gradient idea as
-  `ActorCritic` but accumulates a full episode before updating.
-- **A3C** — Asynchronous Advantage Actor-Critic (Mnih et al., 2016); multiple
-  parallel worker processes updating a shared network asynchronously.
 - **SAC** — Soft Actor-Critic (Haarnoja et al., 2018); a discrete-action variant
   would be needed for this environment.
 

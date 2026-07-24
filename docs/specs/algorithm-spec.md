@@ -131,7 +131,7 @@ experiment:
       episodes: 1000
 ```
 
-Registered algorithms: `iql`, `cql`, `mixed` (MixedTrainer — assign IQL or CQL per team), `dqn`, `actor_critic`.
+Registered algorithms: `iql`, `cql`, `mixed` (MixedTrainer — assign IQL or CQL per team), `dqn`, `actor_critic`, `a2c`, `a3c`.
 
 ---
 
@@ -165,9 +165,9 @@ plus optimizer per agent — but learns fully **on-policy**: every `_update()` c
 happens immediately after the env step that produced its transition, with **no
 replay buffer and no target network**.
 
-This is the vanilla, per-step online variant — Sutton & Barto's Algorithm 13.5, not
-the batched A2C or asynchronous A3C variants (both still on the roadmap, see
-`docs/algorithms/index.md`).
+This is the vanilla, per-step online variant — Sutton & Barto's Algorithm 13.5. The
+batched (`A2C`) and asynchronous (`A3C`) variants are documented in their own
+sections below.
 
 **Same preconditions as DQN:** requires `env.observation_encoder` (raises
 `ValueError` if missing), and resolves `action_dim` from
@@ -176,6 +176,86 @@ the batched A2C or asynchronous A3C variants (both still on the roadmap, see
 **No epsilon-greedy exploration:** `select_actions()` always samples from
 `Categorical(logits=...)` — the stochastic policy itself is the exploration
 mechanism, so there is no `epsilon`/`epsilon_decay`/`min_epsilon` in its config.
+
+---
+
+## A2C — the Batched On-Policy Algorithm
+
+`A2C` (`baselines/A2C/a2c.py`) is ActorCritic's batched sibling: same
+policy-gradient idea, but accumulates an `n_steps` rollout and updates once from an
+n-step bootstrapped return, instead of updating after every single env step.
+Unlike ActorCritic's shared-trunk `ActorCriticNetwork`, A2C uses **separate**
+`ActorNetwork`/`CriticNetwork` per agent, with independent optimizers and
+independent learning rates (`actor_learning_rate`, `critic_learning_rate` — the
+critic typically wants to learn faster/more stably than the actor).
+
+**Same preconditions as ActorCritic/DQN:** `env.observation_encoder` required,
+`action_dim` resolved and validated the same way.
+
+**Config keys** (`experiment_a2c.yaml`): `gamma`, `episodes`, `hidden_layers`,
+`actor_learning_rate`, `critic_learning_rate`, `n_steps`, `entropy_coef`,
+`value_loss_coef`, `grad_clip`, `device`, `seed`, `curves_path`.
+
+**Loss/optimization:** critic loss is `SmoothL1Loss` (Huber), not raw MSE — same
+reasoning as DQN/ActorCritic: this environment's reward magnitudes are large
+enough that plain squared error destabilizes training (empirically confirmed —
+see `PROGRESS_REPORT.md` for the before/after numbers). Actor and critic each have
+their own optimizer and their own `backward()`/`step()` call.
+
+**Known limitation:** raising `entropy_coef` measurably improves capture rate on
+this environment but does not prevent the policy's entropy from collapsing toward
+zero mid-training — looks like a structural training-dynamics issue, not simply
+"the coefficient was too small." Not yet resolved; documented for follow-up.
+
+---
+
+## A3C — the Asynchronous On-Policy Algorithm
+
+`A3C` (`baselines/A3C/a3c.py`) runs A2C's same n-step rollout/update logic across
+**multiple worker processes**, each stepping its own independent environment.
+Workers periodically sync a local network copy from a **shared global network**
+(`ActorCriticNetwork`, reused from `baselines/AC/network.py` rather than
+duplicated), compute gradients locally, then apply those gradients directly to the
+shared network and step a shared `SharedAdam` optimizer — lock-free ("Hogwild"),
+exactly as Mnih et al. (2016) describe. There is no replay buffer and no
+synchronization barrier between workers.
+
+**Extra precondition beyond every other baseline: `config['env_fn']`.**
+`BaseAlgorithm.__init__(self, env, config)` normally receives one already-built
+environment; A3C needs one independent environment *per worker*, so it requires an
+additional zero-argument, **picklable** callable that builds a fresh environment.
+Missing or non-callable `env_fn` raises `ValueError` at construction time. A
+lambda closing over a config dict will not survive pickling under the `'spawn'`
+start method (the default on Windows, and used everywhere here via
+`torch.multiprocessing`) — use a module-level function or a callable class
+instance instead (see `scripts/run_a3c.py`'s `EnvFactory`).
+
+**Workers always run on CPU** — not configurable. A3C's premise is parallelism
+from CPU cores, not GPU batching; safely sharing one CUDA context across
+processes needs CUDA IPC and isn't worth it for what this algorithm is designed
+around.
+
+**Config keys** (`experiment_a3c.yaml`): `gamma`, `episodes`, `learning_rate`,
+`hidden_layers`, `num_workers`, `n_steps`, `entropy_coef`, `value_coef`,
+`grad_clip`, `seed`, `curves_path` (plus the required `env_fn`, supplied by the
+calling script, not the YAML).
+
+**`SharedAdam`** (`baselines/A3C/shared_adam.py`): a `torch.optim.Adam` subclass
+whose per-parameter state (`exp_avg`, `exp_avg_sq`, step count) is moved to shared
+memory at construction. Without this, each worker process would keep its own
+private, diverging view of the Adam moment estimates instead of a consistent
+shared one.
+
+**CSV logging across processes:** a `multiprocessing.Lock` guards concurrent
+writes to `curves_path` so rows from different workers don't interleave mid-write.
+Each row records a `worker` column. Episode numbers are **not** written in file
+order — workers run genuinely asynchronously, so sort by the `episode` column
+before any quarter/decile-style analysis rather than relying on row position.
+
+**`A3C.save()` excludes `env_fn` from the persisted config** — it's a live
+callable tied to a training session, not meaningful checkpoint data, and may not
+even be picklable (e.g. a test using a lambda) even when `env_fn` itself is never
+touched during training.
 
 **Config keys** (`experiment_actor_critic.yaml`): `gamma`, `episodes`,
 `learning_rate`, `hidden_layers`, `value_coef`, `entropy_coef`, `grad_clip`,

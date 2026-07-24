@@ -1,0 +1,21 @@
+experiment:
+  algorithm:
+    name: a3c
+    params:
+      gamma: 0.99
+      episodes: 1000
+      learning_rate: 0.001
+      hidden_layers: [128, 128]
+
+      num_workers: 4          # worker processes; each steps its own independent env copy
+      n_steps: 5               # rollout length per worker between syncs with the shared network
+
+      entropy_coef: 0.05       # see PROGRESS_REPORT.md: 0.01 wasn't enough to hold capture
+      # rate up in A2C on this env; 0.05 is the validated starting point for the async setting too
+      value_coef: 0.5
+      grad_clip: 5.0
+
+      seed: 42
+      curves_path: "training_curves_a3c.csv"
+      # device is not configurable here -- A3C workers always run on CPU; see a3c.py's
+      # module docstring for why (sharing one CUDA context across processes isn't worth it)

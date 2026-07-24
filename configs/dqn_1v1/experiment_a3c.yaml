@@ -1,0 +1,23 @@
+# configs/dqn_1v1/experiment_a3c.yaml
+# Diagnostic run on the 1v1 config (predator speed 2 / prey speed 1) that
+# already has real DQN/ActorCritic/A2C data to compare against -- see
+# PROGRESS_REPORT.md.
+experiment:
+  algorithm:
+    name: a3c
+    params:
+      gamma: 0.99
+      episodes: 2000
+      learning_rate: 0.001
+      hidden_layers: [64, 64]   # matches DQN/ActorCritic/A2C's hidden_layers on this config
+
+      num_workers: 4
+      n_steps: 5
+
+      entropy_coef: 0.05
+      value_coef: 0.5
+      grad_clip: 5.0
+
+      seed: 42
+      log_interval: 10
+      curves_path: "training_curves_a3c_1v1.csv"

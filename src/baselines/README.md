@@ -106,7 +106,7 @@ The algorithm controls:
 baselines/
 │
 ├── base.py            # BaseAlgorithm interface
-├── __init__.py        # Auto-registers IQL, CQL, MixedTrainer, DQN, ActorCritic
+├── __init__.py        # Auto-registers IQL, CQL, MixedTrainer, DQN, ActorCritic, A2C, A3C
 ├── registry/          # Algorithm registry
 │
 ├── IQL/               # Independent Q-Learning  (iql.py + CLI)
@@ -120,6 +120,8 @@ baselines/
 ├── AC/                # One-step online Actor-Critic, PyTorch (actor_critic.py + CLI, network.py)
 │
 ├── A2C/               # Advantage Actor-Critic (a2c.py + actor_network.py + critic_network.py)
+│
+├── A3C/               # Asynchronous Advantage Actor-Critic (a3c.py + shared_adam.py)
 │
 └── README.md
 ```
@@ -232,9 +234,9 @@ Algorithms must:
 
 * Studying an on-policy, directly-learned stochastic policy against DQN's
   greedy-over-Q behavior
-* As the stepping stone toward batched (A2C) and asynchronous (A3C) variants —
-  see the [algorithm spec](../../docs/specs/algorithm-spec.md) for what's still on
-  the roadmap
+* As the stepping stone toward the batched (A2C, below) and asynchronous (A3C,
+  below) variants — see the [algorithm spec](../../docs/specs/algorithm-spec.md)
+  for the full contract writeups
 
 ---
 
@@ -257,8 +259,33 @@ Algorithms must:
 * Studying on-policy vs off-policy learning dynamics
 * Environments/rewards where a stochastic policy is itself interesting
   (e.g. mixed-strategy pursuit-evasion)
-* As the natural stepping stone toward A3C (parallel workers) and SAC
+* As the natural stepping stone toward A3C (below) and SAC
   (off-policy actor-critic with entropy maximization)
+
+---
+
+## 🟧 A3C — Asynchronous Advantage Actor-Critic
+
+* Multiple worker **processes** (`torch.multiprocessing`), each stepping its own
+  independent env copy — not just multiple threads, since PyTorch's GIL would
+  serialize those anyway for CPU-bound work
+* One shared `ActorCriticNetwork` (reused from `AC/`, not duplicated) + one
+  shared `SharedAdam` optimizer per agent — workers sync a local copy, compute
+  gradients locally, then push those gradients onto the shared parameters and
+  step the shared optimizer with no lock ("Hogwild"-style)
+* Requires `config['env_fn']` beyond every other baseline — a picklable,
+  zero-argument callable that builds a fresh environment per worker; a lambda
+  will not survive pickling under Windows' `'spawn'` start method
+* Workers always run on CPU (not configurable) — A3C's whole premise is
+  CPU-core parallelism, not GPU batching
+* Same Huber critic loss as A2C; same entropy-collapse caveat (see A2C above)
+
+### When to Use
+
+* Studying asynchronous, multi-worker training dynamics specifically — on a
+  small gridworld like this one it won't necessarily out-train A2C
+  wall-clock-for-wall-clock; the interesting part is the decorrelated,
+  lock-free parallel exploration itself
 
 ---
 
@@ -362,6 +389,8 @@ PYTHONPATH=src python -m multi_agent_package.scripts.run_mixed
 PYTHONPATH=src python -m multi_agent_package.scripts.run_dqn
 PYTHONPATH=src python -m multi_agent_package.scripts.run_dqn --config-dir configs/dqn_1v1   # double+dueling example
 PYTHONPATH=src python -m multi_agent_package.scripts.run_actor_critic
+PYTHONPATH=src python -m multi_agent_package.scripts.run_a2c
+PYTHONPATH=src python -m multi_agent_package.scripts.run_a3c
 
 # Direct CLI (all hyperparams as flags; builds its own GridWorldEnv, bypassing run_from_config)
 python -m baselines.IQL.iql --episodes 1000 --alpha 0.1 --save-path trained_iql.pkl
@@ -369,6 +398,8 @@ python -m baselines.CQL.cql --episodes 1000 --alpha 0.1 --save-path trained_cql.
 python -m baselines.MIXED.mix_train --predator-algo cql --prey-algo iql --episodes 1000
 python -m baselines.DQN.dqn --episodes 1000 --hidden-layers 64 64 --save-path trained_dqn.pkl
 python -m baselines.AC.actor_critic --episodes 1000 --hidden-layers 64 64 --save-path trained_actor_critic.pkl
+python -m baselines.A2C.a2c --episodes 1000 --hidden-layers 64 64 --save-path trained_a2c.pkl
+python -m baselines.A3C.a3c --episodes 1000 --hidden-layers 64 64 --num-workers 4 --save-path trained_a3c.pkl
 ```
 
 ---
