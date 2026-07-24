@@ -1,0 +1,23 @@
+# configs/experiment_a2c.yaml
+experiment:
+  algorithm:
+    name: a2c
+    params:
+      gamma: 0.99
+      hidden_layers: [128, 128]   # shared shape for both actor and critic networks
+
+      actor_learning_rate: 0.0003
+      critic_learning_rate: 0.001
+
+      n_steps: 5              # rollout length between actor/critic updates
+      entropy_coef: 0.05      # exploration bonus -- 0.01 let the predator's policy entropy
+      # collapse to ~0 by mid-training on configs/dqn_1v1 (see PROGRESS_REPORT.md); 0.05
+      # doesn't stop the collapse either (looks structural, not coefficient-magnitude), but
+      # measurably raised capture rate (~22% -> ~30%) so it's the better default for now
+      value_loss_coef: 0.5    # weight of the critic's MSE loss relative to the actor's loss
+      grad_clip: 5.0
+
+      episodes: 1000
+      seed: 42
+      device: "cpu"
+      curves_path: "training_curves_a2c.csv"
