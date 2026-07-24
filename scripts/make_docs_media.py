@@ -178,8 +178,14 @@ def _draw(env: GridWorldEnv, ax) -> None:
         color = PRED_COLOR if ag.agent_type.startswith("predator") else PREY_COLOR
         ax.add_patch(plt.Circle((x, y), 0.32, color=color))
         ax.text(
-            x, y, ag.agent_name[0].upper(), ha="center", va="center",
-            color="white", fontsize=9, fontweight="bold",
+            x,
+            y,
+            ag.agent_name[0].upper(),
+            ha="center",
+            va="center",
+            color="white",
+            fontsize=9,
+            fontweight="bold",
         )
 
 

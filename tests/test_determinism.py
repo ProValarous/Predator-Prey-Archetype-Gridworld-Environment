@@ -19,7 +19,11 @@ def _make_env(seed):
         Agent(agent_type="prey", agent_team="prey_1", agent_name="prey_1"),
     ]
     env = GridWorldEnv(
-        agents=agents, size=6, perc_num_obstacle=20, render_mode=None, seed=seed,
+        agents=agents,
+        size=6,
+        perc_num_obstacle=20,
+        render_mode=None,
+        seed=seed,
         max_steps=40,
     )
     env.reward_fn = BaseReward(weight=1.0).compute
@@ -42,8 +46,12 @@ def _run_trajectory(seed, actions_seq):
     return trace
 
 
-ACTIONS = [{"pred_1": 0, "prey_1": 4}, {"pred_1": 1, "prey_1": 2},
-           {"pred_1": 2, "prey_1": 1}, {"pred_1": 3, "prey_1": 0}] * 8
+ACTIONS = [
+    {"pred_1": 0, "prey_1": 4},
+    {"pred_1": 1, "prey_1": 2},
+    {"pred_1": 2, "prey_1": 1},
+    {"pred_1": 3, "prey_1": 0},
+] * 8
 
 
 def test_same_seed_reproduces_reset():
