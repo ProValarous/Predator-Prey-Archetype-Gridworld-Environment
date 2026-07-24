@@ -13,7 +13,7 @@ Q-learning is) and [GridWorld](../concepts/gridworld.md) (what the environment i
 ## 1. Install
 
 ```bash
-git clone https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment.git
+git clone https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment.git
 cd Predator-Prey-Archetype-Gridworld-Environment
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\Activate.ps1
