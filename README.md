@@ -1,6 +1,6 @@
 # 🐾 Predator–Prey Gridworld Environment
 
-[![CI](https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment/actions/workflows/ci.yaml/badge.svg?branch=STRP)](https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment/actions/workflows/ci.yaml)
+[![CI](https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/actions/workflows/ci.yaml/badge.svg?branch=STRP)](https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/actions/workflows/ci.yaml)
 [![Docs](https://img.shields.io/badge/docs-mkdocs-teal.svg)](https://provalarous.github.io/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/)
 
 A **deterministic, modular, research-grade multi-agent predator–prey environment** built to study coordination, pursuit–evasion, and emergent behavior in Multi-Agent Reinforcement Learning (MARL).
@@ -202,7 +202,7 @@ so an editable install makes `multi_agent_package` and `baselines` importable
 without setting `PYTHONPATH`.
 
 ```bash
-git clone https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment.git
+git clone https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment.git
 cd Predator-Prey-Archetype-Gridworld-Environment
 
 python -m venv .venv
