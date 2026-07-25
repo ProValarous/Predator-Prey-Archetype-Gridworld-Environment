@@ -117,18 +117,18 @@ def main():
         print("Registered algorithms:", registered)
         skipped = [name for name in registered if name not in TABULAR_ALGORITHMS]
         if skipped:
-            print(
-                f"Skipping non-tabular algorithms (see module docstring): {skipped}"
-            )
+            print(f"Skipping non-tabular algorithms (see module docstring): {skipped}")
 
         for name in TABULAR_ALGORITHMS:
             if name in registered:
                 test_algorithm(name)
 
         print("\nALL TESTS PASSED.")
-        print("Architecture integrity confirmed (tabular baselines only -- see "
-              "module docstring for why DQN/ActorCritic/A2C/A3C aren't covered "
-              "here).")
+        print(
+            "Architecture integrity confirmed (tabular baselines only -- see "
+            "module docstring for why DQN/ActorCritic/A2C/A3C aren't covered "
+            "here)."
+        )
 
     except Exception:
         print("\nTEST FAILED.")

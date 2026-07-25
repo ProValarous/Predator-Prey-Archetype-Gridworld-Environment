@@ -47,6 +47,21 @@ def _bias_corrected_stats(mean: float, sq: float, t: int, decay: float, eps: flo
     return mean_hat, std_hat
 
 
+def _rescale_value_head(
+    value_head, old_mean: float, old_std: float, new_mean: float, new_std: float
+) -> None:
+    """Shared PopArt rescale between RunningReturnNormalizer and
+    SharedReturnNormalizer: analytically adjusts `value_head`'s weight/bias
+    so its denormalized prediction is unchanged across an (old_mean,
+    old_std) -> (new_mean, new_std) shift in the normalization estimate
+    ("preserving outputs precisely"). Caller is responsible for any locking
+    -- this function just does the in-place tensor math."""
+    with torch.no_grad():
+        ratio = old_std / new_std
+        value_head.weight.mul_(ratio)
+        value_head.bias.mul_(ratio).add_((old_mean - new_mean) / new_std)
+
+
 class RunningReturnNormalizer:
     """Tracks a bias-corrected running mean/std of observed raw return
     values (Adam-style EMA + bias correction, applied to a scalar instead of
@@ -80,7 +95,9 @@ class RunningReturnNormalizer:
         """Bias-corrected (mean, std) estimate from observations so far.
         Before any update(), returns (0.0, eps) -- a neutral starting point
         that doesn't blow up the first bootstrap value it's used against."""
-        return _bias_corrected_stats(self._mean, self._sq, self._t, self.decay, self.eps)
+        return _bias_corrected_stats(
+            self._mean, self._sq, self._t, self.decay, self.eps
+        )
 
     def update(self, raw_value: float) -> None:
         self._t += 1
@@ -109,10 +126,7 @@ class RunningReturnNormalizer:
         old_mean, old_std = self.stats()
         self.update(raw_value)
         new_mean, new_std = self.stats()
-        with torch.no_grad():
-            ratio = old_std / new_std
-            value_head.weight.mul_(ratio)
-            value_head.bias.mul_(ratio).add_((old_mean - new_mean) / new_std)
+        _rescale_value_head(value_head, old_mean, old_std, new_mean, new_std)
 
     def normalize(self, raw_value: float) -> float:
         mean, std = self.stats()
@@ -212,19 +226,18 @@ class SharedReturnNormalizer:
             )
 
             self._t.value += 1
-            self._mean.value = self.decay * self._mean.value + (1 - self.decay) * raw_value
-            self._sq.value = (
-                self.decay * self._sq.value + (1 - self.decay) * (raw_value**2)
+            self._mean.value = (
+                self.decay * self._mean.value + (1 - self.decay) * raw_value
+            )
+            self._sq.value = self.decay * self._sq.value + (1 - self.decay) * (
+                raw_value**2
             )
 
             new_mean, new_std = _bias_corrected_stats(
                 self._mean.value, self._sq.value, self._t.value, self.decay, self.eps
             )
 
-            with torch.no_grad():
-                ratio = old_std / new_std
-                value_head.weight.mul_(ratio)
-                value_head.bias.mul_(ratio).add_((old_mean - new_mean) / new_std)
+            _rescale_value_head(value_head, old_mean, old_std, new_mean, new_std)
 
     def state_dict(self) -> dict:
         return {

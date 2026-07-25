@@ -10,7 +10,10 @@ import torch
 import torch.nn as nn
 import torch.multiprocessing as mp
 
-from baselines.AC.return_normalizer import RunningReturnNormalizer, SharedReturnNormalizer
+from baselines.AC.return_normalizer import (
+    RunningReturnNormalizer,
+    SharedReturnNormalizer,
+)
 
 
 class TestRunningReturnNormalizer:

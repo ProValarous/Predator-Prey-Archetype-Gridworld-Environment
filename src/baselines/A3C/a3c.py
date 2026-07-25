@@ -284,7 +284,8 @@ def _worker_loop(
                     f"{aid}={v:.2f}" for aid, v in episode_rewards.items()
                 )
                 entropy_str = ", ".join(
-                    f"{aid}={np.mean(ent):.5f}" for aid, ent in episode_entropies.items()
+                    f"{aid}={np.mean(ent):.5f}"
+                    for aid, ent in episode_entropies.items()
                 )
                 print(
                     f"[A3C][worker {worker_id}] Episode {episode_num}/{max_episodes} | "
@@ -565,6 +566,16 @@ class A3C(BaseAlgorithm):
                 aid: net.state_dict() for aid, net in self.networks.items()
             },
         }
+        if self.normalize_returns:
+            # Persisted so a resumed/loaded run keeps interpreting the
+            # shared value_head's (normalized-scale) output consistently --
+            # restarting the normalizer from scratch would silently
+            # misinterpret an already-trained value_head's predictions.
+            # Matches ActorCritic.save()'s equivalent.
+            payload["return_normalizer_state"] = {
+                aid: normalizer.state_dict()
+                for aid, normalizer in self.return_normalizers.items()
+            }
         with open(path, "wb") as fh:
             pickle.dump(payload, fh)
         LOGGER.info("Saved A3C checkpoint -> %s", path)
@@ -581,6 +592,13 @@ class A3C(BaseAlgorithm):
                 instance.networks[agent_id].load_state_dict(
                     payload["state_dicts"][agent_id]
                 )
+
+        if instance.normalize_returns and "return_normalizer_state" in payload:
+            for agent_id in instance.agent_ids:
+                if agent_id in payload["return_normalizer_state"]:
+                    instance.return_normalizers[agent_id].load_state_dict(
+                        payload["return_normalizer_state"][agent_id]
+                    )
 
         LOGGER.info("Loaded A3C checkpoint from %s", path)
         return instance

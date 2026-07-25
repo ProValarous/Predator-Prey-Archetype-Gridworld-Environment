@@ -136,7 +136,9 @@ class TestWorkerLoopLogic:
             after = net.state_dict()
             assert any(not torch.equal(before[aid][k], after[k]) for k in after)
 
-    def test_normalize_returns_updates_shared_network_weights(self, dqn_env, a3c_config):
+    def test_normalize_returns_updates_shared_network_weights(
+        self, dqn_env, a3c_config
+    ):
         agent_ids = ["pred_1", "prey_1"]
         state_dim = 2
         action_dim = 5
@@ -497,3 +499,49 @@ class TestA3CPersistence:
             loaded_sd = loaded.networks[aid].state_dict()
             for key in orig_sd:
                 assert torch.equal(orig_sd[key], loaded_sd[key])
+
+    def test_normalize_returns_state_survives_save_load(
+        self, dqn_env, a3c_config, tmp_path
+    ):
+        """A loaded checkpoint must keep interpreting the shared value
+        head's (normalized-scale) output consistently -- resetting the
+        normalizer to a fresh (0.0, eps) estimate would silently
+        misinterpret an already-trained value head's predictions. Mirrors
+        ActorCritic's equivalent test."""
+        from baselines.A3C.a3c import A3C
+
+        a3c_config["env_fn"] = lambda: dqn_env
+        a3c_config["normalize_returns"] = True
+        algo = A3C(dqn_env, a3c_config)
+
+        for aid in algo.agent_ids:
+            for raw_value in [120.0, -85.0, 60.0]:
+                algo.return_normalizers[aid].update_and_rescale_value_head(
+                    raw_value, algo.networks[aid].value_head
+                )
+
+        path = tmp_path / "a3c_norm.pkl"
+        algo.save(str(path))
+
+        loaded = A3C.load(dqn_env, a3c_config, str(path))
+        for aid in algo.agent_ids:
+            assert (
+                loaded.return_normalizers[aid].stats()
+                == algo.return_normalizers[aid].stats()
+            )
+
+    def test_save_without_normalize_returns_has_no_normalizer_payload(
+        self, dqn_env, a3c_config, tmp_path
+    ):
+        import pickle
+
+        from baselines.A3C.a3c import A3C
+
+        a3c_config["env_fn"] = lambda: dqn_env
+        algo = A3C(dqn_env, a3c_config)
+        path = tmp_path / "a3c_plain.pkl"
+        algo.save(str(path))
+
+        with open(path, "rb") as fh:
+            payload = pickle.load(fh)
+        assert "return_normalizer_state" not in payload
