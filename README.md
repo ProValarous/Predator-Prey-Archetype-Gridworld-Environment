@@ -1,19 +1,24 @@
 # 🐾 Predator–Prey Gridworld Environment
 
-[![CI](https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/actions/workflows/ci.yaml/badge.svg?branch=STRP)](https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/actions/workflows/ci.yaml)
-[![Docs](https://img.shields.io/badge/docs-mkdocs-teal.svg)](https://provalarous.github.io/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/)
-
-A **deterministic, modular, research-grade multi-agent predator–prey environment** built to study coordination, pursuit–evasion, and emergent behavior in Multi-Agent Reinforcement Learning (MARL).
-
-This repository is not just a simulation.
-
-It is a **controlled experimental laboratory** for understanding how multi-agent learning systems behave.
-
 <p align="center">
-  <img src="miscellenous/imgs/demo.gif" alt="A predator (red) chasing down a prey (green) across a 10x10 obstacle grid until capture" width="420">
+  <img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue" alt="Python versions">
+  <a href="https://arxiv.org/abs/2601.17454"><img src="https://img.shields.io/badge/arXiv-2601.17454-b31b1b.svg" alt="arXiv"></a>
+  <a href="https://provalarous.github.io/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/"><img src="https://img.shields.io/badge/docs-mkdocs-teal.svg" alt="Docs"></a>
+  <a href="https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/actions/workflows/ci.yaml"><img src="https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/actions/workflows/ci.yaml/badge.svg?branch=STRP" alt="CI"></a>
+  <a href="https://github.com/pre-commit/pre-commit"><img src="https://img.shields.io/badge/pre--commit-enabled-brightgreen" alt="pre-commit"></a>
+  <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code style: black"></a>
+  <img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License">
 </p>
 
-<p align="center"><em>A speed-2 predator pursuing a speed-1 prey around obstacles (<code>configs/dqn_1v1</code>) until capture.</em></p>
+<p align="center">
+  <img src="miscellenous/imgs/demo.gif" alt="A predator (red) chasing down a prey (green) across a 10x10 obstacle grid until capture" width="480">
+</p>
+
+<p align="center"><sub>A speed-2 predator pursuing a speed-1 prey around obstacles (<code>configs/dqn_1v1</code>) until capture.</sub></p>
+
+<p align="center">
+A <b>deterministic, modular, research-grade multi-agent predator–prey environment</b> for studying coordination, pursuit–evasion, and emergent behavior in Multi-Agent Reinforcement Learning. It is not just a simulation, it is a controlled experimental laboratory for understanding how multi-agent learning systems behave, with fully inspectable dynamics, pluggable perception and incentives, and reproducibility enforced by construction rather than assumed.
+</p>
 
 ---
 
@@ -83,16 +88,16 @@ The goal is **clarity, modularity, and scientific control**.
 
 The repository is divided into two major components:
 
-### 1️⃣ `multi_agent_package` — The Environment
+### 1️⃣ `multi_agent_package`: The Environment
 
 Implements:
 
 * Grid environment dynamics, agent movement, capture logic, episode termination (`core/`, immutable)
-* Observation plug-ins — perception (`observations/`)
-* Reward plug-ins — incentives (`rewards/`)
-* Action-space plug-ins — what an agent's action integers mean (`actions/`)
-* Wrappers — cross-cutting mechanics layered on top of the base env, e.g. per-agent speed/stamina (`wrappers/`)
-* Registries — the only sanctioned way to wire a plug-in into an experiment (`registry/`)
+* Observation plug-ins: perception (`observations/`)
+* Reward plug-ins: incentives (`rewards/`)
+* Action-space plug-ins: what an agent's action integers mean (`actions/`)
+* Wrappers: cross-cutting mechanics layered on top of the base env, e.g. per-agent speed/stamina (`wrappers/`)
+* Registries: the only sanctioned way to wire a plug-in into an experiment (`registry/`)
 
 This layer defines the world.
 
@@ -105,14 +110,14 @@ Currently registered plug-ins:
 | Actions      | `discrete_5`, `cross`, `speed_discrete_5`                               |
 | Wrappers     | `SpeedWrapper` (per-agent speed/stamina, applied last in the build chain) |
 
-### 2️⃣ `baselines` — The Learning Algorithms
+### 2️⃣ `baselines`: The Learning Algorithms
 
 Implements:
 
-* **IQL** — Independent Q-Learning (tabular)
-* **CQL** — Centralized Q-Learning (tabular)
-* **MixedTrainer** — per-team algorithm assignment (e.g. CQL predators vs IQL prey)
-* **DQN** — Deep Q-Network (PyTorch, generic observation encoder, replay buffer)
+* **IQL**: Independent Q-Learning (tabular)
+* **CQL**: Centralized Q-Learning (tabular)
+* **MixedTrainer**: per-team algorithm assignment (e.g. CQL predators vs IQL prey)
+* **DQN**: Deep Q-Network (PyTorch, generic observation encoder, replay buffer)
 
 See [`src/baselines/README.md`](src/baselines/README.md) for the algorithm contract and when to use each one.
 
@@ -240,7 +245,7 @@ You are encouraged to:
 * Run structured experiments
 * Perform reproducible ablations
 
-You are not expected to modify core environment dynamics — this is enforced automatically: a CI check fails any pull request that touches `src/multi_agent_package/core/`. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full contribution rules, and [`docs/git-workflow.md`](docs/git-workflow.md) for branching, commits, and how to open a PR.
+You are not expected to modify core environment dynamics; this is enforced automatically: a CI check fails any pull request that touches `src/multi_agent_package/core/`. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full contribution rules, and [`docs/git-workflow.md`](docs/git-workflow.md) for branching, commits, and how to open a PR.
 
 This mirrors how research infrastructure is structured in practice.
 
