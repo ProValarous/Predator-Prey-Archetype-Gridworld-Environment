@@ -39,6 +39,7 @@ import csv
 import logging
 import os
 import pickle
+from contextlib import nullcontext
 from typing import Optional
 
 import numpy as np
@@ -249,32 +250,52 @@ def _worker_loop(
                     )
 
                     # Hogwild: push local gradients straight onto the shared
-                    # global parameters (no lock) and step the shared
-                    # optimizer -- other workers may be doing the same
-                    # concurrently; that staleness is the point of A3C.
-                    for local_p, global_p in zip(
-                        local_networks[aid].parameters(),
-                        global_networks[aid].parameters(),
-                    ):
-                        global_p._grad = local_p.grad
-                    optimizers[aid].step()
+                    # global parameters and step the shared optimizer --
+                    # other workers may be doing the same concurrently;
+                    # that staleness is the point of A3C, and an ordinary
+                    # gradient-push race is benign SGD noise.
+                    #
+                    # When normalize_returns is on, this step is bracketed
+                    # in the SAME lock as the rescale below (rather than
+                    # left unlocked): a concurrent unlocked step() CAN
+                    # interleave with the rescale's in-place
+                    # `weight.mul_(ratio)` and leave the shared value_head
+                    # internally inconsistent (some weight elements
+                    # rescaled, others not) -- unlike a plain gradient race,
+                    # that is NOT self-correcting, and was confirmed as a
+                    # real bug: a 3v3 config's much higher return variance
+                    # made large rescale ratios common enough that this hit
+                    # in practice (OverflowError within ~450 episodes),
+                    # where 1v1's steadier returns had been surviving the
+                    # same unprotected race by luck. See
+                    # SharedReturnNormalizer's docstring for the full
+                    # writeup. When normalize_returns is off there is no
+                    # shared rescale to race against, so no lock is needed.
+                    lock_ctx = (
+                        return_normalizers[aid].lock()
+                        if return_normalizers is not None
+                        else nullcontext()
+                    )
+                    with lock_ctx:
+                        for local_p, global_p in zip(
+                            local_networks[aid].parameters(),
+                            global_networks[aid].parameters(),
+                        ):
+                            global_p._grad = local_p.grad
+                        optimizers[aid].step()
 
-                    if return_normalizers is not None:
-                        # Advance the SHARED estimate with what this rollout
-                        # actually observed, and rescale the shared global
-                        # value_head to match (PopArt's "preserving outputs
-                        # precisely") -- affects the persistent state future
-                        # syncs (by this or other workers) will pick up, not
-                        # this rollout's own already-computed loss above.
-                        # Lock-protected against other workers' concurrent
-                        # rescales, but NOT against their concurrent
-                        # optimizers[aid].step() calls on the same shared
-                        # value_head -- same lock-free Hogwild tradeoff the
-                        # gradient push above already accepts.
-                        for r in returns:
-                            return_normalizers[aid].update_and_rescale_value_head(
-                                r, global_networks[aid].value_head
-                            )
+                        if return_normalizers is not None:
+                            # Advance the SHARED estimate with what this
+                            # rollout actually observed, and rescale the
+                            # shared global value_head to match (PopArt's
+                            # "preserving outputs precisely") -- affects the
+                            # persistent state future syncs (by this or
+                            # other workers) will pick up, not this
+                            # rollout's own already-computed loss above.
+                            for r in returns:
+                                return_normalizers[aid].update_and_rescale_value_head(
+                                    r, global_networks[aid].value_head
+                                )
 
                     episode_losses[aid].append(float(loss.item()))
                     episode_entropies[aid].append(float(entropies_t.mean().item()))

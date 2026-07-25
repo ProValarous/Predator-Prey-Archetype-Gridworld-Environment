@@ -279,6 +279,54 @@ normalizer is the strongest and most honestly-behaved result of the three.
 not a workaround, with the late-training wrinkle closed and verified rather
 than left as an open problem.
 
+## A second race, found by testing on 3v3
+
+The verification above was all on `configs/dqn_1v1`. Running the identical
+`normalize_returns=True` config on the 3v3 diagnostic config (`configs/`,
+6 agents, `max_steps=500`) surfaced a second real bug: one agent's critic
+loss climbed unboundedly (`predator_2`: 0.62 → 15.7 → 16.7 → 25.5 → ...) and
+crashed with the same `OverflowError` the `SharedReturnNormalizer` fix above
+was built to eliminate — on 1v1 it never recurred, but 3v3 hit it reliably
+within ~450 episodes.
+
+**Root cause:** `update_and_rescale_value_head`'s lock only ever serialized
+rescales against *other rescales*. It never protected the shared
+`value_head` against a concurrent, unlocked `optimizer.step()` from another
+worker — documented at the time as an accepted Hogwild tradeoff, the same
+one the ordinary gradient push already accepts. That reasoning holds for
+gradient pushes (lost updates are ordinary SGD noise, self-correcting) but
+not for the rescale: it's an in-place, whole-tensor `weight.mul_(ratio)`,
+not atomic against a concurrent write to the same tensor. If a worker's
+`optimizer.step()` writes to `value_head` while another worker's rescale is
+mid-`mul_`, some weight elements end up rescaled and others don't — an
+internally inconsistent layer, not just a stale one. That inconsistency
+doesn't self-correct; it can compound.
+
+Why 3v3 and not 1v1: the rescale ratio (`old_std / new_std`) swings harder
+the more the return distribution's scale jumps between updates. 3v3's
+episodes mix ~167-step chases (returns of order -4000) with 1-5 step
+near-instant captures (returns of order ±100) far more often per unit time
+than 1v1 does, so large ratios are common — any race that lands does more
+damage before gradient descent can correct it. 1v1's steadier return scale
+kept ratios close to 1, so the exact same unprotected race had been
+surviving there by luck, not by design.
+
+**Fix:** `SharedReturnNormalizer` now exposes its lock publicly
+(`.lock()`, backed by an `RLock` so `update_and_rescale_value_head` can
+still be called reentrantly from inside it), and A3C's worker loop
+(`a3c.py`'s `_worker_loop`) brackets the gradient push, `optimizer.step()`,
+and the rescale loop in that same lock as one atomic section per agent when
+`normalize_returns` is on. This does cost a small amount of A3C's namesake
+asynchrony — applying gradients to a given agent's shared network is now
+serialized across workers when the fix is enabled — but only for that brief
+critical section, not the (far more expensive) rollout collection or
+gradient computation, and only when `normalize_returns=True` is actually in
+use. Verified with a real multi-process test
+(`test_concurrent_step_and_rescale_stays_finite_under_contention` in
+`tests/test_return_normalizer.py`) that mirrors this exact pattern under
+heavy concurrent contention, and by re-running the crashing 3v3 repro to
+completion afterward.
+
 ## When to use A3C
 
 Study asynchronous, multi-worker training dynamics specifically. On a small

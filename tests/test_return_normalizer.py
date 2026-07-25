@@ -243,6 +243,20 @@ def _concurrent_update_worker(normalizer, value_head, n_updates, barrier):
         normalizer.update_and_rescale_value_head(float(i + 1), value_head)
 
 
+def _concurrent_step_and_rescale_worker(normalizer, value_head, n_updates, barrier):
+    """Mirrors A3C's actual worker-loop pattern (a3c.py's `_worker_loop`):
+    an unrelated mutation of the SAME shared value_head (standing in for
+    optimizer.step()) bracketed in the SAME lock as the rescale that
+    follows it, every iteration, from multiple real processes at once."""
+    barrier.wait()
+    for i in range(n_updates):
+        with normalizer.lock():
+            with torch.no_grad():
+                value_head.weight.add_(0.001)
+                value_head.bias.add_(0.001)
+            normalizer.update_and_rescale_value_head(float(i + 1), value_head)
+
+
 class TestSharedReturnNormalizerConcurrency:
     def test_concurrent_updates_from_real_processes_are_not_lost_or_corrupted(self):
         """The actual risk this class exists to manage: multiple real OS
@@ -277,3 +291,53 @@ class TestSharedReturnNormalizerConcurrency:
         mean, std = normalizer.stats()
         assert mean == mean and std == std  # not NaN
         assert std > 0
+
+    def test_lock_is_reentrant_with_update_and_rescale(self):
+        """update_and_rescale_value_head() acquires this normalizer's own
+        lock internally -- calling it from inside an outer `with
+        normalizer.lock():` block (the pattern a3c.py's worker loop uses to
+        bracket optimizer.step() together with the rescale) must not
+        deadlock in a single process."""
+        normalizer = SharedReturnNormalizer(decay=0.99)
+        value_head = nn.Linear(4, 1)
+
+        with normalizer.lock():
+            normalizer.update_and_rescale_value_head(10.0, value_head)
+
+        assert normalizer._t.value == 1
+
+    def test_concurrent_step_and_rescale_stays_finite_under_contention(self):
+        """The actual bug this locking fix addresses: a concurrent write to
+        the SAME shared value_head (standing in for A3C's
+        optimizer.step()) that is NOT bracketed in the rescale's lock can
+        interleave with the rescale's in-place `weight.mul_(ratio)` and
+        leave the layer internally inconsistent -- confirmed as a real
+        OverflowError on a 3v3 config within ~450 episodes (see
+        return_normalizer.py's "Write pattern" docstring section). Here,
+        both the mutation and the rescale are bracketed in the SAME
+        lock() -- as a3c.py's worker loop now does -- so heavy concurrent
+        contention across real processes must still leave the value_head
+        finite."""
+        normalizer = SharedReturnNormalizer(decay=0.999)
+        value_head = nn.Linear(8, 1)
+        value_head.share_memory()
+
+        n_workers = 4
+        n_updates = 50
+        barrier = mp.Barrier(n_workers)
+
+        processes = [
+            mp.Process(
+                target=_concurrent_step_and_rescale_worker,
+                args=(normalizer, value_head, n_updates, barrier),
+            )
+            for _ in range(n_workers)
+        ]
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join()
+
+        assert normalizer._t.value == n_workers * n_updates
+        assert torch.isfinite(value_head.weight).all()
+        assert torch.isfinite(value_head.bias).all()

@@ -185,6 +185,28 @@ class SharedReturnNormalizer:
     returns computed against them must use that exact same snapshot to
     stay internally consistent, even though the shared estimate may keep
     moving (from other workers) while this rollout is still in flight.
+
+    Write pattern -- `update_and_rescale_value_head` alone is NOT enough to
+    make the shared `value_head` safe under concurrent workers. It only
+    serializes rescales against OTHER rescales. A concurrent, unlocked
+    `optimizer.step()` from another worker (ordinary Hogwild gradient push)
+    can still interleave with this rescale's in-place `weight.mul_(ratio)`
+    -- an elementwise op, not atomic across the whole tensor -- leaving
+    some weight elements rescaled and others not: an internally
+    inconsistent layer, not just a "lost update" the way a plain gradient
+    race is. This is self-correcting for ordinary SGD noise but NOT for a
+    multiplicative rescale, and was confirmed as a real bug (not a
+    theoretical one): a 3v3 config, whose return distribution swings much
+    harder episode-to-episode than 1v1's (mixing ~167-step chases at
+    O(-4000) with 1-5 step captures at O(100)), hit large rescale ratios
+    often enough that this race caused one agent's value_head to diverge to
+    OverflowError within ~450 episodes. 1v1's steadier returns kept ratios
+    close to 1, so the same unprotected race there was surviving by luck,
+    not by design. Fix: callers that also need to mutate the SAME
+    value_head (i.e. A3C's `optimizer.step()`) must bracket that mutation
+    in this normalizer's own `lock()` alongside the rescale -- see
+    `lock()` below and `a3c.py`'s `_worker_loop`, which now does exactly
+    that.
     """
 
     def __init__(self, decay: float = 0.999, eps: float = 1e-4):
@@ -195,7 +217,12 @@ class SharedReturnNormalizer:
         self._mean = mp.Value("d", 0.0)
         self._sq = mp.Value("d", 0.0)
         self._t = mp.Value("l", 0)
-        self._lock = mp.Lock()
+        # RLock, not Lock: update_and_rescale_value_head() acquires this
+        # same lock internally, so a caller using lock() to bracket its own
+        # operation (e.g. optimizer.step()) around a call to
+        # update_and_rescale_value_head() must be able to re-enter it from
+        # the same process without deadlocking.
+        self._lock = mp.RLock()
 
     def stats(self) -> tuple:
         """Bias-corrected (mean, std) snapshot from observations so far.
@@ -203,6 +230,20 @@ class SharedReturnNormalizer:
         return _bias_corrected_stats(
             self._mean.value, self._sq.value, self._t.value, self.decay, self.eps
         )
+
+    def lock(self):
+        """This normalizer's own lock, exposed so a caller can bracket an
+        ADDITIONAL operation on the same shared `value_head` atomically
+        together with a rescale (e.g. `with normalizer.lock(): step();
+        normalizer.update_and_rescale_value_head(...)`). Required whenever
+        anything else writes to that value_head's tensors -- see class
+        docstring's "Write pattern" section for why an unprotected
+        concurrent write there is not just a benign lost update. Safe to
+        re-enter from the same process (backed by an RLock), so calling
+        `update_and_rescale_value_head` from inside an outer `lock()` block
+        does not deadlock.
+        """
+        return self._lock
 
     def normalize(self, raw_value: float) -> float:
         mean, std = self.stats()
