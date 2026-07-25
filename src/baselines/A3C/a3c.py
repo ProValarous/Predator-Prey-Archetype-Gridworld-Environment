@@ -51,7 +51,7 @@ from numpy.random import default_rng
 from baselines.base import BaseAlgorithm
 from baselines.registry.algorithm_registry import register
 from baselines.AC.network import ActorCriticNetwork
-from baselines.AC.return_normalizer import RunningReturnNormalizer
+from baselines.AC.return_normalizer import SharedReturnNormalizer
 from baselines.A3C.shared_adam import SharedAdam
 
 LOGGER = logging.getLogger("a3c")
@@ -84,14 +84,20 @@ def _worker_loop(
     log_interval: int,
     verbose: bool,
     seed: Optional[int],
-    normalize_returns: bool = False,
-    return_norm_decay: float = 0.999,
+    return_normalizers: Optional[dict] = None,
 ) -> None:
     """One A3C worker: runs entirely in its own process. Builds its own
     env via env_fn(), builds local (non-shared) networks, and repeatedly
     syncs from the shared global networks, collects an n-step rollout,
     and pushes gradients into the shared networks -- until the shared
-    episode_counter reaches max_episodes."""
+    episode_counter reaches max_episodes.
+
+    `return_normalizers`: None disables return normalization entirely
+    (original raw-return behavior). Otherwise a dict of
+    SharedReturnNormalizer, one per agent, created ONCE in the main process
+    and shared by every worker (see A3C._build_learners) -- not built here
+    per-worker, so every worker's rescale operates against the same
+    consistent (mean, std) estimate instead of independent local ones."""
     if seed is not None:
         torch.manual_seed(seed)
     default_rng(seed)
@@ -100,14 +106,6 @@ def _worker_loop(
     local_networks = {
         aid: ActorCriticNetwork(state_dim, hidden_layers, action_dim)
         for aid in agent_ids
-    }
-    # One normalizer per agent, LOCAL to this worker process (not shared or
-    # synchronized across workers -- each estimates the same underlying
-    # return distribution independently, which converges close enough in
-    # practice; a fully shared, lock-protected estimate would need per-step
-    # lock contention this doesn't attempt). See return_normalizer.py.
-    return_normalizers = {
-        aid: RunningReturnNormalizer(decay=return_norm_decay) for aid in agent_ids
     }
 
     csv_file = open(csv_path, "a", newline="") if csv_path else None
@@ -142,6 +140,20 @@ def _worker_loop(
                     local_networks[aid].load_state_dict(
                         global_networks[aid].state_dict()
                     )
+
+                # ONE snapshot of each agent's normalizer stats, taken right
+                # at sync time and reused for this whole rollout -- local
+                # network's collected values below reflect whatever scale
+                # was true at THIS sync, so the returns computed against
+                # them must use this exact same snapshot to stay internally
+                # consistent, even though the shared estimate may keep
+                # moving (from other workers) while this rollout is still
+                # in flight. See SharedReturnNormalizer's docstring.
+                norm_snapshot = (
+                    {aid: return_normalizers[aid].stats() for aid in agent_ids}
+                    if return_normalizers is not None
+                    else None
+                )
 
                 rollout = {
                     aid: {"log_probs": [], "values": [], "rewards": [], "entropies": []}
@@ -183,7 +195,6 @@ def _worker_loop(
                     if not rollout[aid]["rewards"]:
                         continue
 
-                    normalizer = return_normalizers[aid]
                     if terminated:
                         bootstrap_value = 0.0
                     else:
@@ -194,15 +205,14 @@ def _worker_loop(
                             )
                             _, next_value = local_networks[aid](next_state_t)
                             bootstrap_value = float(next_value.item())
-                            if normalize_returns:
+                            if norm_snapshot is not None:
                                 # values_t (collected below) are on a
                                 # NORMALIZED scale once this is enabled --
-                                # un-normalize against the PRIOR estimate to
-                                # bootstrap in raw units, same two-phase
-                                # pattern as AC's _update().
-                                bootstrap_value = normalizer.denormalize(
-                                    bootstrap_value
-                                )
+                                # un-normalize against this rollout's fixed
+                                # snapshot (not a fresh read) to bootstrap
+                                # in raw units consistently with values_t.
+                                snap_mean, snap_std = norm_snapshot[aid]
+                                bootstrap_value = bootstrap_value * snap_std + snap_mean
 
                     returns = []
                     R = bootstrap_value
@@ -210,11 +220,10 @@ def _worker_loop(
                         R = r + gamma * R
                         returns.insert(0, R)
 
-                    if normalize_returns:
-                        for r in returns:
-                            normalizer.update(r)
+                    if norm_snapshot is not None:
+                        snap_mean, snap_std = norm_snapshot[aid]
                         returns_t = torch.tensor(
-                            [normalizer.normalize(r) for r in returns],
+                            [(r - snap_mean) / snap_std for r in returns],
                             dtype=torch.float32,
                         )
                     else:
@@ -249,6 +258,23 @@ def _worker_loop(
                     ):
                         global_p._grad = local_p.grad
                     optimizers[aid].step()
+
+                    if return_normalizers is not None:
+                        # Advance the SHARED estimate with what this rollout
+                        # actually observed, and rescale the shared global
+                        # value_head to match (PopArt's "preserving outputs
+                        # precisely") -- affects the persistent state future
+                        # syncs (by this or other workers) will pick up, not
+                        # this rollout's own already-computed loss above.
+                        # Lock-protected against other workers' concurrent
+                        # rescales, but NOT against their concurrent
+                        # optimizers[aid].step() calls on the same shared
+                        # value_head -- same lock-free Hogwild tradeoff the
+                        # gradient push above already accepts.
+                        for r in returns:
+                            return_normalizers[aid].update_and_rescale_value_head(
+                                r, global_networks[aid].value_head
+                            )
 
                     episode_losses[aid].append(float(loss.item()))
                     episode_entropies[aid].append(float(entropies_t.mean().item()))
@@ -310,8 +336,10 @@ class A3C(BaseAlgorithm):
         # actor's. 0.0 preserves the original single-group behavior.
         self.actor_weight_decay = float(config.get("actor_weight_decay", 0.0))
         # See baselines/AC/return_normalizer.py and AC's own normalize_returns
-        # (docs/algorithms/actor-critic.md) -- same fix, applied per-worker
-        # (each worker keeps its own local running estimate; see _worker_loop).
+        # (docs/algorithms/actor-critic.md) -- same fix, using ONE shared,
+        # lock-protected SharedReturnNormalizer per agent across all workers
+        # (see _build_learners/_worker_loop), so the PopArt weight-rescale
+        # applies consistently instead of workers fighting each other.
         self.normalize_returns = bool(config.get("normalize_returns", False))
         self.return_norm_decay = float(config.get("return_norm_decay", 0.999))
         self.num_workers = int(config.get("num_workers", 4))
@@ -394,6 +422,7 @@ class A3C(BaseAlgorithm):
     def _build_learners(self) -> None:
         self.networks = {}
         self.optimizers = {}
+        self.return_normalizers = {}
 
         for agent_id in self.agent_ids:
             network = ActorCriticNetwork(
@@ -414,6 +443,16 @@ class A3C(BaseAlgorithm):
                 ],
                 lr=self.learning_rate,
             )
+            if self.normalize_returns:
+                # ONE shared, lock-protected estimate per agent, created
+                # here in the main process and passed to every worker --
+                # not one-per-worker-local -- so the PopArt weight-rescale
+                # below has a single consistent (mean, std) to stay
+                # consistent with. See return_normalizer.py's
+                # SharedReturnNormalizer docstring for why.
+                self.return_normalizers[agent_id] = SharedReturnNormalizer(
+                    decay=self.return_norm_decay
+                )
 
     def _debug(self, message: str) -> None:
         if self.verbose:
@@ -495,8 +534,7 @@ class A3C(BaseAlgorithm):
                     self.log_interval,
                     self.verbose,
                     worker_seed,
-                    self.normalize_returns,
-                    self.return_norm_decay,
+                    self.return_normalizers if self.normalize_returns else None,
                 ),
             )
             p.start()

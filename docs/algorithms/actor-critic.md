@@ -283,7 +283,7 @@ a runaway, ever-growing representation to amplify through — it becomes
 ordinary, bounded policy-gradient noise instead of instant saturation.
 
 **A first version used plain `update()` and worked, but had a latent
-stability gap** — confirmed the hard way on [A3C](a3c.md#the-instant-collapse-same-fix-with-one-open-wrinkle):
+stability gap** — confirmed the hard way on [A3C](a3c.md#the-instant-collapse-root-cause-found-and-fixed):
 a faster-adapting `return_norm_decay` didn't track a shifting distribution
 better as expected, it caused an outright numerical overflow. Mechanism:
 `value_head`'s weights only move via slow gradient steps, so if the running
@@ -298,10 +298,11 @@ outputs precisely") — `w_new = w_old · (σ_old/σ_new)`,
 `b_new = b_old · (σ_old/σ_new) + (μ_old - μ_new)/σ_new`. This decouples what
 the network has already learned from a shifting normalization target, closing
 the gap rather than just avoiding triggering it. Only well-defined against
-one consistent running estimate, so it only applies to `ActorCritic`'s
-single-network setup — A3C's per-worker independent estimates over one
-*shared* `value_head` would need a synchronized normalizer first (see A3C's
-own writeup).
+one consistent running estimate, so it doesn't apply directly to `ActorCritic`'s
+per-agent networks used by A3C's multiple independent workers over one
+*shared* `value_head` — A3C solves that with `SharedReturnNormalizer`, one
+lock-protected estimate shared across all workers instead of one per worker
+(see A3C's own writeup for the full design).
 
 Verified end-to-end on `configs/dqn_1v1` (2000 episodes, identical seed/setup
 to every other run on this page):
@@ -322,10 +323,12 @@ landing right next to DQN's own 80.3% on this identical config (see
 variant on this environment had reached before. `normalize_returns: true`
 (with `return_norm_decay: 0.999`) is now the shipped default.
 
-[A3C](a3c.md#the-instant-collapse-same-fix-with-one-open-wrinkle) reuses this
-same network and the same underlying fix (plain `update()`, not the PopArt
-rescale — see why in its own writeup), with one additional wrinkle specific
-to its multi-worker setting.
+[A3C](a3c.md#the-instant-collapse-root-cause-found-and-fixed) reuses this same
+network and the same underlying fix, adapted for its multi-worker setting via
+`SharedReturnNormalizer` — one shared, lock-protected estimate (and the full
+PopArt rescale) instead of ActorCritic's single-process one, so every worker
+stays consistent with the same shared `value_head` instead of drifting
+independently.
 
 ## When to use ActorCritic
 

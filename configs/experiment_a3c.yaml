@@ -10,14 +10,21 @@ experiment:
       num_workers: 4          # worker processes; each steps its own independent env copy
       n_steps: 5               # rollout length per worker between syncs with the shared network
 
-      entropy_coef: 0.05       # 0.01 wasn't enough to hold capture rate up in A2C on this
-      # env; 0.05 is the validated starting point for the async setting too
+      entropy_coef: 0.01       # lower than earlier A3C versions used (0.05) -- with
+      # normalize_returns below keeping the critic well-calibrated, 0.05's entropy
+      # bonus was strong enough to pin the policy near max entropy (uniform) instead
+      # of letting it commit; 0.01 gives a real learning curve instead (see
+      # docs/algorithms/a3c.md)
       value_coef: 0.5
       actor_weight_decay: 0.001  # L2 penalty on policy_head only (own optimizer param
       # group -- trunk/value_head stay undecayed, shared with the critic across every
-      # worker). Doesn't restore entropy here -- predator entropy collapses to ~0 within
-      # the first couple of episodes regardless -- but still raised capture rate from
-      # ~26% to ~33% overall on configs/dqn_1v1 (see docs/algorithms/a3c.md)
+      # worker) -- a workaround, superseded by normalize_returns below. Left at its
+      # prior value; see docs/algorithms/a3c.md
+      normalize_returns: true  # the real fix for the entropy collapse -- ONE shared,
+      # lock-protected estimate across all workers (not per-worker-local), so the
+      # PopArt weight-rescale (see baselines/AC/return_normalizer.py) applies
+      # consistently instead of workers fighting each other
+      return_norm_decay: 0.999
       grad_clip: 5.0
 
       seed: 42

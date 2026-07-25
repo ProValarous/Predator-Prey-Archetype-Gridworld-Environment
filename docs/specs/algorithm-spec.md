@@ -398,32 +398,43 @@ data, including one flagged logged-loss-spike artifact under the `0.001`
 setting (bounded gradient step via `clip_grad_norm_`, not an actual training
 instability).
 
-**Same root cause as ActorCritic, same fix, with one open wrinkle.** A3C
-reuses `ActorCriticNetwork`, so the unbounded-shared-trunk mechanism (see
-ActorCritic's section above) applies identically, and `normalize_returns`
-(default `true`, each worker keeping its own *local* running normalizer) fixes
-it here too — verified on `configs/dqn_1v1` (2000 episodes, 4 workers):
-capture rate 25.9% → 85.5% overall, even higher than ActorCritic's own 75.1%
-and above DQN's 80.3% on this config. The wrinkle: a real, sharp late-training
-partial re-collapse shared identically across all 4 workers (entropy 0.9-1.3
-through ~episode 1880, dropping to 0.24-0.55 in the final ~120 episodes,
-capture rate falling in lockstep) — not one unlucky worker, confirmed by
-checking all 4 independently. ActorCritic's full PopArt fix (analytically
-rescaling `value_head`'s weights to "preserve outputs precisely" across each
-normalizer update) isn't a drop-in fix here: it's only well-defined against
-one consistent estimate, and A3C's 4 workers keep independent local estimates
-over the *same shared* `value_head` — uncoordinated rescales under Hogwild
-would fight each other. A properly shared, lock-protected normalizer
-(mirroring `SharedAdam`'s shared-memory state) is the concrete next step, not
-attempted here given the added per-step lock contention. **Confirmed
-concretely, not just in theory, that a faster `return_norm_decay` is not a
-substitute**: `return_norm_decay=0.99` (vs. the shipped, verified-safe
-`0.999`) crashed all 4 workers with a numerical overflow partway through
-training, since without the weight-rescale, `value_head`'s weights (moved
-only by slow gradient steps) can't keep pace with a fast-shifting
-normalization target. See
-`docs/algorithms/a3c.md#the-instant-collapse-same-fix-with-one-open-wrinkle`
-for the full data and mechanism.
+**Same root cause as ActorCritic, same fix, fully resolved.** A3C reuses
+`ActorCriticNetwork`, so the unbounded-shared-trunk mechanism (see
+ActorCritic's section above) applies identically. A first version of
+`normalize_returns` gave each worker its own *local* running normalizer,
+which worked (capture rate 25.9% → 85.5% overall on `configs/dqn_1v1`) but
+had a real wrinkle: a sharp late-training partial re-collapse shared
+identically across all 4 workers (entropy 0.9-1.3 through ~episode 1880,
+dropping to 0.24-0.55 in the final ~120 episodes) — not one unlucky worker.
+Root cause: ActorCritic's full PopArt fix (analytically rescaling
+`value_head`'s weights to "preserve outputs precisely" on every normalizer
+update) is only well-defined against one consistent estimate, and four
+independent per-worker estimates over the *same shared* `value_head` can't
+use it, confirmed concretely (not just in theory) when a faster
+`return_norm_decay=0.99` caused an outright numerical overflow rather than a
+milder version of the wrinkle.
+
+**Fixed with `SharedReturnNormalizer`** (`baselines/AC/return_normalizer.py`)
+— ONE running estimate, shared and lock-protected across all 4 workers via
+the same `multiprocessing.Value`/`Lock` primitives already used for
+`episode_counter`, letting the PopArt rescale apply consistently. Each worker
+snapshots the shared stats once at sync time and reuses that fixed snapshot
+for its whole rollout (so the values it already collected stay scale-consistent
+with the returns computed against them), then advances the shared estimate and
+rescales the *global* `value_head` afterward, affecting future syncs rather
+than retroactively changing this rollout's already-computed loss. Fixing the
+instability changed the training dynamics enough that `entropy_coef=0.05`
+stopped being right: with the critic reliably calibrated, advantages run
+smaller/more accurate, which let a `0.05` entropy bonus dominate and pin the
+policy near maximum entropy instead of letting it commit. Lowered to
+`entropy_coef=0.01` (matching ActorCritic's own value): capture rate becomes
+a genuine learning curve, 32.2% → 78.2% by quarter, still climbing at episode
+2000 (last decile 83.5%), with no late-training crash — entropy stays
+genuinely differentiated (0.55-0.90 in the final 300 episodes) rather than
+collapsing OR pinning at max. See
+`docs/algorithms/a3c.md#the-instant-collapse-root-cause-found-and-fixed`
+for the full data and mechanism, including the intermediate (now-superseded)
+results that motivated each step.
 
 ---
 

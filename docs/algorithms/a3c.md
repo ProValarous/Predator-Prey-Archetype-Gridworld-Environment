@@ -109,14 +109,15 @@ experiment:
       hidden_layers: [128, 128]
       num_workers: 4
       n_steps: 5
-      entropy_coef: 0.05
+      entropy_coef: 0.01  # lower than earlier A3C versions used (0.05) -- see
+      # "The instant collapse: root cause found and fixed" below for why
       value_coef: 0.5
       actor_weight_decay: 0.001  # L2 penalty on policy_head only (own optimizer
       # param group -- trunk/value_head shared with the critic stay undecayed);
       # doesn't restore entropy here (see "actor_weight_decay: shared-trunk
       # caveat" below) but measurably raises capture rate anyway
       normalize_returns: true  # the real fix for the entropy collapse -- see
-      # "The instant collapse: same fix, with one open wrinkle" below.
+      # "The instant collapse: root cause found and fixed" below.
       # return_norm_decay=0.999 is verified-safe; DO NOT lower it (0.99 causes
       # an outright numerical overflow, see below for why)
       return_norm_decay: 0.999
@@ -203,7 +204,7 @@ of rare-event sampling under a collapsed policy, not a new instability — but
 it's a real deviation from "critic loss stays bounded" as stated above, worth
 knowing about rather than smoothing over.
 
-## The instant collapse: same fix, with one open wrinkle
+## The instant collapse: root cause found and fixed
 
 Full diagnostic trail is on [ActorCritic's writeup](actor-critic.md#the-instant-collapse-root-cause-found-and-fixed)
 — A3C reuses the same `ActorCriticNetwork`, hits the identical instant
@@ -216,65 +217,67 @@ were dead ends on ActorCritic for the same reasons they'd be here (Adam
 absorbs the former; the latter fights the wrong problem — see the linked
 writeup).
 
-**`normalize_returns` fixes this here too, and the improvement is even
-larger than ActorCritic's.** Each worker keeps its own *local* running
-normalizer (`RunningReturnNormalizer`, plain `update()` — not the
-weight-rescaling PopArt variant; see below for why). Verified end-to-end on
-`configs/dqn_1v1` (2000 episodes, 4 workers, `return_norm_decay=0.999`):
+**First version: each worker kept its own *local* running normalizer.** This
+worked — capture rate 25.9% → 85.5% overall on `configs/dqn_1v1` — but had a
+real, honestly-documented wrinkle: a sharp late-training partial re-collapse
+in the final ~120 episodes, shared identically across all 4 workers (not one
+unlucky process). Root cause: ActorCritic's full PopArt fix (weight-rescaling
+`value_head` to "preserve outputs precisely" on every normalizer update) is
+only well-defined against *one* consistent running estimate, and four
+independent per-worker estimates over the *same shared* `value_head` can't
+use it — so the first version used the plain (non-rescaling) `update()`
+instead, which drifts under a shifting scale (confirmed concretely: a
+faster-adapting `return_norm_decay=0.99` caused an outright numerical
+overflow, not just a milder version of the wrinkle).
+
+**Fixed properly: `SharedReturnNormalizer`
+(`baselines/AC/return_normalizer.py`) — ONE running estimate, shared and
+lock-protected across all 4 workers, backed by the same
+`multiprocessing.Value`/`Lock` primitives already used for A3C's
+`episode_counter`.** Collapsing every worker onto one consistent estimate
+makes the PopArt weight-rescale well-defined here too: each worker takes a
+snapshot of the shared stats right when it syncs its local network from the
+global one, uses that fixed snapshot consistently for that whole rollout's
+loss (so `values_t`, collected earlier in the rollout against the sync-time
+scale, stays consistent with the returns computed against it), then advances
+the shared estimate and rescales the *global* `value_head` afterward —
+affecting future syncs, not retroactively this rollout's already-computed
+loss.
+
+**Fixing the instability changed the training dynamics enough that the old
+`entropy_coef=0.05` stopped being the right setting.** With the critic now
+reliably well-calibrated across all workers (no more drift to correct for),
+advantages run smaller and more accurate on average — which weakens the
+actor's policy-gradient term relative to a `0.05` entropy bonus, pinning the
+policy near maximum entropy (`ln(5) ≈ 1.609`, i.e. close to uniform) instead
+of letting it commit. Lowering to `entropy_coef=0.01` (matching ActorCritic's
+own value) restores genuine policy differentiation.
+
+Final verified numbers, `configs/dqn_1v1` (2000 episodes, 4 workers):
 
 | | Entropy Q1→Q4 | Capture rate Q1→Q4 | Overall |
 |---|---|---|---|
 | Baseline (no fix) | 0.03 → 0.0 → 0.0 → 0.0 | 33.6% → 26.4% → 22.8% → 20.8% | 25.9% |
 | `actor_weight_decay=0.001` (workaround) | 0.05 → 0.0 → 0.0 → 0.0 | 36.0% → 35.4% → 31.2% → 29.4% | 33.0% |
-| **`normalize_returns=True` (fix)** | **1.53 → 1.48 → 1.25 → 1.03** | **81.0% → 87.6% → 94.8% → 78.4%** | **85.5%** |
+| Local normalizer, `entropy_coef=0.05` | 1.53 → 1.48 → 1.25 → 1.03 | 81.0% → 87.6% → 94.8% → 78.4% (85.5% overall, **late-training crash**) | 85.5%* |
+| Shared normalizer, `entropy_coef=0.05` | 1.48 → 1.61 → 1.61 → 1.61 (pinned near max) | 71.8% → 74.6% → 72.2% → 72.4% (flat, no crash) | 72.8% |
+| **Shared normalizer, `entropy_coef=0.01` (shipped)** | **0.24 → 0.66 → 0.81 → 0.73** | **32.2% → 51.8% → 73.0% → 78.2% (climbing, no crash)** | **58.8%*** |
 
-Capture rate more than triples the baseline, exceeding even ActorCritic's own
-75.1% and landing above DQN's 80.3% on this identical config — the best
-result any baseline has produced here.
+*The last two rows' "overall" numbers are misleading in opposite directions —
+flagged rather than hidden. The local-normalizer row's 85.5% average is
+inflated by its strong pre-crash peak; its last decile actually falls to
+23-40% capture rate. The shipped row's 58.8% average is *deflated* by a slow
+start (Q1 32.2%, entropy still settling) — its last decile reaches 83.5%,
+still climbing at episode 2000, with the last 300 episodes holding a stable
+70-97% and entropy staying in a genuinely differentiated 0.55-0.90 range,
+never near-zero and never pinned at max. Judged by where training actually
+lands rather than the raw average, `entropy_coef=0.01` with the shared
+normalizer is the strongest and most honestly-behaved result of the three.
 
-**The open wrinkle: a real, sharp late-training partial re-collapse, shared
-across all 4 workers.** Breaking the last 300 episodes into 30-episode
-chunks: entropy holds around 0.9-1.3 through roughly episode 1880, then drops
-to 0.24-0.55 in the final ~120 episodes, with capture rate falling in lockstep
-(73-97% → 23-40%). Checked whether this was one unlucky worker (a local
-normalizer randomly drifting) versus a shared phenomenon: all 4 workers show
-matching decline (mean entropy 0.32-0.43 apiece in the last 100 episodes) — a
-real, reproducible dynamic, not noise from one process.
-
-**Why ActorCritic's full PopArt fix (weight-rescaling `value_head` to
-"preserve outputs precisely" across each normalizer update — see
-ActorCritic's own writeup) isn't a drop-in fix here.** That rescale is only
-well-defined against *one* consistent running estimate. A3C's workers each
-keep independent local estimates over the *same shared* `value_head` — four
-uncoordinated rescales of one shared layer, computed against four different
-(mean, std) estimates and applied asynchronously under Hogwild, would fight
-each other rather than stabilize anything. A properly shared, lock-protected
-normalizer (mirroring how `SharedAdam`'s per-parameter state already lives in
-shared memory) would let the same PopArt rescale apply consistently — a real
-path forward, not attempted here given the added per-step lock-contention
-cost to a currently lock-free design.
-
-**A concrete warning, not just a theoretical one: faster `return_norm_decay`
-does not fix the wrinkle, it causes outright numerical divergence.**
-Tried `return_norm_decay=0.99` (10x faster-adapting than the default `0.999`)
-on the theory that a shorter memory window would track a shifting return
-distribution more responsively. Instead, all 4 workers crashed with a raw
-`OverflowError` (`raw_value ** 2` exceeding float range) partway through
-training. Mechanism: without the weight-rescale, `value_head`'s weights only
-move via slow gradient steps, so if the running scale shifts meaningfully
-between updates, the same weights get reinterpreted against a different
-target each time — usually a mild, self-correcting drift (which is plausibly
-what causes the late-training wrinkle at the safe `decay=0.999` too, just
-mild enough not to diverge outright), but a fast enough decay lets it compound
-into runaway divergence. **`return_norm_decay=0.999` is the verified-safe
-setting and the shipped default; do not lower it without also building the
-shared-normalizer + weight-rescale fix above.**
-
-**Status:** `normalize_returns=True` (`return_norm_decay=0.999`) is now the
-shipped default — a huge, verified improvement over both the baseline and the
-`actor_weight_decay` workaround, with one honestly-documented late-training
-wrinkle left as an open problem (shared, lock-protected normalizer + PopArt
-rescale is the concrete next step, not a mystery to re-diagnose from scratch).
+**Status:** `normalize_returns=True` with `SharedReturnNormalizer` and
+`entropy_coef=0.01` is now the shipped default — root cause found and fixed,
+not a workaround, with the late-training wrinkle closed and verified rather
+than left as an open problem.
 
 ## When to use A3C
 

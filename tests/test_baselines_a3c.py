@@ -15,6 +15,7 @@ import torch
 import torch.multiprocessing as mp
 
 from baselines.AC.network import ActorCriticNetwork
+from baselines.AC.return_normalizer import SharedReturnNormalizer
 from baselines.A3C.shared_adam import SharedAdam
 from baselines.A3C.a3c import _worker_loop
 
@@ -172,8 +173,9 @@ class TestWorkerLoopLogic:
             log_interval=1,
             verbose=False,
             seed=0,
-            normalize_returns=True,
-            return_norm_decay=0.99,
+            return_normalizers={
+                aid: SharedReturnNormalizer(decay=0.99) for aid in agent_ids
+            },
         )
 
         assert episode_counter.value == 2
@@ -411,10 +413,11 @@ class TestA3CTrain:
     def test_normalize_returns_trains_end_to_end_with_real_worker_processes(
         self, a3c_config
     ):
-        """normalize_returns adds two new args threaded through mp.Process --
-        this is the only way to catch a pickling/spawn-argument-order bug in
-        that plumbing, since the direct _worker_loop tests call it in-process
-        with keyword args and wouldn't notice a positional mismatch."""
+        """normalize_returns threads a dict of SharedReturnNormalizer (each
+        holding mp.Value/mp.Lock objects) through mp.Process -- this is the
+        only way to catch a pickling/spawn failure in that plumbing, since
+        the direct _worker_loop tests call it in-process and wouldn't
+        notice if the shared primitives failed to survive a real spawn."""
         from baselines.A3C.a3c import A3C
 
         env_fn = _PicklableEnvFactory()
