@@ -13,6 +13,11 @@ experiment:
       entropy_coef: 0.05       # 0.01 wasn't enough to hold capture rate up in A2C on this
       # env; 0.05 is the validated starting point for the async setting too
       value_coef: 0.5
+      actor_weight_decay: 0.001  # L2 penalty on policy_head only (own optimizer param
+      # group -- trunk/value_head stay undecayed, shared with the critic across every
+      # worker). Doesn't restore entropy here -- predator entropy collapses to ~0 within
+      # the first couple of episodes regardless -- but still raised capture rate from
+      # ~26% to ~33% overall on configs/dqn_1v1 (see docs/algorithms/a3c.md)
       grad_clip: 5.0
 
       seed: 42

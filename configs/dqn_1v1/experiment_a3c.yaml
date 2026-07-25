@@ -16,6 +16,9 @@ experiment:
 
       entropy_coef: 0.05
       value_coef: 0.5
+      actor_weight_decay: 0.001  # doesn't restore entropy (collapses to ~0 within the
+      # first couple of episodes regardless) but raised capture rate 25.9% -> 33.0%
+      # overall on this exact config (see docs/algorithms/a3c.md)
       grad_clip: 5.0
 
       seed: 42

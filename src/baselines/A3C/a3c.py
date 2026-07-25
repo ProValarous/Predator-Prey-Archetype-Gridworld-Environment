@@ -51,6 +51,7 @@ from numpy.random import default_rng
 from baselines.base import BaseAlgorithm
 from baselines.registry.algorithm_registry import register
 from baselines.AC.network import ActorCriticNetwork
+from baselines.AC.return_normalizer import RunningReturnNormalizer
 from baselines.A3C.shared_adam import SharedAdam
 
 LOGGER = logging.getLogger("a3c")
@@ -83,6 +84,8 @@ def _worker_loop(
     log_interval: int,
     verbose: bool,
     seed: Optional[int],
+    normalize_returns: bool = False,
+    return_norm_decay: float = 0.999,
 ) -> None:
     """One A3C worker: runs entirely in its own process. Builds its own
     env via env_fn(), builds local (non-shared) networks, and repeatedly
@@ -98,14 +101,24 @@ def _worker_loop(
         aid: ActorCriticNetwork(state_dim, hidden_layers, action_dim)
         for aid in agent_ids
     }
+    # One normalizer per agent, LOCAL to this worker process (not shared or
+    # synchronized across workers -- each estimates the same underlying
+    # return distribution independently, which converges close enough in
+    # practice; a fully shared, lock-protected estimate would need per-step
+    # lock contention this doesn't attempt). See return_normalizer.py.
+    return_normalizers = {
+        aid: RunningReturnNormalizer(decay=return_norm_decay) for aid in agent_ids
+    }
 
     csv_file = open(csv_path, "a", newline="") if csv_path else None
     csv_writer = None
     if csv_file:
         reward_cols = [f"{aid}_reward" for aid in agent_ids]
         loss_cols = [f"{aid}_loss" for aid in agent_ids]
+        entropy_cols = [f"{aid}_entropy" for aid in agent_ids]
         csv_writer = csv.DictWriter(
-            csv_file, fieldnames=["episode", "worker"] + reward_cols + loss_cols
+            csv_file,
+            fieldnames=["episode", "worker"] + reward_cols + loss_cols + entropy_cols,
         )
 
     try:
@@ -119,6 +132,7 @@ def _worker_loop(
             observations, _ = env.reset()
             episode_rewards = {aid: 0.0 for aid in agent_ids}
             episode_losses = {aid: [] for aid in agent_ids}
+            episode_entropies = {aid: [] for aid in agent_ids}
             done = False
             terminated = False
             step_count = 0
@@ -169,6 +183,7 @@ def _worker_loop(
                     if not rollout[aid]["rewards"]:
                         continue
 
+                    normalizer = return_normalizers[aid]
                     if terminated:
                         bootstrap_value = 0.0
                     else:
@@ -179,13 +194,31 @@ def _worker_loop(
                             )
                             _, next_value = local_networks[aid](next_state_t)
                             bootstrap_value = float(next_value.item())
+                            if normalize_returns:
+                                # values_t (collected below) are on a
+                                # NORMALIZED scale once this is enabled --
+                                # un-normalize against the PRIOR estimate to
+                                # bootstrap in raw units, same two-phase
+                                # pattern as AC's _update().
+                                bootstrap_value = normalizer.denormalize(
+                                    bootstrap_value
+                                )
 
                     returns = []
                     R = bootstrap_value
                     for r in reversed(rollout[aid]["rewards"]):
                         R = r + gamma * R
                         returns.insert(0, R)
-                    returns_t = torch.tensor(returns, dtype=torch.float32)
+
+                    if normalize_returns:
+                        for r in returns:
+                            normalizer.update(r)
+                        returns_t = torch.tensor(
+                            [normalizer.normalize(r) for r in returns],
+                            dtype=torch.float32,
+                        )
+                    else:
+                        returns_t = torch.tensor(returns, dtype=torch.float32)
 
                     values_t = torch.cat(rollout[aid]["values"])
                     log_probs_t = torch.cat(rollout[aid]["log_probs"])
@@ -218,14 +251,19 @@ def _worker_loop(
                     optimizers[aid].step()
 
                     episode_losses[aid].append(float(loss.item()))
+                    episode_entropies[aid].append(float(entropies_t.mean().item()))
 
             if verbose and episode_num % log_interval == 0:
                 reward_str = ", ".join(
                     f"{aid}={v:.2f}" for aid, v in episode_rewards.items()
                 )
+                entropy_str = ", ".join(
+                    f"{aid}={np.mean(ent):.5f}" for aid, ent in episode_entropies.items()
+                )
                 print(
                     f"[A3C][worker {worker_id}] Episode {episode_num}/{max_episodes} | "
-                    f"steps={step_count} | rewards: {reward_str}"
+                    f"steps={step_count} | rewards: {reward_str} | "
+                    f"avg_entropy: {entropy_str}"
                 )
 
             if csv_writer:
@@ -235,6 +273,10 @@ def _worker_loop(
                     losses = episode_losses[aid]
                     row[f"{aid}_loss"] = (
                         round(sum(losses) / len(losses), 6) if losses else ""
+                    )
+                    entropies = episode_entropies[aid]
+                    row[f"{aid}_entropy"] = (
+                        round(sum(entropies) / len(entropies), 6) if entropies else ""
                     )
                 with csv_lock:
                     csv_writer.writerow(row)
@@ -260,6 +302,18 @@ class A3C(BaseAlgorithm):
         self.entropy_coef = float(config.get("entropy_coef", 0.05))
         self.value_coef = float(config.get("value_coef", 0.5))
         self.grad_clip = float(config.get("grad_clip", 5.0))
+        # L2 penalty on the policy head only (see A2C's actor_weight_decay,
+        # docs/algorithms/a2c.md). A3C reuses AC's shared-trunk network, so
+        # decay is scoped to policy_head's own parameters via a dedicated
+        # optimizer param group -- decaying the shared trunk would also
+        # regularize the critic's features across every worker, not just the
+        # actor's. 0.0 preserves the original single-group behavior.
+        self.actor_weight_decay = float(config.get("actor_weight_decay", 0.0))
+        # See baselines/AC/return_normalizer.py and AC's own normalize_returns
+        # (docs/algorithms/actor-critic.md) -- same fix, applied per-worker
+        # (each worker keeps its own local running estimate; see _worker_loop).
+        self.normalize_returns = bool(config.get("normalize_returns", False))
+        self.return_norm_decay = float(config.get("return_norm_decay", 0.999))
         self.num_workers = int(config.get("num_workers", 4))
         self.verbose = bool(config.get("verbose", True))
         self.log_interval = int(config.get("log_interval", 10))
@@ -306,7 +360,9 @@ class A3C(BaseAlgorithm):
             "Initialized A3C | "
             f"agents={self.agent_ids} | state_dim={self.state_dim} | "
             f"action_dim={self.action_dim} | num_workers={self.num_workers} | "
-            f"n_steps={self.n_steps} | entropy_coef={self.entropy_coef} | device=cpu"
+            f"n_steps={self.n_steps} | entropy_coef={self.entropy_coef} | "
+            f"actor_weight_decay={self.actor_weight_decay} | "
+            f"normalize_returns={self.normalize_returns} | device=cpu"
         )
 
     # ------------------------------------------------------------------
@@ -346,7 +402,17 @@ class A3C(BaseAlgorithm):
             network.share_memory()
             self.networks[agent_id] = network
             self.optimizers[agent_id] = SharedAdam(
-                network.parameters(), lr=self.learning_rate
+                [
+                    {
+                        "params": network.policy_head.parameters(),
+                        "weight_decay": self.actor_weight_decay,
+                    },
+                    {
+                        "params": list(network.trunk.parameters())
+                        + list(network.value_head.parameters()),
+                    },
+                ],
+                lr=self.learning_rate,
             )
 
     def _debug(self, message: str) -> None:
@@ -382,9 +448,14 @@ class A3C(BaseAlgorithm):
             os.makedirs(os.path.dirname(self.curves_path) or ".", exist_ok=True)
             reward_cols = [f"{aid}_reward" for aid in self.agent_ids]
             loss_cols = [f"{aid}_loss" for aid in self.agent_ids]
+            entropy_cols = [f"{aid}_entropy" for aid in self.agent_ids]
             with open(self.curves_path, "w", newline="") as f:
                 writer = csv.DictWriter(
-                    f, fieldnames=["episode", "worker"] + reward_cols + loss_cols
+                    f,
+                    fieldnames=["episode", "worker"]
+                    + reward_cols
+                    + loss_cols
+                    + entropy_cols,
                 )
                 writer.writeheader()
 
@@ -424,6 +495,8 @@ class A3C(BaseAlgorithm):
                     self.log_interval,
                     self.verbose,
                     worker_seed,
+                    self.normalize_returns,
+                    self.return_norm_decay,
                 ),
             )
             p.start()

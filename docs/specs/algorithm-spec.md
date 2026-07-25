@@ -178,7 +178,8 @@ sections below.
 mechanism, so there is no `epsilon`/`epsilon_decay`/`min_epsilon` in its config.
 
 **Config keys** (`experiment_actor_critic.yaml`): `gamma`, `episodes`,
-`learning_rate`, `hidden_layers`, `value_coef`, `entropy_coef`, `grad_clip`,
+`learning_rate`, `hidden_layers`, `value_coef`, `entropy_coef`,
+`actor_weight_decay`, `normalize_returns`, `return_norm_decay`, `grad_clip`,
 `device`, `verbose`, `log_interval`, `debug_first_episode`, `save_path`,
 `curves_path`, `seed`.
 
@@ -219,10 +220,49 @@ collapsing) — see `docs/algorithms/actor-critic.md` for the full tables. See
 also [MARL Constraints and Limitations](#marl-constraints-and-limitations) for
 the related reward-vs-capture-rate disconnect this surfaced.
 
+**`actor_weight_decay` (default `0.001`) — a workaround, not a fix.** Scoped to
+a dedicated Adam param group over just `policy_head`'s parameters
+(`trunk`/`value_head` left at `weight_decay=0`, since they're shared with the
+critic). Raises capture rate on `configs/dqn_1v1` from 25.1% to 35.0% overall,
+but entropy tracking (previously untracked) showed it never actually restores
+entropy — predator entropy collapses to ~0 within the first couple of episodes
+regardless of this setting.
+
+**Root cause found and fixed: `normalize_returns` (default `true`).** Two
+dead ends preceded the real fix: `grad_clip` turned out to be nearly powerless
+against Adam (its own per-parameter normalization rescales every step to
+roughly `lr` regardless of the raw gradient's clipped magnitude — the same
+reason `actor_weight_decay` never had a real chance), and normalizing the TD
+error's magnitude (the standard textbook fix for a badly-scaled gradient) made
+the collapse **faster**, not slower. The actual mechanism: nothing bounds the
+shared trunk's output feature scale, and the critic's own training forces it
+to grow without limit to represent this environment's large-magnitude
+returns — confirmed by freezing the actor completely (zero gradient into
+`policy_head`) and still observing the trunk's feature norm explode from ~3 to
+1000+ within ~220 steps, collapsing entropy purely as a side effect of the
+critic fitting its targets. `policy_head` is a plain linear readout on those
+same trunk features, so its logits inherit that unbounded growth for free.
+`normalize_returns` (`baselines/AC/return_normalizer.py`, a PopArt-style
+running mean/std normalizer, van Hasselt et al. 2016) trains the critic
+against the bootstrapped return's own normalized (properly O(1)) scale
+instead of the raw one, keeping trunk feature norms small (2-10 instead of
+1000+). ActorCritic uses the *full* PopArt technique
+(`update_and_rescale_value_head`): each update also analytically rescales
+`value_head`'s weight/bias so its denormalized prediction is unchanged at that
+instant ("preserving outputs precisely") — confirmed necessary, not just
+theoretically nice, after a plain (non-rescaling) version diverged to a
+numerical overflow under a faster `return_norm_decay` on A3C (see A3C's
+section below). Verified on `configs/dqn_1v1` (2000 episodes): entropy holds
+in a healthy 1.1-1.3 range instead of collapsing, capture rate 25.1% → 75.1%
+overall — next to DQN's own 80.3% on this config, a range no actor-critic
+variant here had reached before. See
+`docs/algorithms/actor-critic.md#the-instant-collapse-root-cause-found-and-fixed`
+for the full diagnostic trail and verification table.
+
 **Behavior matches DQN, not the tabular baselines:** `train()` auto-saves to
 `save_path` if configured, and supports the same `curves_path` per-episode CSV
-export (columns: `episode`, `<agent>_reward`, `<agent>_loss` — no `epsilon`
-column, since there is no epsilon schedule).
+export (columns: `episode`, `<agent>_reward`, `<agent>_loss`, `<agent>_entropy`
+— no `epsilon` column, since there is no epsilon schedule).
 
 ---
 
@@ -260,9 +300,14 @@ instead of collapsing, and capture rate climbs from ~28% to ~74% over training
 instead of staying flat, with reward improving in lockstep. This is the first
 sustained *improving* trend seen across AC/A2C/A3C on the diagnostic config, not
 just a mitigation — see `docs/algorithms/a2c.md` for the full before/after
-tables. Untested whether the same fix transfers to ActorCritic/A3C, whose
-shared-trunk network would have weight decay also regularize the critic's
-parameters, not just the actor's.
+tables. **Tested on ActorCritic/A3C (scoped to `policy_head` only, avoiding the
+shared-trunk entanglement) — does not transfer the same way:** their predator
+entropy collapses almost instantly (within the first couple of episodes) rather
+than gradually mid-training, too fast for weight decay (or any regularizer) to
+intervene, so entropy never recovers there regardless of the setting. It still
+raises capture rate on both regardless — see
+`docs/algorithms/actor-critic.md#actor_weight_decay-doesnt-fix-the-collapse-here-but-still-helps`
+and `docs/algorithms/a3c.md#actor_weight_decay-shared-trunk-caveat`.
 
 ---
 
@@ -294,8 +339,8 @@ around.
 
 **Config keys** (`experiment_a3c.yaml`): `gamma`, `episodes`, `learning_rate`,
 `hidden_layers`, `num_workers`, `n_steps`, `entropy_coef`, `value_coef`,
-`grad_clip`, `seed`, `curves_path` (plus the required `env_fn`, supplied by the
-calling script, not the YAML).
+`actor_weight_decay`, `grad_clip`, `seed`, `curves_path` (plus the required
+`env_fn`, supplied by the calling script, not the YAML).
 
 **`SharedAdam`** (`baselines/A3C/shared_adam.py`): a `torch.optim.Adam` subclass
 whose per-parameter state (`exp_avg`, `exp_avg_sq`, step count) is moved to shared
@@ -334,7 +379,51 @@ Worker load was reasonably balanced across the 4 processes (516/512/497/475
 episodes) — no worker starving or dominating despite the lock-free async
 scheduling. The mild quarter-over-quarter decline is similar magnitude to A2C's
 at the same entropy setting, not the sharp near-zero collapse `entropy_coef=0.01`
-produces elsewhere — an open question shared with A2C, not resolved here.
+produces elsewhere.
+
+**`actor_weight_decay` (default `0.001`) — same shared-trunk caveat as
+ActorCritic, same result.** Scoped to a dedicated `policy_head`-only Adam param
+group (`trunk`/`value_head`, shared with the critic across every worker, stay
+undecayed). Entropy tracking added to the per-worker CSV (previously untracked)
+confirmed predator entropy collapses to ~0 within the first couple of episodes
+regardless of `actor_weight_decay` — same near-instant collapse ActorCritic
+shows, too fast for the fix to intervene. Re-run of
+`configs/dqn_1v1/experiment_a3c.yaml` end to end at both settings: capture rate
+25.9% → 33.0% overall (33.6/26.4/22.8/20.8 → 36.0/35.4/31.2/29.4 by quarter,
+still declining somewhat but consistently higher and less steep) — a real
+improvement despite entropy staying flat at ~0 throughout, mirroring
+ActorCritic's own finding. See
+`docs/algorithms/a3c.md#actor_weight_decay-shared-trunk-caveat` for the full
+data, including one flagged logged-loss-spike artifact under the `0.001`
+setting (bounded gradient step via `clip_grad_norm_`, not an actual training
+instability).
+
+**Same root cause as ActorCritic, same fix, with one open wrinkle.** A3C
+reuses `ActorCriticNetwork`, so the unbounded-shared-trunk mechanism (see
+ActorCritic's section above) applies identically, and `normalize_returns`
+(default `true`, each worker keeping its own *local* running normalizer) fixes
+it here too — verified on `configs/dqn_1v1` (2000 episodes, 4 workers):
+capture rate 25.9% → 85.5% overall, even higher than ActorCritic's own 75.1%
+and above DQN's 80.3% on this config. The wrinkle: a real, sharp late-training
+partial re-collapse shared identically across all 4 workers (entropy 0.9-1.3
+through ~episode 1880, dropping to 0.24-0.55 in the final ~120 episodes,
+capture rate falling in lockstep) — not one unlucky worker, confirmed by
+checking all 4 independently. ActorCritic's full PopArt fix (analytically
+rescaling `value_head`'s weights to "preserve outputs precisely" across each
+normalizer update) isn't a drop-in fix here: it's only well-defined against
+one consistent estimate, and A3C's 4 workers keep independent local estimates
+over the *same shared* `value_head` — uncoordinated rescales under Hogwild
+would fight each other. A properly shared, lock-protected normalizer
+(mirroring `SharedAdam`'s shared-memory state) is the concrete next step, not
+attempted here given the added per-step lock contention. **Confirmed
+concretely, not just in theory, that a faster `return_norm_decay` is not a
+substitute**: `return_norm_decay=0.99` (vs. the shipped, verified-safe
+`0.999`) crashed all 4 workers with a numerical overflow partway through
+training, since without the weight-rescale, `value_head`'s weights (moved
+only by slow gradient steps) can't keep pace with a fast-shifting
+normalization target. See
+`docs/algorithms/a3c.md#the-instant-collapse-same-fix-with-one-open-wrinkle`
+for the full data and mechanism.
 
 ---
 

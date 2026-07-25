@@ -94,6 +94,54 @@ class TestActorCriticInit:
         algo = ActorCritic(dqn_env, ac_config)
         assert algo.action_dim == 5
 
+    def test_actor_weight_decay_scoped_to_policy_head_only(self, dqn_env, ac_config):
+        """actor_weight_decay must land only on policy_head's param group --
+        the trunk and value_head are shared with the critic, so decaying them
+        too would regularize value estimation, not just the policy (see
+        docs/algorithms/actor-critic.md)."""
+        from baselines.AC.actor_critic import ActorCritic
+
+        ac_config["actor_weight_decay"] = 0.001
+        algo = ActorCritic(dqn_env, ac_config)
+        agent_id = algo.agent_ids[0]
+        network = algo.networks[agent_id]
+        optimizer = algo.optimizers[agent_id]
+
+        policy_head_params = set(id(p) for p in network.policy_head.parameters())
+        other_params = set(id(p) for p in network.parameters()) - policy_head_params
+
+        seen = set()
+        for group in optimizer.param_groups:
+            group_param_ids = set(id(p) for p in group["params"])
+            if group_param_ids == policy_head_params:
+                assert group["weight_decay"] == 0.001
+            elif group_param_ids == other_params:
+                assert group["weight_decay"] == 0
+            else:
+                pytest.fail("Unexpected optimizer param group composition")
+            seen |= group_param_ids
+        assert seen == policy_head_params | other_params
+
+    def test_default_actor_weight_decay_is_zero(self, dqn_env, ac_config):
+        from baselines.AC.actor_critic import ActorCritic
+
+        algo = ActorCritic(dqn_env, ac_config)
+        assert algo.actor_weight_decay == 0.0
+
+    def test_default_normalize_returns_is_false(self, dqn_env, ac_config):
+        from baselines.AC.actor_critic import ActorCritic
+
+        algo = ActorCritic(dqn_env, ac_config)
+        assert algo.normalize_returns is False
+        assert algo.return_normalizers == {}
+
+    def test_normalize_returns_builds_one_normalizer_per_agent(self, dqn_env, ac_config):
+        from baselines.AC.actor_critic import ActorCritic
+
+        ac_config["normalize_returns"] = True
+        algo = ActorCritic(dqn_env, ac_config)
+        assert set(algo.return_normalizers.keys()) == {"pred_1", "prey_1"}
+
 
 class TestActorCriticSelectActions:
     def test_returns_valid_actions_for_all_agents(self, dqn_env, ac_config):
@@ -130,10 +178,11 @@ class TestActorCriticUpdate:
         obs, _ = dqn_env.reset()
         state = algo._encode_observation(obs[agent_id])
 
-        loss = algo._update(
+        loss, entropy = algo._update(
             agent_id, state, 0, 1.0, state, terminal=False, discount=1.0
         )
         assert isinstance(loss, float)
+        assert isinstance(entropy, float)
 
     def test_update_changes_network_weights(self, dqn_env, ac_config):
         from baselines.AC.actor_critic import ActorCritic
@@ -156,8 +205,62 @@ class TestActorCriticUpdate:
         obs, _ = dqn_env.reset()
         state = algo._encode_observation(obs[agent_id])
 
-        loss = algo._update(agent_id, state, 0, 1.0, state, terminal=True, discount=1.0)
+        loss, entropy = algo._update(
+            agent_id, state, 0, 1.0, state, terminal=True, discount=1.0
+        )
         assert isinstance(loss, float)
+        assert isinstance(entropy, float)
+
+    def test_normalize_returns_update_does_not_raise_and_updates_weights(
+        self, dqn_env, ac_config
+    ):
+        from baselines.AC.actor_critic import ActorCritic
+
+        ac_config["normalize_returns"] = True
+        algo = ActorCritic(dqn_env, ac_config)
+        agent_id = algo.agent_ids[0]
+        obs, _ = dqn_env.reset()
+        state = algo._encode_observation(obs[agent_id])
+
+        before = {k: v.clone() for k, v in algo.networks[agent_id].state_dict().items()}
+        loss, entropy = algo._update(
+            agent_id, state, 0, 1.0, state, terminal=False, discount=1.0
+        )
+        after = algo.networks[agent_id].state_dict()
+        assert isinstance(loss, float)
+        assert isinstance(entropy, float)
+        assert any(not torch.equal(before[k], after[k]) for k in before)
+
+    def test_normalize_returns_advances_the_normalizer(self, dqn_env, ac_config):
+        from baselines.AC.actor_critic import ActorCritic
+
+        ac_config["normalize_returns"] = True
+        algo = ActorCritic(dqn_env, ac_config)
+        agent_id = algo.agent_ids[0]
+        obs, _ = dqn_env.reset()
+        state = algo._encode_observation(obs[agent_id])
+
+        assert algo.return_normalizers[agent_id]._t == 0
+        algo._update(agent_id, state, 0, 1.0, state, terminal=False, discount=1.0)
+        assert algo.return_normalizers[agent_id]._t == 1
+
+    def test_terminal_transition_does_not_bootstrap_into_normalizer_stats(
+        self, dqn_env, ac_config
+    ):
+        """A terminal transition's raw target is `reward + 0` (no
+        bootstrap) -- just confirms the normalized-target path handles
+        terminal=True the same way the unnormalized path already does,
+        without raising or skipping the normalizer update."""
+        from baselines.AC.actor_critic import ActorCritic
+
+        ac_config["normalize_returns"] = True
+        algo = ActorCritic(dqn_env, ac_config)
+        agent_id = algo.agent_ids[0]
+        obs, _ = dqn_env.reset()
+        state = algo._encode_observation(obs[agent_id])
+
+        algo._update(agent_id, state, 0, 5.0, state, terminal=True, discount=1.0)
+        assert algo.return_normalizers[agent_id]._t == 1
 
 
 class TestActorCriticTrain:
@@ -190,6 +293,8 @@ class TestActorCriticTrain:
             + ",".join(f"{aid}_reward" for aid in algo.agent_ids)
             + ","
             + ",".join(f"{aid}_loss" for aid in algo.agent_ids)
+            + ","
+            + ",".join(f"{aid}_entropy" for aid in algo.agent_ids)
         )
         assert rows[0] == expected_header
 
@@ -239,3 +344,35 @@ class TestActorCriticPersistence:
         torch.manual_seed(999)
         second = loaded.select_actions(obs)
         assert first == second
+
+    def test_normalize_returns_state_survives_save_load(self, dqn_env, ac_config, tmp_path):
+        """A loaded checkpoint must keep interpreting the value head's
+        (normalized-scale) output consistently -- resetting the normalizer
+        to a fresh (0.0, eps) estimate would silently misinterpret an
+        already-trained value head's predictions."""
+        from baselines.AC.actor_critic import ActorCritic
+
+        ac_config["normalize_returns"] = True
+        algo = ActorCritic(dqn_env, ac_config)
+        algo.train()
+        path = tmp_path / "ac_norm.pkl"
+        algo.save(str(path))
+
+        loaded = ActorCritic.load(dqn_env, ac_config, str(path))
+        for aid in algo.agent_ids:
+            assert loaded.return_normalizers[aid].stats() == algo.return_normalizers[aid].stats()
+
+    def test_save_without_normalize_returns_has_no_normalizer_payload(
+        self, dqn_env, ac_config, tmp_path
+    ):
+        import pickle
+
+        from baselines.AC.actor_critic import ActorCritic
+
+        algo = ActorCritic(dqn_env, ac_config)
+        path = tmp_path / "ac_plain.pkl"
+        algo.save(str(path))
+
+        with open(path, "rb") as fh:
+            payload = pickle.load(fh)
+        assert "return_normalizer_state" not in payload

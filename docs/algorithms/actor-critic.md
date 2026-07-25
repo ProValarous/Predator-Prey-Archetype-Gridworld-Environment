@@ -86,6 +86,10 @@ experiment:
       value_coef: 0.5     # weight on the critic's Huber loss in the combined loss
       entropy_coef: 0.01  # weight on the policy entropy bonus -- 0.0 let capture rate
       # collapse toward 0 over training; see "Fixes found through verification runs" below
+      actor_weight_decay: 0.001  # L2 penalty on policy_head only (own optimizer param
+      # group -- trunk/value_head stay undecayed); doesn't restore entropy here (see
+      # "actor_weight_decay doesn't fix the collapse here, but still helps" below) but
+      # measurably raises capture rate (~25% -> ~35%) anyway
       grad_clip: 5.0
       seed: 42
       device: "cpu"
@@ -154,6 +158,174 @@ analysis (counting capture events from episode length) shows captures occurring
 steadily across all four quarters (~16-28%) rather than collapsing — so the fix
 is *validated on 1v1, directionally consistent but not conclusively confirmed on
 3v3*.
+
+## `actor_weight_decay` doesn't fix the collapse here, but still helps
+
+[A2C's entropy-collapse writeup](a2c.md#the-entropy-collapse-and-how-its-actually-fixed)
+found that `actor_weight_decay` (L2 penalty on the actor's weights) restores
+entropy and drives capture rate up. Testing the same idea on ActorCritic
+required deciding what "the actor's weights" even means when the actor and
+critic share one trunk: decaying the whole network would also regularize the
+critic's value estimates, not just the policy. The scoped analog — a dedicated
+optimizer param group covering only `policy_head`, with `trunk` and
+`value_head` left at `weight_decay=0` — is what `actor_weight_decay` configures
+here and on [A3C](a3c.md#actor_weight_decay-shared-trunk-caveat).
+
+Enabling entropy tracking in the training CSV (previously untracked for this
+baseline) to actually check the collapse directly turned up something the
+original entropy_coef verification above never measured: **predator entropy
+does not gradually collapse over training here the way it does in A2C — it
+collapses almost instantly.** On `configs/dqn_1v1`, predator entropy starts near
+1.06 at episode 1 and is already ~0.0 by episode 2, staying there for the
+remaining 1998 episodes — in *every* configuration tested, including
+`actor_weight_decay=0.001`. A2C's collapse takes hundreds of episodes to fully
+develop, which is what gives its weight-decay fix room to act; here the
+collapse is essentially complete before any regularizer — entropy bonus or L2
+penalty alike — gets a chance to exert counter-pressure. Likely cause: the same
+per-step TD-error gradient that shapes the critic's value estimate flows
+through the shared trunk into the policy logits too, and this environment's
+early TD errors are already large (predator rewards run into the thousands
+against a near-zero initial value estimate), so the very first few gradient
+steps can saturate the softmax outright.
+
+Despite entropy staying flat at ~0 in both cases, `actor_weight_decay=0.001`
+still produces a real, reproducible capture-rate improvement on the identical
+2000-episode `configs/dqn_1v1` run:
+
+| `actor_weight_decay` | Capture rate Q1→Q4 | Overall |
+|---|---|---|
+| `0.0` (baseline) | 28.6% → 22.2% → 24.4% → 25.4% | 25.1% |
+| **`0.001`** | **35.8% → 34.8% → 34.8% → 34.6%** | **35.0%** |
+
+Both trajectories are flat quarter-to-quarter (no late-training decay either
+way), but decay is consistently ~10 percentage points higher throughout —
+confirmed by decile, not just quarter-level noise. Since entropy itself never
+recovers, this isn't "restored exploration" the way it is for A2C; the likelier
+mechanism is that shrinking the policy head's weights keeps the (still
+near-deterministic) logit gap smaller in magnitude, which plausibly yields a
+better-calibrated argmax choice under this environment's noisy per-step TD
+targets than the undamped version does. Given the clear, consistent benefit
+with no observed downside, `actor_weight_decay: 0.001` is now the shipped
+default.
+
+## The instant collapse: root cause found and fixed
+
+`actor_weight_decay` measurably helps capture rate but is a workaround, not a
+fix — entropy itself never recovers. Chasing an actual fix required
+instrumenting the update directly (same methodology as [A2C's logit-magnitude
+diagnostic](a2c.md#the-entropy-collapse-and-how-its-actually-fixed)) rather
+than guessing from the loss formula, and went through two dead ends before
+landing on the real mechanism.
+
+**Dead end 1: `grad_clip` is nearly powerless against Adam.** Logging the
+pre-clip gradient norm on `policy_head` shows it sits at 30-100+ on *every*
+step from the very first one — `grad_clip=5.0` isn't catching rare outliers,
+it's engaging on effectively every single update. But sweeping `grad_clip`
+from `5.0` down to `0.1` (a 50x reduction) barely changed the collapse timing
+at all. Why: Adam re-normalizes each parameter's step by its own running RMS
+gradient magnitude *after* clipping, so the actual applied step size stays
+roughly proportional to `lr` regardless of how hard the raw gradient was
+clipped beforehand. This is also *why* `actor_weight_decay` never had a real
+chance: its per-step pull (`weight_decay × lr`) is orders of magnitude smaller
+than a step Adam is already going to take at roughly full `lr` regardless. A
+genuinely separate, much lower learning rate on `policy_head` (which
+multiplies Adam's *output* step directly, bypassing its normalization) did
+meaningfully slow the collapse, but only delayed it — entropy drifted back
+toward zero over a longer horizon rather than stabilizing.
+
+**Dead end 2: the reward signal's *sign* stays constant for long stretches,
+not just its magnitude — but "fixing" that made things worse.** Logging raw,
+untouched TD errors across an untrained rollout: `delta` was negative on 39 of
+40 consecutive steps, flipping positive only on the one rare capture. The
+actor's update (`-delta·log_prob`) *decreases* the sampled action's
+probability whenever `delta` is negative — nearly always, early on — so
+consecutive updates aren't yet "learning good actions," they're closer to
+**symmetry-breaking by chance**: whichever action happens to get
+*under*-sampled early is punished less often, so its probability snowballs
+upward regardless of which action is actually good. The standard textbook fix
+for a badly-scaled TD error — normalizing `delta` by a running estimate of its
+own magnitude, applied only to the actor's gradient input — was tried and made
+things **worse**: entropy hit ~0.0 by step 100 instead of ~300. Normalizing to
+a consistent unit scale doesn't touch sign-correlation; it just makes every
+step in a same-signed run push with similarly full force instead of
+occasionally being small by chance.
+
+**The actual root cause: nothing bounds the shared trunk's output scale, and
+the critic's own training forces it to grow without limit.** Freezing the
+actor completely (zero gradient into `policy_head`, only the critic training)
+still collapsed entropy to 0.0 within ~70 steps. Logging the trunk's own
+output feature norm during this critic-only run: it grows from ~3 to over
+1000 in ~220 steps, tracking the value estimate's growing magnitude (this
+env's per-episode returns run into the thousands) — while `policy_head`'s own
+weight norm never changes at all (it has zero gradient). `policy_head` is a
+plain linear readout on those same trunk features (`logits =
+W_policy · trunk_features`), so as the trunk's feature norm explodes to fit
+the critic's targets, the logits explode right along with it — saturating the
+softmax as a pure side effect of the critic doing its job, independent of any
+actor-specific dynamics. Normalizing the instantaneous *reward* wasn't enough
+either: even an O(1) reward compounds to O(1 / (1 - gamma)) ≈ 100 in the
+bootstrapped return with `gamma=0.99`, which is still large enough to force
+the same growth.
+
+**The fix: normalize the actual return target, not just the reward
+(`normalize_returns`, `src/baselines/AC/return_normalizer.py`).** A
+PopArt-style (van Hasselt et al., 2016) running mean/std normalizer tracks
+the *bootstrapped return's own* scale and trains the critic to predict that
+normalized (properly O(1)) quantity instead of the raw, unbounded one.
+`RunningReturnNormalizer.stats()` returns a bias-corrected (mean, std)
+estimate (same two-phase EMA pattern Adam itself uses for its moment
+estimates) — called once *before* an update to un-normalize a bootstrap value
+against the prior estimate, and once *after* to normalize the freshly
+computed target against the updated one. With trunk feature norms kept small
+(2-10 instead of 1000+), the sign-correlation dynamic from dead end 2 still
+exists (it's intrinsic to a dense, smoothly-varying reward) but no longer has
+a runaway, ever-growing representation to amplify through — it becomes
+ordinary, bounded policy-gradient noise instead of instant saturation.
+
+**A first version used plain `update()` and worked, but had a latent
+stability gap** — confirmed the hard way on [A3C](a3c.md#the-instant-collapse-same-fix-with-one-open-wrinkle):
+a faster-adapting `return_norm_decay` didn't track a shifting distribution
+better as expected, it caused an outright numerical overflow. Mechanism:
+`value_head`'s weights only move via slow gradient steps, so if the running
+scale shifts meaningfully between updates, the same weights get
+reinterpreted against a different target each time — a mild,
+self-correcting drift normally, but one a fast decay can compound into
+divergence. ActorCritic now uses the *full* PopArt technique instead:
+`update_and_rescale_value_head()` advances the running stats **and**
+analytically rescales `value_head`'s weight and bias so its *denormalized*
+prediction is unchanged at the instant of the update (PopArt's "preserving
+outputs precisely") — `w_new = w_old · (σ_old/σ_new)`,
+`b_new = b_old · (σ_old/σ_new) + (μ_old - μ_new)/σ_new`. This decouples what
+the network has already learned from a shifting normalization target, closing
+the gap rather than just avoiding triggering it. Only well-defined against
+one consistent running estimate, so it only applies to `ActorCritic`'s
+single-network setup — A3C's per-worker independent estimates over one
+*shared* `value_head` would need a synchronized normalizer first (see A3C's
+own writeup).
+
+Verified end-to-end on `configs/dqn_1v1` (2000 episodes, identical seed/setup
+to every other run on this page):
+
+| | Entropy Q1→Q4 | Capture rate Q1→Q4 | Overall |
+|---|---|---|---|
+| Baseline (no fix) | 0.0 → 0.0 → 0.0 → 0.0 | 28.6% → 22.2% → 24.4% → 25.4% | 25.1% |
+| `actor_weight_decay=0.001` (workaround) | 0.0 → 0.0 → 0.0 → 0.0 | 35.8% → 34.8% → 34.8% → 34.6% | 35.0% |
+| **`normalize_returns=True` (fix, with PopArt rescale)** | **1.25 → 1.30 → 1.16 → 1.12** | **51.8% → 81.4% → 84.6% → 82.6%** | **75.1%** |
+
+Entropy holds well clear of zero for the entire run (a healthy 1.1-1.3 range,
+vs. `ln(5) ≈ 1.609` being the theoretical max for 5 actions). Capture rate
+triples the baseline and more than doubles the `actor_weight_decay`
+workaround — confirmed by decile, not just quarter-level noise, climbing from
+40.5% in the first decile to a stable 72-88% range for the remaining nine —
+landing right next to DQN's own 80.3% on this identical config (see
+[Algorithms Overview](index.md) for that comparison), a range no actor-critic
+variant on this environment had reached before. `normalize_returns: true`
+(with `return_norm_decay: 0.999`) is now the shipped default.
+
+[A3C](a3c.md#the-instant-collapse-same-fix-with-one-open-wrinkle) reuses this
+same network and the same underlying fix (plain `update()`, not the PopArt
+rescale — see why in its own writeup), with one additional wrinkle specific
+to its multi-worker setting.
 
 ## When to use ActorCritic
 

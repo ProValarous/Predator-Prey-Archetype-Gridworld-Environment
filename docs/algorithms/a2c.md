@@ -122,10 +122,23 @@ metric: capture rate climbs steadily instead of staying flat, confirmed by decil
 training, with reward improving in lockstep. This is the first sustained
 *improving* trend seen across AC, A2C, or A3C on this diagnostic config.
 
-Untested whether the same fix transfers to [ActorCritic](actor-critic.md) or
-[A3C](a3c.md) (which reuses ActorCritic's network) — AC's shared-trunk design
-means weight decay there would also regularize the critic's parameters, not just
-the actor's, so it may not transfer as directly as it does here.
+**Tested on [ActorCritic](actor-critic.md) and [A3C](a3c.md) (both reuse
+ActorCritic's shared-trunk network) — this specific fix does not transfer.**
+Scoping `actor_weight_decay` to just the policy head (its own optimizer param
+group, leaving the shared trunk and value head undecayed) does *not* restore
+entropy there: unlike A2C's gradual mid-training collapse, AC/A3C's predator
+entropy collapses to ~0 within the first couple of episodes, in every
+configuration tested including `actor_weight_decay=0.001` — too fast for any
+L2 penalty on a downstream layer to intervene. The actual root cause on
+AC/A3C's shared-trunk architecture turned out to be different from (and
+upstream of) A2C's logit-magnitude growth: nothing bounds the shared trunk's
+own output scale, and the critic's training forces it to grow without limit to
+represent this environment's large-magnitude returns, saturating
+`policy_head`'s logits as a side effect. The real fix there is
+`normalize_returns` (a PopArt-style running normalizer on the critic's
+regression target) — see [ActorCritic's
+writeup](actor-critic.md#the-instant-collapse-root-cause-found-and-fixed) for
+the full diagnostic trail and verification numbers.
 
 ## Papers
 
