@@ -2,7 +2,6 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue" alt="Python versions">
-  <a href="https://arxiv.org/abs/2601.17454"><img src="https://img.shields.io/badge/arXiv-2601.17454-b31b1b.svg" alt="arXiv"></a>
   <a href="https://provalarous.github.io/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/"><img src="https://img.shields.io/badge/docs-mkdocs-teal.svg" alt="Docs"></a>
   <a href="https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/actions/workflows/ci.yaml"><img src="https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/actions/workflows/ci.yaml/badge.svg?branch=STRP" alt="CI"></a>
   <a href="https://github.com/pre-commit/pre-commit"><img src="https://img.shields.io/badge/pre--commit-enabled-brightgreen" alt="pre-commit"></a>
