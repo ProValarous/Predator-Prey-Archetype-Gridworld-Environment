@@ -2,7 +2,7 @@ name: Build and Deploy Docs (MkDocs)
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, STRP ]
 
 permissions:
   contents: read
@@ -15,10 +15,10 @@ jobs:
     environment: github-pages
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -33,12 +33,12 @@ jobs:
 
       # Official GitHub Pages flow: configure -> upload artifact -> deploy
       - name: Configure Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v6
 
       - name: Upload artifact for deployment
-        uses: actions/upload-pages-artifact@v3   # ⬅️ UPDATED VERSION
+        uses: actions/upload-pages-artifact@v5   # ⬅️ UPDATED VERSION
         with:
           path: ./site
 
       - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

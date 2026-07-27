@@ -44,21 +44,19 @@ None of these are meant to be branched from or merged into. They're archival.
 ## Setup
 
 ```bash
-git clone https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment.git
+git clone https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment.git
 cd Predator-Prey-Archetype-Gridworld-Environment
 git checkout STRP
 
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\Activate.ps1
 
-pip install -r requirements-dev.txt
+pip install -e ".[dev]"
 ```
 
-> **`pip install -e .` does not work** — the build backend isn't wired up, so
-> an editable install won't make `multi_agent_package` importable even though
-> `pip` may report success. Every command below uses `PYTHONPATH=src`
-> instead, which is the only verified-working setup. See the
-> [Quickstart](../README.md#-quickstart) for details.
+> `pip install -e .` makes `multi_agent_package` and `baselines` importable
+> without setting `PYTHONPATH` (see the [Quickstart](guides/quickstart.md)), so the
+> commands below can be run as-is from the repository root.
 
 ---
 
@@ -84,7 +82,7 @@ branch scoped to one change — small, reviewable PRs merge faster.
 This isn't just a guideline — it's enforced automatically. The `core-guard`
 CI job diffs your PR against `STRP` and **fails the check if any file under
 `core/` changed**, regardless of how small the change looks. See
-[CONTRIBUTING.md](../CONTRIBUTING.md) for the full rationale and the layered
+[contributing guide](contributing.md) for the full rationale and the layered
 architecture this protects.
 
 If you find yourself needing to touch `core/`, that's a signal to open an
@@ -98,8 +96,8 @@ Run the exact same checks CI will run, locally, before pushing:
 ```bash
 black --check .
 flake8 .
-PYTHONPATH=src pylint src
-PYTHONPATH=src python -m pytest tests/ -q
+pylint src
+python -m pytest tests/ -q
 ```
 
 If `black --check` fails, just run `black .` (no `--check`) to auto-fix
@@ -135,13 +133,13 @@ submitting — it's easy to accidentally target `main`).
 
 ## What CI actually checks
 
-Defined in [`.github/workflows/ci.yaml`](../.github/workflows/ci.yaml),
+Defined in `.github/workflows/ci.yaml`,
 triggered on every push and PR to `main`, `master`, or `STRP`:
 
 | Job | Runs on | What it does |
 | --- | --- | --- |
-| `lint` | push + PR | `black --check .`, `flake8 .`, `PYTHONPATH=src pylint src`. Fails on any formatting or lint violation. `core/`, `miscellenous/`, and `slides/` are excluded from linting by design (see comments in `.flake8` / `.pylintrc`). |
-| `test` | push + PR | `PYTHONPATH=src pytest tests/ -q` — the full test suite (registries, plugin contracts, end-to-end training, architecture rules). |
+| `lint` | push + PR | `black --check .`, `flake8 .`, `pylint src`. Fails on any formatting or lint violation. `core/`, `miscellenous/`, and `slides/` are excluded from linting by design (see comments in `.flake8` / `.pylintrc`). |
+| `test` | push + PR | `pytest tests/ -q` — the full test suite (registries, plugin contracts, end-to-end training, architecture rules). |
 | `core-guard` | **PR only** | Diffs the PR's base and head SHAs; fails if any file under `src/multi_agent_package/core/` was touched. Never runs on plain pushes (there's no "PR diff" to check). |
 
 All three must pass before merging. There is currently no branch protection
@@ -171,7 +169,7 @@ git fetch origin
 git merge origin/STRP        # or: git rebase origin/STRP
 # resolve conflicts, then:
 black .
-PYTHONPATH=src python -m pytest tests/ -q
+python -m pytest tests/ -q
 git push
 ```
 
@@ -200,7 +198,7 @@ or the "Delete branch" button on the merged PR page).
 
 ```bash
 # One-time setup
-git clone https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment.git
+git clone https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment.git
 cd Predator-Prey-Archetype-Gridworld-Environment
 pip install -r requirements-dev.txt
 
@@ -211,7 +209,7 @@ git checkout -b fix/my-fix
 # ... make changes ...
 
 # Verify before pushing
-black --check . && flake8 . && PYTHONPATH=src pylint src && PYTHONPATH=src python -m pytest tests/ -q
+black --check . && flake8 . && pylint src && python -m pytest tests/ -q
 
 git add <files>
 git commit -m "fix: short description"

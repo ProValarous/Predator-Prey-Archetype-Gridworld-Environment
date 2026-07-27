@@ -1,8 +1,8 @@
 site_name: Predator-Prey Gridworld Environment
 site_description: A minimalist multi-agent predator-prey environment for MARL research.
 site_url: https://provalarous.github.io/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/
-repo_url: https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment
-repo_name: ProValarous/Predator-Prey-Archetype-Gridworld-Environment
+repo_url: https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment
+repo_name: ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment
 
 nav:
   - Home: index.md
@@ -10,8 +10,12 @@ nav:
   - Getting Started:
     - Quickstart: guides/quickstart.md
     - Student Reading Guide: student-guide.md
+  - Learn the Theory:
+    - RL Foundations: concepts/rl-foundations.md
+    - MARL Theory: concepts/marl.md
   - Overview:
     - Project Overview: overview/index.md
+    - Scope & Roadmap: overview/scope-and-roadmap.md
     - Architecture: overview/architecture.md
     - Glossary: overview/glossary.md
   - Concepts:
@@ -21,12 +25,21 @@ nav:
     - Rewards: concepts/rewards.md
     - Actions: concepts/actions.md
     - Wrappers: concepts/wrappers.md
-    - MARL Theory: concepts/marl.md
   - Data Flows:
     - Initialization: flows/init-flow.md
     - Per-Step Pipeline: flows/step-flow.md
     - Training Loop: flows/training-loop.md
-  - Guides:
+  - Algorithms:
+    - Overview: algorithms/index.md
+    - IQL (Independent Q-Learning): algorithms/iql.md
+    - CQL & MixedTrainer: algorithms/cql-mixed.md
+    - DQN (Deep Q-Network): algorithms/dqn.md
+    - DQN Variants: concepts/dqn-variants.md
+    - ActorCritic (On-Policy): algorithms/actor-critic.md
+    - A2C (Batched Actor-Critic): algorithms/a2c.md
+    - A3C (Asynchronous Actor-Critic): algorithms/a3c.md
+  - Tutorials &amp; Guides:
+    - First Experiment: tutorials/first-experiment.md
     - Custom Observation Builder: guides/custom-observation.md
     - Custom Reward Function: guides/custom-reward.md
     - Custom Action Space: guides/custom-action.md
@@ -40,6 +53,7 @@ nav:
   - Reference:
     - API Reference: reference/api-reference.md
     - Config Reference: reference/config-reference.md
+    - Papers & Further Reading: reference/papers.md
     - Agent Class: api/agents.md
     - GridWorldEnv Class: api/gridworld.md
     - Baselines Classes: api/baselines.md
@@ -105,6 +119,9 @@ plugins:
             - src/baselines/CQL
             - src/baselines/MIXED
             - src/baselines/DQN
+            - src/baselines/AC
+            - src/baselines/A2C
+            - src/baselines/A3C
           options:
             docstring_style: numpy
             show_source: true
@@ -125,6 +142,8 @@ markdown_extensions:
       line_spans: __span
       pygments_lang_class: true
   - pymdownx.inlinehilite
+  - pymdownx.arithmatex:
+      generic: true
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
@@ -138,3 +157,8 @@ markdown_extensions:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - attr_list
   - md_in_html
+
+# LaTeX math rendering (MathJax) for the theory pages
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js

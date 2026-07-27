@@ -158,6 +158,40 @@ def dqn_config():
 
 
 @pytest.fixture
+def ac_config():
+    return {
+        "hidden_layers": [8, 8],
+        "learning_rate": 0.01,
+        "gamma": 0.99,
+        "value_coef": 0.5,
+        "entropy_coef": 0.0,
+        "grad_clip": 5.0,
+        "episodes": 3,
+        "log_interval": 1,
+        "verbose": False,
+        "seed": 0,
+    }
+
+
+@pytest.fixture
+def a3c_config():
+    return {
+        "hidden_layers": [8, 8],
+        "learning_rate": 0.01,
+        "gamma": 0.99,
+        "num_workers": 2,
+        "n_steps": 3,
+        "value_coef": 0.5,
+        "entropy_coef": 0.05,
+        "grad_clip": 5.0,
+        "episodes": 3,
+        "log_interval": 1,
+        "verbose": False,
+        "seed": 0,
+    }
+
+
+@pytest.fixture
 def dqn_env(one_predator_one_prey):
     """5×5 env with local_only observation + discrete_5 actions wired for DQN."""
     from multi_agent_package.observations.local_only import LocalOnlyObservation

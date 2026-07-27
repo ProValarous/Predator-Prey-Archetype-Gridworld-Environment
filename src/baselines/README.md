@@ -106,7 +106,7 @@ The algorithm controls:
 baselines/
 │
 ├── base.py            # BaseAlgorithm interface
-├── __init__.py        # Auto-registers IQL, CQL, MixedTrainer, DQN
+├── __init__.py        # Auto-registers IQL, CQL, MixedTrainer, DQN, ActorCritic, A2C, A3C
 ├── registry/          # Algorithm registry
 │
 ├── IQL/               # Independent Q-Learning  (iql.py + CLI)
@@ -116,6 +116,12 @@ baselines/
 ├── MIXED/             # MixedTrainer — per-team IQL/CQL  (mix_train.py + CLI)
 │
 ├── DQN/               # Deep Q-Network, PyTorch (dqn.py + CLI, q_network.py, replay_buffer.py)
+│
+├── AC/                # One-step online Actor-Critic, PyTorch (actor_critic.py + CLI, network.py)
+│
+├── A2C/               # Advantage Actor-Critic (a2c.py + actor_network.py + critic_network.py)
+│
+├── A3C/               # Asynchronous Advantage Actor-Critic (a3c.py + shared_adam.py)
 │
 └── README.md
 ```
@@ -208,6 +214,78 @@ Algorithms must:
 * Function-approximation baseline instead of tabular Q-learning
 * Larger observation spaces where tabular state encoding becomes impractical
 * Studying Double/Dueling DQN variants against vanilla DQN
+
+---
+
+## 🟨 ActorCritic — One-Step Online Actor-Critic (PyTorch)
+
+* Policy-gradient, **on-policy** — the exception among these baselines, which are
+  otherwise all value-based (learn Q, act greedily)
+* One independent `ActorCriticNetwork` (shared trunk, policy head + value head)
+  + optimizer per agent — no replay buffer, no target network
+* `select_actions` samples from `Categorical(logits=...)`; the stochastic policy
+  itself is the exploration mechanism — no epsilon schedule
+* Every `env.step()` immediately triggers one TD(0) gradient update
+  (Sutton & Barto, *Reinforcement Learning: An Introduction*, 2nd ed., Algorithm 13.5)
+* Same `env.observation_encoder` precondition and `action_dim` resolution/validation
+  as DQN; same `curves_path` CSV logging support (reward/loss, no epsilon column)
+
+### When to Use
+
+* Studying an on-policy, directly-learned stochastic policy against DQN's
+  greedy-over-Q behavior
+* As the stepping stone toward the batched (A2C, below) and asynchronous (A3C,
+  below) variants — see the [algorithm spec](../../docs/specs/algorithm-spec.md)
+  for the full contract writeups
+
+---
+
+## 🟩 A2C — Advantage Actor-Critic
+
+* One actor (policy network) + one critic (state-value network) per agent,
+  separate networks rather than ActorCritic's shared trunk
+* On-policy: no replay buffer -- learns directly from freshly-collected experience,
+  discarding it after each update
+* Learns two things at once instead of one:
+  * The actor learns *what to do* (a probability distribution over actions)
+  * The critic learns *how good a state is* (a baseline used to reduce variance
+    in the actor's gradient, without introducing bias)
+* Exploration comes from sampling the stochastic policy (plus an entropy
+  bonus that discourages the policy from collapsing too early) -- there is no
+  epsilon schedule
+
+### When to Use
+
+* Studying on-policy vs off-policy learning dynamics
+* Environments/rewards where a stochastic policy is itself interesting
+  (e.g. mixed-strategy pursuit-evasion)
+* As the natural stepping stone toward A3C (below) and SAC
+  (off-policy actor-critic with entropy maximization)
+
+---
+
+## 🟧 A3C — Asynchronous Advantage Actor-Critic
+
+* Multiple worker **processes** (`torch.multiprocessing`), each stepping its own
+  independent env copy — not just multiple threads, since PyTorch's GIL would
+  serialize those anyway for CPU-bound work
+* One shared `ActorCriticNetwork` (reused from `AC/`, not duplicated) + one
+  shared `SharedAdam` optimizer per agent — workers sync a local copy, compute
+  gradients locally, then push those gradients onto the shared parameters and
+  step the shared optimizer with no lock ("Hogwild"-style)
+* Requires `config['env_fn']` beyond every other baseline — a picklable,
+  zero-argument callable that builds a fresh environment per worker; a lambda
+  will not survive pickling under Windows' `'spawn'` start method
+* Workers always run on CPU (not configurable) — A3C's whole premise is
+  CPU-core parallelism, not GPU batching
+* Same Huber critic loss as A2C; same entropy-collapse caveat (see A2C above)
+
+### When to Use
+
+* Studying asynchronous, multi-worker training dynamics specifically — on a
+  small gridworld like this one it won't necessarily out-train A2C
+  wall-clock-for-wall-clock; the interesting part is the decorrelated,
+  lock-free parallel exploration itself
 
 ---
 
@@ -310,12 +388,18 @@ PYTHONPATH=src python -m multi_agent_package.scripts.run_cql
 PYTHONPATH=src python -m multi_agent_package.scripts.run_mixed
 PYTHONPATH=src python -m multi_agent_package.scripts.run_dqn
 PYTHONPATH=src python -m multi_agent_package.scripts.run_dqn --config-dir configs/dqn_1v1   # double+dueling example
+PYTHONPATH=src python -m multi_agent_package.scripts.run_actor_critic
+PYTHONPATH=src python -m multi_agent_package.scripts.run_a2c
+PYTHONPATH=src python -m multi_agent_package.scripts.run_a3c
 
 # Direct CLI (all hyperparams as flags; builds its own GridWorldEnv, bypassing run_from_config)
 python -m baselines.IQL.iql --episodes 1000 --alpha 0.1 --save-path trained_iql.pkl
 python -m baselines.CQL.cql --episodes 1000 --alpha 0.1 --save-path trained_cql.pkl   # NOT --cql-alpha
 python -m baselines.MIXED.mix_train --predator-algo cql --prey-algo iql --episodes 1000
 python -m baselines.DQN.dqn --episodes 1000 --hidden-layers 64 64 --save-path trained_dqn.pkl
+python -m baselines.AC.actor_critic --episodes 1000 --hidden-layers 64 64 --save-path trained_actor_critic.pkl
+python -m baselines.A2C.a2c --episodes 1000 --hidden-layers 64 64 --save-path trained_a2c.pkl
+python -m baselines.A3C.a3c --episodes 1000 --hidden-layers 64 64 --num-workers 4 --save-path trained_a3c.pkl
 ```
 
 ---

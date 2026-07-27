@@ -6,6 +6,18 @@ This verifies:
 - Environment interaction works
 - Q-tables update
 - No import issues
+
+Deliberately scoped to the tabular baselines (TABULAR_ALGORITHMS below), not
+every registered algorithm -- see #67. The neural baselines (DQN, ActorCritic,
+A2C, A3C) each need env plugins this script's bare env doesn't attach
+(observation_encoder/observation_builder/action_space_plugin -- see
+run_from_config.build_environment), and A3C additionally needs config['env_fn']
+instead of a pre-built env, so a generic algo_cls(env, config) call fails for
+all four before ever reaching the Q-table checks below (which don't apply to
+them anyway -- they use neural networks, not Q-tables). The real per-baseline
+correctness tests for those four already live in tests/test_baselines_*.py;
+this script isn't trying to duplicate that, just to sanity-check the tabular
+registry/training/Q-table-update path end to end.
 """
 
 import sys
@@ -18,6 +30,8 @@ import baselines  # noqa: F401
 from baselines.registry import get, list_algorithms
 from multi_agent_package.core.agent import Agent
 from multi_agent_package.core.gridworld import GridWorldEnv
+
+TABULAR_ALGORITHMS = ("iql", "cql", "mixed")
 
 
 def build_test_env():
@@ -99,13 +113,22 @@ def test_algorithm(algo_name):
 
 def main():
     try:
-        print("Registered algorithms:", list_algorithms())
+        registered = list_algorithms()
+        print("Registered algorithms:", registered)
+        skipped = [name for name in registered if name not in TABULAR_ALGORITHMS]
+        if skipped:
+            print(f"Skipping non-tabular algorithms (see module docstring): {skipped}")
 
-        for name in list_algorithms():
-            test_algorithm(name)
+        for name in TABULAR_ALGORITHMS:
+            if name in registered:
+                test_algorithm(name)
 
         print("\nALL TESTS PASSED.")
-        print("Architecture integrity confirmed.")
+        print(
+            "Architecture integrity confirmed (tabular baselines only -- see "
+            "module docstring for why DQN/ActorCritic/A2C/A3C aren't covered "
+            "here)."
+        )
 
     except Exception:
         print("\nTEST FAILED.")

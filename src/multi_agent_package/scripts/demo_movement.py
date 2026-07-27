@@ -8,26 +8,32 @@ in a live pygame window, so an audience can see an action plugin's raw
 movement geometry -- or, for a speed config, the effect of differing
 agent_speed values -- without waiting on DQN training.
 
-Usage (--config-dir is resolved from the repo root, not the cwd):
-    cd src
-    python -m multi_agent_package.scripts.demo_movement --config-dir configs/demo_plus
-    python -m multi_agent_package.scripts.demo_movement --config-dir configs/demo_diagonal
-    python -m multi_agent_package.scripts.demo_movement --config-dir configs/demo_speed
+Usage (run from the repository root; --config-dir is resolved from there):
+    python -m multi_agent_package.scripts.demo_movement --config-dir CONFIG_DIR
+
+CONFIG_DIR is one of: configs/demo_plus, configs/demo_diagonal, configs/demo_speed.
 """
 
 import argparse
 
 import numpy as np
 
-from multi_agent_package.scripts.run_from_config import build_environment, load_all_configs
+from multi_agent_package.scripts.run_from_config import (
+    build_environment,
+    load_all_configs,
+)
 
 
 def main():
     p = argparse.ArgumentParser("No-training movement-type demo (random actions)")
     p.add_argument("--config-dir", required=True)
     p.add_argument("--experiment-file", default="experiment_dqn.yaml")
-    p.add_argument("--steps", type=int, default=200, help="number of logical env steps to run")
-    p.add_argument("--seed", type=int, default=None, help="seed for random action selection")
+    p.add_argument(
+        "--steps", type=int, default=200, help="number of logical env steps to run"
+    )
+    p.add_argument(
+        "--seed", type=int, default=None, help="seed for random action selection"
+    )
     args = p.parse_args()
 
     configs = load_all_configs(args.config_dir, args.experiment_file)

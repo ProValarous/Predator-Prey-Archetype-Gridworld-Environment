@@ -1,0 +1,29 @@
+# configs/experiment_a2c.yaml
+experiment:
+  algorithm:
+    name: a2c
+    params:
+      gamma: 0.99
+      hidden_layers: [128, 128]   # shared shape for both actor and critic networks
+
+      actor_learning_rate: 0.0003
+      critic_learning_rate: 0.001
+
+      n_steps: 5              # rollout length between actor/critic updates
+      entropy_coef: 0.05      # exploration bonus -- 0.01 let the predator's policy entropy
+      # collapse to ~0 by mid-training on configs/dqn_1v1; 0.05 alone doesn't stop the
+      # collapse (looks structural, not coefficient-magnitude), but measurably raised
+      # capture rate (~22% -> ~30%) even before actor_weight_decay below
+      actor_weight_decay: 0.001   # L2 penalty on the actor's weights -- confirmed via a
+      # logit-magnitude diagnostic that max|logit| grows ~3 -> 40-60 over training, saturating
+      # the softmax (that's the entropy collapse). This directly counters it: entropy recovers
+      # and stabilizes at 0.6-1.3 instead of collapsing, and capture rate climbs 28% -> 74%
+      # over training instead of staying flat -- the first sustained *improving* trend seen
+      # across AC/A2C/A3C on this config (see docs/algorithms/a2c.md for the full data).
+      value_loss_coef: 0.5    # weight of the critic's Huber loss relative to the actor's loss
+      grad_clip: 5.0
+
+      episodes: 1000
+      seed: 42
+      device: "cpu"
+      curves_path: "training_curves_a2c.csv"

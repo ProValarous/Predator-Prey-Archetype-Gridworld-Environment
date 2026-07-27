@@ -2,17 +2,25 @@
 
 `src/multi_agent_package/scripts/evaluate.py` runs an algorithm against the environment for a number of episodes and returns simple aggregate metrics.
 
-> ⚠️ **This does not load a trained checkpoint.** `evaluate()` builds a **fresh** algorithm instance from config (`algo_cls(env, algo_cfg.get("params", {}))`) — there is no `load_path` parameter and no `.load(...)` call anywhere in this file. Calling it as-is evaluates an untrained (or however-initialized) policy, not a saved one. If you want to evaluate a saved checkpoint, use each algorithm's own `run_<algo>.py --mode eval --load-path ...` script instead (see [guides/quickstart.md](quickstart.md)), or load the checkpoint yourself and write a short loop (see [Writing your own eval loop](#writing-your-own-eval-loop) below).
+> **Pass `--load-path` to evaluate a trained model.** With a checkpoint,
+> `evaluate()` loads it via the algorithm's `.load(...)`; without one it evaluates a
+> fresh (untrained) policy and prints a warning so the result isn't mistaken for a
+> trained one. Either way it forces **greedy** action selection (`epsilon = 0`).
 
 ---
 
-## Actual signature
+## Signature
 
 ```python
-def evaluate(config_dir: str = "configs", episodes: int = 10) -> dict:
+def evaluate(config_dir: str = "configs", episodes: int = 10, load_path: str = None) -> dict:
 ```
 
-It internally calls `load_all_configs(config_dir)`, forces `render_mode = None` (headless), builds the environment via `build_environment()`, looks up the algorithm class via `get_algorithm(algo_cfg["name"])`, constructs a fresh instance, then runs `episodes` full episodes calling `algo.select_actions(obs)` each step — **no epsilon override**, no training update. Whatever `epsilon` the algorithm's config specifies is what it uses (many experiment YAMLs default to a high initial `epsilon`, which means this is *not* automatically a greedy/exploitation-only rollout unless you set `epsilon` low in config first).
+It calls `load_all_configs(config_dir)`, forces `render_mode = None` (headless),
+builds the environment via `build_environment()`, looks up the algorithm class via
+`get_algorithm(algo_cfg["name"])`, then either **loads** the checkpoint at
+`load_path` or constructs a fresh instance (with a warning). It sets `epsilon = 0`
+for a greedy rollout and runs `episodes` full episodes, returning aggregate
+metrics.
 
 ## Usage
 
@@ -39,10 +47,15 @@ There is **no** `episode_lengths` list and **no** `capture_rate` key — only th
 ## From the CLI
 
 ```bash
-PYTHONPATH=src python -m multi_agent_package.scripts.evaluate
+# evaluate a trained checkpoint
+python -m multi_agent_package.scripts.evaluate --load-path my_iql.pkl --episodes 20
+
+# or a different config dir
+python -m multi_agent_package.scripts.evaluate --config-dir configs/dqn_1v1 --load-path my_dqn.pkl
 ```
 
-There are **no CLI flags** — the `if __name__ == "__main__":` block simply calls `evaluate("configs", episodes=10)` with hardcoded arguments and prints the summary. To evaluate a different config directory or episode count, either edit the script or call `evaluate()` from your own code.
+The CLI accepts `--config-dir`, `--episodes`, and `--load-path`. Omitting
+`--load-path` evaluates an untrained policy (with a warning).
 
 ## Running with a display (visual eval)
 
@@ -86,4 +99,4 @@ for ep in range(episodes):
 print(f"capture_rate = {captures / episodes:.2f}")
 ```
 
-> **Note:** Reading `env._captures_total` or `env._episode_steps` directly is acceptable in eval scripts and notebooks. The "black-box env" rule (see [specs/algorithm-spec.md](../specs/algorithm-spec.md)) applies to learning algorithms that must generalize across env variants, not to one-off analysis code.
+> **Note:** Reading `env._captures_total` or `env._episode_steps` directly is acceptable in one-off eval or analysis scripts. The "black-box env" rule (see [specs/algorithm-spec.md](../specs/algorithm-spec.md)) applies to learning algorithms that must generalize across env variants, not to analysis code.

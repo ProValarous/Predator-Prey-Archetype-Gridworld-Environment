@@ -40,7 +40,7 @@ Same coordinate-system caveat as `discrete_5`: reason from the vectors, not the 
 
 ### `speed_discrete_5` — `SpeedDiscreteActionSpace`
 
-Subclasses `DiscreteActionSpace` and inherits its exact 5-action mapping unchanged — "speed" is not extra action indices. It adds one method, `to_moves(action, speed, stamina) -> list`, used by `SpeedWrapper` (see [concepts/wrappers.md](wrappers.md)) to decide how many sub-steps an agent gets per logical step:
+Subclasses `DiscreteActionSpace` and inherits its exact 5-action mapping unchanged — "speed" is not extra action indices. It adds one helper, `to_moves(action, speed, stamina) -> list`, which returns up to `min(speed, stamina)` copies of the move vector (empty for NOOP). It is a standalone utility; the [SpeedWrapper](wrappers.md) itself no longer calls it (the wrapper reads `is_noop` from the configured action plugin instead):
 
 ```python
 def to_moves(self, action, speed, stamina) -> list:
@@ -51,7 +51,10 @@ def to_moves(self, action, speed, stamina) -> list:
     return [direction] * n           # n identical direction vectors
 ```
 
-`SpeedWrapper` only consumes `len(to_moves(...))` — the actual direction vectors in the returned list are computed but discarded; the wrapper re-sends the original action index for each sub-step instead of consuming these vectors directly.
+`to_moves()` returns real direction vectors, but nothing in the shipped code path
+consumes them — the `SpeedWrapper` now computes its sub-step budget from
+`plugin.is_noop(...)` and `min(speed, stamina)` directly, and re-sends the original
+action index for each sub-step. `to_moves()` remains available for custom code.
 
 ---
 
@@ -99,4 +102,7 @@ class ActionSpace(ABC):
 
 All three are wired in `run_from_config.build_environment()` and injected as hooks on the env.
 
-> **Registry quirk:** `register_action_space()` does **not** validate that the registered class is an `ActionSpace` subclass — unlike `register_reward()` and `register_observation()`, which both raise `TypeError` on a bad class. Registering something that doesn't implement `to_direction()`/`gymnasium_space`/`n_actions` will succeed silently and only fail later, deep inside `env.step()`, when it's actually used.
+> **Registry validation:** `register_action_space()` raises `TypeError` if the
+> class is not an `ActionSpace` subclass, consistent with `register_reward()` and
+> `register_observation()`. All three registries reject a bad class at
+> registration time rather than failing later inside `env.step()`.

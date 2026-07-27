@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+title: "Predator-Prey Archetype Gridworld Environment"
+type: software
+version: 1.0.0
+date-released: "2026-07-27"
+license: Apache-2.0
+repository-code: "https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment"
+url: "https://provalarous.github.io/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/"
+abstract: >-
+  A deterministic, modular multi-agent predator-prey gridworld testbed for
+  controlled MARL experiments. Pluggable observation, reward, and action-space
+  systems sit around an immutable core, with reproducibility enforced by
+  construction so that ablation studies isolate exactly one changed variable
+  at a time.
+keywords:
+  - reinforcement-learning
+  - multi-agent
+  - marl
+  - gridworld
+  - predator-prey
+  - collective-intelligence
+  - cooperative-intelligence
+  - coordination
+authors:
+  - family-names: Atif
+    given-names: Muhammad Ahmed
+  - family-names: Haji
+    given-names: Nehal Naeem
+  - family-names: Affan
+    given-names: Muhammad
+  - family-names: Kashif
+    given-names: Areesha
+  - family-names: Kasbati
+    given-names: Musab
+    alias: Musab1Blaser
+  - family-names: Yazdi Sidhwa
+    given-names: Afshad

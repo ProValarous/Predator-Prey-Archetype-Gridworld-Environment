@@ -49,24 +49,25 @@ python -m venv venv
 # Activate it (macOS/Linux)
 source venv/bin/activate
 
-# Install development dependencies
-pip install -r requirements-dev.txt
+# Install the package + development dependencies (editable)
+pip install -e ".[dev]"
 ```
 
-`pip install -e .` does **not** work in this repo (no build backend is
-configured) — every command below runs with `PYTHONPATH=src` instead.
+`pip install -e .` makes `multi_agent_package` and `baselines` importable without
+setting `PYTHONPATH`, so the verification commands below run as-is from the
+repository root.
 
 ### 5. Verify Setup 
 ```bash
 # Run tests
-PYTHONPATH=src python -m pytest tests/ -q
+python -m pytest tests/ -q
 
 # Check formatting
 black --check .
 
 # Check linting
 flake8 .
-PYTHONPATH=src pylint src
+pylint src
 ```
 
 ## Development Workflow

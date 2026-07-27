@@ -1,0 +1,22 @@
+experiment:
+  algorithm:
+    name: actor_critic
+    params:
+      gamma: 0.99
+      episodes: 2000
+      learning_rate: 0.001
+      hidden_layers: [64, 64]
+      value_coef: 0.5
+      entropy_coef: 0.01
+      actor_weight_decay: 0.001  # workaround, superseded by normalize_returns below --
+      # left at its prior value, see docs/algorithms/actor-critic.md
+      normalize_returns: true  # the real fix for the entropy collapse (with PopArt
+      # weight-rescaling, see return_normalizer.py) -- entropy holds in a healthy
+      # 1.1-1.3 range instead of collapsing to 0.0, capture rate on this exact
+      # config: 25.1% -> 75.1% (see docs/algorithms/actor-critic.md)
+      return_norm_decay: 0.999
+      grad_clip: 5.0
+      seed: 42
+      device: "cpu"
+      log_interval: 10
+      curves_path: "training_curves_actor_critic_1v1.csv"

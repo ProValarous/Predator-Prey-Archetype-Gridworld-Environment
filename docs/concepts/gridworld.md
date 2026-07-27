@@ -6,6 +6,10 @@ The GridWorld is a **bounded 2D discrete grid** — the physical substrate of th
 
 It is implemented as `GridWorldEnv` in `src/multi_agent_package/core/gridworld.py` and inherits from `gymnasium.Env`.
 
+<p align="center">
+  <img src="../assets/images/game_snap.png" alt="A snapshot of the gridworld: predators, prey, and obstacles on a bounded grid" width="360"/>
+</p>
+
 ---
 
 ## State Model
@@ -55,7 +59,12 @@ These properties hold throughout any well-formed episode:
 3. **All positions are in-bounds** — the step loop clips any out-of-bounds move back to the current position
 4. **Randomness flows through `self.rng` only** — no global random state
 
-> **`allow_cell_sharing` is currently a dead config flag.** It's accepted by `GridWorldEnv.__init__` and stored on the instance, but nothing in `step()` ever reads it — there is no code path that prevents two same-type agents (two predators, or two prey) from sharing a cell, regardless of this setting. Toggling it in `env.yaml` has no observable effect today.
+> **`allow_cell_sharing` controls same-role stacking.** With the default `true`,
+> any agents may share a cell. Set it `false` (in `env.yaml`) to forbid two
+> *same-role* agents (two predators, or two prey) from occupying the same cell —
+> a move onto a cell already held by a same-role agent is rejected. Predator–prey
+> overlap is always allowed, so the capture mechanic (which is exactly such an
+> overlap) keeps working either way.
 
 ---
 

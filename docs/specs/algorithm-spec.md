@@ -131,7 +131,7 @@ experiment:
       episodes: 1000
 ```
 
-Registered algorithms: `iql`, `cql`, `mixed` (MixedTrainer — assign IQL or CQL per team), `dqn`.
+Registered algorithms: `iql`, `cql`, `mixed` (MixedTrainer — assign IQL or CQL per team), `dqn`, `actor_critic`, `a2c`, `a3c`.
 
 ---
 
@@ -155,6 +155,289 @@ Unlike IQL/CQL/MixedTrainer (tabular), `DQN` (`baselines/DQN/dqn.py`) uses one i
 
 ---
 
+## ActorCritic — the On-Policy Algorithm
+
+Unlike IQL/CQL/MixedTrainer/DQN (all value-based, act greedy-over-Q), `ActorCritic`
+(`baselines/AC/actor_critic.py`) is a **policy-gradient** method: it learns a
+stochastic policy directly and uses a state-value critic only to reduce gradient
+variance. It is architecturally closest to DQN — one independent `ActorCriticNetwork`
+plus optimizer per agent — but learns fully **on-policy**: every `_update()` call
+happens immediately after the env step that produced its transition, with **no
+replay buffer and no target network**.
+
+This is the vanilla, per-step online variant — Sutton & Barto's Algorithm 13.5. The
+batched (`A2C`) and asynchronous (`A3C`) variants are documented in their own
+sections below.
+
+**Same preconditions as DQN:** requires `env.observation_encoder` (raises
+`ValueError` if missing), and resolves `action_dim` from
+`env.action_space_plugin.n_actions` with the same fail-fast mismatch check as DQN.
+
+**No epsilon-greedy exploration:** `select_actions()` always samples from
+`Categorical(logits=...)` — the stochastic policy itself is the exploration
+mechanism, so there is no `epsilon`/`epsilon_decay`/`min_epsilon` in its config.
+
+**Config keys** (`experiment_actor_critic.yaml`): `gamma`, `episodes`,
+`learning_rate`, `hidden_layers`, `value_coef`, `entropy_coef`,
+`actor_weight_decay`, `normalize_returns`, `return_norm_decay`, `grad_clip`,
+`device`, `verbose`, `log_interval`, `debug_first_episode`, `save_path`,
+`curves_path`, `seed`.
+
+**The TD error `δ` drives both networks at once:**
+`δ = r + γ·(1 - terminal)·v(s') - v(s)` (true termination only, same
+terminal-vs-truncated distinction as DQN's replay buffer). The critic minimizes
+a Huber loss on `δ`; the actor's loss is `-I·δ·log π(a|s)`, where `I` starts at `1`
+each episode and decays by `I *= gamma` every step (Sutton & Barto's
+discount-weighting term — it is what makes this the correct on-policy gradient
+estimator rather than an arbitrary TD-error weighting). `δ` is detached before
+entering the actor's loss, so the policy gradient does not backpropagate through
+the critic's own error.
+
+**Loss/optimization:** combined `actor_loss + value_coef * critic_loss -
+entropy_coef * entropy`, one Adam optimizer per agent, gradient-clipped via
+`grad_clip` — same clipping mechanism as DQN, just no Bellman-max since there is
+no Q-value to take a max over.
+
+**Critic loss is Huber (`SmoothL1Loss`), not raw squared error — found via a
+verification run, not a test.** On the shared 3v3 config (10x10 grid, 20%
+obstacles, predator speed 1 / prey speed 3, 1000 episodes), predator critic loss
+under plain squared error sat at ~687,000 in Q1 and was still ~602,000 by Q4 —
+not shrinking. Switching to Huber dropped it to ~211 → ~224 on the identical
+config, roughly a 3000x reduction. Same root cause DQN's own choice of Huber
+guards against: reward magnitudes in the thousands make squared error's
+gradients large enough to destabilize the shared trunk both heads depend on.
+
+**`entropy_coef` default is `0.01`, not `0.0` — also found via a verification
+run.** With no entropy bonus, capture rate on `configs/dqn_1v1` (2000 episodes,
+matching DQN's own horizon there) declined from 6.4% (Q1) to 0.6% (Q4) even
+though critic loss dropped smoothly over the same run — the signature of the
+critic learning to predict a boring, predictable timeout rather than the policy
+actually improving. Raising `entropy_coef` to `0.01` fixed it: capture rate went
+from 35.6% (Q1) to 36.4% (Q4), stable by decile with no late-training decay.
+Validated cleanly on 1v1; on 3v3 the fix is a wash on aggregate reward/loss
+numbers but does not hurt (captures occur steadily across quarters rather than
+collapsing) — see `docs/algorithms/actor-critic.md` for the full tables. See
+also [MARL Constraints and Limitations](#marl-constraints-and-limitations) for
+the related reward-vs-capture-rate disconnect this surfaced.
+
+**`actor_weight_decay` (default `0.001`) — a workaround, not a fix.** Scoped to
+a dedicated Adam param group over just `policy_head`'s parameters
+(`trunk`/`value_head` left at `weight_decay=0`, since they're shared with the
+critic). Raises capture rate on `configs/dqn_1v1` from 25.1% to 35.0% overall,
+but entropy tracking (previously untracked) showed it never actually restores
+entropy — predator entropy collapses to ~0 within the first couple of episodes
+regardless of this setting.
+
+**Root cause found and fixed: `normalize_returns` (default `true`).** Two
+dead ends preceded the real fix: `grad_clip` turned out to be nearly powerless
+against Adam (its own per-parameter normalization rescales every step to
+roughly `lr` regardless of the raw gradient's clipped magnitude — the same
+reason `actor_weight_decay` never had a real chance), and normalizing the TD
+error's magnitude (the standard textbook fix for a badly-scaled gradient) made
+the collapse **faster**, not slower. The actual mechanism: nothing bounds the
+shared trunk's output feature scale, and the critic's own training forces it
+to grow without limit to represent this environment's large-magnitude
+returns — confirmed by freezing the actor completely (zero gradient into
+`policy_head`) and still observing the trunk's feature norm explode from ~3 to
+1000+ within ~220 steps, collapsing entropy purely as a side effect of the
+critic fitting its targets. `policy_head` is a plain linear readout on those
+same trunk features, so its logits inherit that unbounded growth for free.
+`normalize_returns` (`baselines/AC/return_normalizer.py`, a PopArt-style
+running mean/std normalizer, van Hasselt et al. 2016) trains the critic
+against the bootstrapped return's own normalized (properly O(1)) scale
+instead of the raw one, keeping trunk feature norms small (2-10 instead of
+1000+). ActorCritic uses the *full* PopArt technique
+(`update_and_rescale_value_head`): each update also analytically rescales
+`value_head`'s weight/bias so its denormalized prediction is unchanged at that
+instant ("preserving outputs precisely") — confirmed necessary, not just
+theoretically nice, after a plain (non-rescaling) version diverged to a
+numerical overflow under a faster `return_norm_decay` on A3C (see A3C's
+section below). Verified on `configs/dqn_1v1` (2000 episodes): entropy holds
+in a healthy 1.1-1.3 range instead of collapsing, capture rate 25.1% → 75.1%
+overall — next to DQN's own 80.3% on this config, a range no actor-critic
+variant here had reached before. See
+`docs/algorithms/actor-critic.md#the-instant-collapse-root-cause-found-and-fixed`
+for the full diagnostic trail and verification table.
+
+**Behavior matches DQN, not the tabular baselines:** `train()` auto-saves to
+`save_path` if configured, and supports the same `curves_path` per-episode CSV
+export (columns: `episode`, `<agent>_reward`, `<agent>_loss`, `<agent>_entropy`
+— no `epsilon` column, since there is no epsilon schedule).
+
+---
+
+## A2C — the Batched On-Policy Algorithm
+
+`A2C` (`baselines/A2C/a2c.py`) is ActorCritic's batched sibling: same
+policy-gradient idea, but accumulates an `n_steps` rollout and updates once from an
+n-step bootstrapped return, instead of updating after every single env step.
+Unlike ActorCritic's shared-trunk `ActorCriticNetwork`, A2C uses **separate**
+`ActorNetwork`/`CriticNetwork` per agent, with independent optimizers and
+independent learning rates (`actor_learning_rate`, `critic_learning_rate` — the
+critic typically wants to learn faster/more stably than the actor).
+
+**Same preconditions as ActorCritic/DQN:** `env.observation_encoder` required,
+`action_dim` resolved and validated the same way.
+
+**Config keys** (`experiment_a2c.yaml`): `gamma`, `episodes`, `hidden_layers`,
+`actor_learning_rate`, `critic_learning_rate`, `n_steps`, `entropy_coef`,
+`actor_weight_decay`, `value_loss_coef`, `grad_clip`, `device`, `seed`, `curves_path`.
+
+**Loss/optimization:** critic loss is `SmoothL1Loss` (Huber), not raw MSE — same
+reasoning as DQN/ActorCritic: this environment's reward magnitudes are large
+enough that plain squared error destabilizes training (empirically confirmed:
+critic loss originally exploded into the hundreds of thousands under MSE before
+this fix). Actor and critic each have their own optimizer and their own
+`backward()`/`step()` call.
+
+**Entropy collapse — diagnosed and fixed:** raising `entropy_coef` alone measurably
+improves capture rate but doesn't prevent the policy's entropy from collapsing
+toward zero mid-training. A logit-magnitude diagnostic confirmed the mechanism:
+`max|logit|` grows from ~3 to a peak average of ~19 (spikes of 42-64) over
+training, saturating the softmax. `actor_weight_decay` (L2 penalty on the actor's
+weights, default `0.001`) fixes this directly — entropy stabilizes at 0.6-1.3
+instead of collapsing, and capture rate climbs from ~28% to ~74% over training
+instead of staying flat, with reward improving in lockstep. This is the first
+sustained *improving* trend seen across AC/A2C/A3C on the diagnostic config, not
+just a mitigation — see `docs/algorithms/a2c.md` for the full before/after
+tables. **Tested on ActorCritic/A3C (scoped to `policy_head` only, avoiding the
+shared-trunk entanglement) — does not transfer the same way:** their predator
+entropy collapses almost instantly (within the first couple of episodes) rather
+than gradually mid-training, too fast for weight decay (or any regularizer) to
+intervene, so entropy never recovers there regardless of the setting. It still
+raises capture rate on both regardless — see
+`docs/algorithms/actor-critic.md#actor_weight_decay-doesnt-fix-the-collapse-here-but-still-helps`
+and `docs/algorithms/a3c.md#actor_weight_decay-shared-trunk-caveat`.
+
+---
+
+## A3C — the Asynchronous On-Policy Algorithm
+
+`A3C` (`baselines/A3C/a3c.py`) runs A2C's same n-step rollout/update logic across
+**multiple worker processes**, each stepping its own independent environment.
+Workers periodically sync a local network copy from a **shared global network**
+(`ActorCriticNetwork`, reused from `baselines/AC/network.py` rather than
+duplicated), compute gradients locally, then apply those gradients directly to the
+shared network and step a shared `SharedAdam` optimizer — lock-free ("Hogwild"),
+exactly as Mnih et al. (2016) describe. There is no replay buffer and no
+synchronization barrier between workers.
+
+**Extra precondition beyond every other baseline: `config['env_fn']`.**
+`BaseAlgorithm.__init__(self, env, config)` normally receives one already-built
+environment; A3C needs one independent environment *per worker*, so it requires an
+additional zero-argument, **picklable** callable that builds a fresh environment.
+Missing or non-callable `env_fn` raises `ValueError` at construction time. A
+lambda closing over a config dict will not survive pickling under the `'spawn'`
+start method (the default on Windows, and used everywhere here via
+`torch.multiprocessing`) — use a module-level function or a callable class
+instance instead (see `scripts/run_a3c.py`'s `EnvFactory`).
+
+**Workers always run on CPU** — not configurable. A3C's premise is parallelism
+from CPU cores, not GPU batching; safely sharing one CUDA context across
+processes needs CUDA IPC and isn't worth it for what this algorithm is designed
+around.
+
+**Config keys** (`experiment_a3c.yaml`): `gamma`, `episodes`, `learning_rate`,
+`hidden_layers`, `num_workers`, `n_steps`, `entropy_coef`, `value_coef`,
+`actor_weight_decay`, `grad_clip`, `seed`, `curves_path` (plus the required
+`env_fn`, supplied by the calling script, not the YAML).
+
+**`SharedAdam`** (`baselines/A3C/shared_adam.py`): a `torch.optim.Adam` subclass
+whose per-parameter state (`exp_avg`, `exp_avg_sq`, step count) is moved to shared
+memory at construction. Without this, each worker process would keep its own
+private, diverging view of the Adam moment estimates instead of a consistent
+shared one.
+
+**CSV logging across processes:** a `multiprocessing.Lock` guards concurrent
+writes to `curves_path` so rows from different workers don't interleave mid-write.
+Each row records a `worker` column. Episode numbers are **not** written in file
+order — workers run genuinely asynchronously, so sort by the `episode` column
+before any quarter/decile-style analysis rather than relying on row position.
+
+**`A3C.save()` excludes `env_fn` from the persisted config** — it's a live
+callable tied to a training session, not meaningful checkpoint data, and may not
+even be picklable (e.g. a test using a lambda) even when `env_fn` itself is never
+touched during training.
+
+**Verification run — critic loss bounded from the start, capture rate comparable
+to A2C's tuned baseline.** Built with both lessons already learned from AC/A2C
+from day one (Huber critic loss, `entropy_coef=0.05`) rather than rediscovering
+them. Ran `configs/dqn_1v1/experiment_a3c.yaml` (2000 episodes, 4 workers) — the
+same config AC/A2C already have data on:
+
+| | Critic loss (bounded?) | Capture rate Q1→Q4 |
+|---|---|---|
+| AC (`entropy_coef=0.01`, fixed) | ~150–220, stable | 35.6% → 35.6% |
+| A2C (`entropy_coef=0.05`) | ~140–160, stable | 32.2% → 28.8% |
+| **A3C** (`entropy_coef=0.05`) | **~50–78, stable** | **32.8% → 25.2%** |
+
+Critic loss never explored the hundreds-of-thousands range AC/A2C originally
+hit, since Huber was built in rather than discovered as a fix. Capture rate
+lands in the same range as A2C at the same `entropy_coef` — comparable
+performance to an already-tuned baseline, with zero debugging cycles this time.
+Worker load was reasonably balanced across the 4 processes (516/512/497/475
+episodes) — no worker starving or dominating despite the lock-free async
+scheduling. The mild quarter-over-quarter decline is similar magnitude to A2C's
+at the same entropy setting, not the sharp near-zero collapse `entropy_coef=0.01`
+produces elsewhere.
+
+**`actor_weight_decay` (default `0.001`) — same shared-trunk caveat as
+ActorCritic, same result.** Scoped to a dedicated `policy_head`-only Adam param
+group (`trunk`/`value_head`, shared with the critic across every worker, stay
+undecayed). Entropy tracking added to the per-worker CSV (previously untracked)
+confirmed predator entropy collapses to ~0 within the first couple of episodes
+regardless of `actor_weight_decay` — same near-instant collapse ActorCritic
+shows, too fast for the fix to intervene. Re-run of
+`configs/dqn_1v1/experiment_a3c.yaml` end to end at both settings: capture rate
+25.9% → 33.0% overall (33.6/26.4/22.8/20.8 → 36.0/35.4/31.2/29.4 by quarter,
+still declining somewhat but consistently higher and less steep) — a real
+improvement despite entropy staying flat at ~0 throughout, mirroring
+ActorCritic's own finding. See
+`docs/algorithms/a3c.md#actor_weight_decay-shared-trunk-caveat` for the full
+data, including one flagged logged-loss-spike artifact under the `0.001`
+setting (bounded gradient step via `clip_grad_norm_`, not an actual training
+instability).
+
+**Same root cause as ActorCritic, same fix, fully resolved.** A3C reuses
+`ActorCriticNetwork`, so the unbounded-shared-trunk mechanism (see
+ActorCritic's section above) applies identically. A first version of
+`normalize_returns` gave each worker its own *local* running normalizer,
+which worked (capture rate 25.9% → 85.5% overall on `configs/dqn_1v1`) but
+had a real wrinkle: a sharp late-training partial re-collapse shared
+identically across all 4 workers (entropy 0.9-1.3 through ~episode 1880,
+dropping to 0.24-0.55 in the final ~120 episodes) — not one unlucky worker.
+Root cause: ActorCritic's full PopArt fix (analytically rescaling
+`value_head`'s weights to "preserve outputs precisely" on every normalizer
+update) is only well-defined against one consistent estimate, and four
+independent per-worker estimates over the *same shared* `value_head` can't
+use it, confirmed concretely (not just in theory) when a faster
+`return_norm_decay=0.99` caused an outright numerical overflow rather than a
+milder version of the wrinkle.
+
+**Fixed with `SharedReturnNormalizer`** (`baselines/AC/return_normalizer.py`)
+— ONE running estimate, shared and lock-protected across all 4 workers via
+the same `multiprocessing.Value`/`Lock` primitives already used for
+`episode_counter`, letting the PopArt rescale apply consistently. Each worker
+snapshots the shared stats once at sync time and reuses that fixed snapshot
+for its whole rollout (so the values it already collected stay scale-consistent
+with the returns computed against them), then advances the shared estimate and
+rescales the *global* `value_head` afterward, affecting future syncs rather
+than retroactively changing this rollout's already-computed loss. Fixing the
+instability changed the training dynamics enough that `entropy_coef=0.05`
+stopped being right: with the critic reliably calibrated, advantages run
+smaller/more accurate, which let a `0.05` entropy bonus dominate and pin the
+policy near maximum entropy instead of letting it commit. Lowered to
+`entropy_coef=0.01` (matching ActorCritic's own value): capture rate becomes
+a genuine learning curve, 32.2% → 78.2% by quarter, still climbing at episode
+2000 (last decile 83.5%), with no late-training crash — entropy stays
+genuinely differentiated (0.55-0.90 in the final 300 episodes) rather than
+collapsing OR pinning at max. See
+`docs/algorithms/a3c.md#the-instant-collapse-root-cause-found-and-fixed`
+for the full data and mechanism, including the intermediate (now-superseded)
+results that motivated each step.
+
+---
+
 ## MARL Constraints and Limitations
 
 ### Non-Stationarity
@@ -170,10 +453,57 @@ Each algorithm instance sees the environment as a single-agent MDP from its pers
 Centralized Training with Decentralized Execution (CTDE) — where a centralized critic uses global state during training but agents execute independently — is intentionally out of scope for all four baselines.
 
 ### Exploration
-Epsilon-greedy exploration is applied **independently per agent**. This means agents may simultaneously explore in conflicting directions. There is no joint exploration or coordinated strategy. In cooperative tasks, independent exploration can slow convergence compared to approaches that coordinate exploratory actions.
+Epsilon-greedy exploration is applied **independently per agent** for the
+value-based baselines (IQL, CQL, MixedTrainer, DQN). This means agents may
+simultaneously explore in conflicting directions. There is no joint exploration or
+coordinated strategy. In cooperative tasks, independent exploration can slow
+convergence compared to approaches that coordinate exploratory actions.
+
+`ActorCritic` explores differently: it has no epsilon schedule at all. Its
+stochastic policy samples actions from `Categorical(logits=...)` directly, so
+exploration is intrinsic to the policy and naturally anneals as the policy
+sharpens toward confident (low-entropy) action distributions — still independent
+per agent, still uncoordinated across agents, just without an explicit epsilon
+knob to tune.
 
 ### Captured Agents
 After a prey is captured, IQL/CQL continue updating its Q-table for the remainder of the episode (it still receives observations and zero-step reward). This wastes computation but does not break training — the agent is frozen and its updates do not affect the episode outcome.
+
+### Reward-vs-Capture-Rate Disconnect
+
+Rising capture rate does not imply rising (less negative) reward, and this holds
+across every algorithm tested, not just one. Splitting `configs/dqn_1v1` episodes
+into "captured" vs. "timeout" groups and comparing average predator reward within
+each group (no new training needed — re-reading existing per-episode CSVs):
+
+| | Captured episodes | Avg reward (captured) | Timeout episodes | Avg reward (timeout) |
+|---|---|---|---|---|
+| DQN | 80.3% | −667 | 19.7% | −4240 |
+| ActorCritic (`entropy_coef=0.01`) | 35.4% | −1314 | 64.6% | −4502 |
+| A2C (`entropy_coef=0.05`) | 30.3% | −1263 | 69.7% | −4634 |
+| A3C (`entropy_coef=0.05`) | 29.2% | −1328 | 70.8% | −4660 |
+
+**Even captured episodes net negative reward on average, across every
+algorithm.** The capture bonus only fully offsets the accumulated
+`predator_distance` shaping penalty on the rare very-fast captures, not on the
+average one. The captured/timeout split is remarkably consistent across
+ActorCritic/A2C/A3C (~−1300 / ~−4600) regardless of algorithm — strong evidence
+this is a **reward-design property of this config** (the distance-shaping
+weight relative to the capture bonus), not an algorithm-specific bug. This is
+why raw reward curves for the actor-critic baselines can look flat or
+unimproving even while capture rate climbs (see
+[ActorCritic's entropy fix](#actorcritic-the-on-policy-algorithm) above) — reward
+and task performance are not interchangeable metrics on this environment, and
+capture rate (or another task-specific signal) should be tracked alongside raw
+reward, not in place of it.
+
+**Also notable:** DQN's capture rate (80.3%) is dramatically higher than any
+actor-critic variant tested (29–36%) on the identical 1v1 config — replay-buffer
+off-policy learning gets substantially more mileage out of this particular task
+than any on-policy policy-gradient variant tried so far. Not chased further here
+(altering the shared reward config would need its own re-verification pass
+across every algorithm), but a genuine comparative finding for anyone comparing
+value-based vs. policy-gradient baselines on this environment.
 
 ---
 

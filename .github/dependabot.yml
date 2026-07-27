@@ -1,0 +1,25 @@
+version: 2
+updates:
+  # Python dependencies declared in pyproject.toml
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    # Bundle all pip updates into a single PR per run instead of one-per-package.
+    groups:
+      python-dependencies:
+        patterns: ["*"]
+
+  # GitHub Actions used by the workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels: ["ci", "dependencies"]
+    # Bundle all action bumps into a single PR per run instead of one-per-action.
+    groups:
+      github-actions:
+        patterns: ["*"]

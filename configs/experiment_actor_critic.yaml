@@ -1,0 +1,36 @@
+experiment:
+  algorithm:
+    name: actor_critic
+    params:
+      gamma: 0.99
+      episodes: 1000
+      # action_dim is optional -- inferred from the env's action_space_plugin
+      # if omitted; set it explicitly to fail fast on a stale value after
+      # changing configs/actions.yaml.
+      learning_rate: 0.001
+      hidden_layers: [128, 128]
+      value_coef: 0.5     # weight on the critic's Huber loss in the combined loss
+      entropy_coef: 0.01  # weight on the policy entropy bonus -- 0.0 measurably let capture
+      # rate collapse toward 0 over training; 0.01 (the standard A2C/A3C default) kept
+      # capture rate flat at ~35% for the full run on configs/dqn_1v1
+      actor_weight_decay: 0.001  # L2 penalty on policy_head only -- a workaround for the
+      # entropy collapse (never actually restored entropy, just raised capture rate ~25%
+      # -> ~35% as a side effect). Left at its prior value; its interaction with
+      # normalize_returns below (which fixes the actual root cause) hasn't been separately
+      # verified -- see docs/algorithms/actor-critic.md for the full story.
+      normalize_returns: true  # the real fix: normalizes the critic's bootstrapped-return
+      # TARGET (not just the reward) by its own running mean/std, PLUS analytically rescales
+      # value_head's weights each update so its denormalized prediction is unchanged (PopArt's
+      # "preserving outputs precisely" -- see return_normalizer.py's update_and_rescale_value_head).
+      # Without this, nothing bounds the shared trunk's output scale, and the critic's need to
+      # represent this env's large-magnitude returns forces the trunk to grow without limit --
+      # policy_head is a plain linear readout on those same trunk features, so its logits
+      # explode right along with it, saturating the softmax independent of any actor-specific
+      # gradient. Confirmed via diagnostic (trunk feature norm 3 -> 1000+ in ~220 steps with the
+      # actor completely frozen) and a full 2000-episode run on configs/dqn_1v1: entropy holds
+      # in a healthy 1.1-1.3 range instead of collapsing to 0.0, capture rate 25.1% -> 75.1%.
+      return_norm_decay: 0.999  # EMA decay for the running return-scale estimate
+      grad_clip: 5.0
+      seed: 42
+      device: "cpu"
+      curves_path: "training_curves_actor_critic.csv"

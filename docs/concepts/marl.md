@@ -1,6 +1,12 @@
 # Concept: Multi-Agent Reinforcement Learning
 
-This document explains the MARL-specific properties, limitations, and design choices of the predator-prey environment. It assumes familiarity with single-agent Q-learning.
+This page extends single-agent reinforcement learning to the case where **many
+agents learn at once** — the setting this project studies. It builds directly on
+[RL Foundations](rl-foundations.md); if the terms *MDP*, *Q-function*, *Bellman
+equation*, or *Q-learning* are unfamiliar, read that page first. Here we focus on
+what is genuinely different once there is more than one learner: joint action
+spaces, non-stationarity, credit assignment, and the centralized-vs-decentralized
+design axis.
 
 ---
 

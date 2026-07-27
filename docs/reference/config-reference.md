@@ -16,7 +16,7 @@ env:
   window_size: 600           # int — pygame window size in pixels (human mode only)
 
   dynamics:
-    allow_cell_sharing: true         # bool — multiple agents can share a cell
+    allow_cell_sharing: true         # bool — false forbids two SAME-ROLE agents sharing a cell (capture overlap still allowed)
     block_agents_by_obstacles: true  # bool — agents cannot move into obstacle cells
 
   termination:
@@ -120,7 +120,7 @@ rewards:
 | `predator_distance` | `PredatorDistanceReward` | Predators — `−weight × dist_to_nearest_prey` |
 | `survival` | `SurvivalReward` | Prey — `+weight` per step |
 
-**Base reward hardcoded values** (not configurable via YAML):
+**Base reward values** (fixed in `GridWorldEnv.base_reward()`; not tunable via YAML):
 
 | Event | Reward |
 |-------|--------|
@@ -132,8 +132,12 @@ rewards:
 **Notes:**
 - `applies_to` is parsed but never read — filter by type inside `compute()` if needed
 - `normalization.enabled` field is accepted but not implemented
-- `base.enabled` is also inert post [PR #26](https://github.com/ProValarous/Predator-Prey-Archetype-Gridworld-Environment/pull/26): `GridWorldEnv.step()` calls `self.base_reward()` unconditionally every step, outside the plugin system entirely. `run_from_config.py` reads this key only to assert it exists — the boolean value is discarded. There's a registered `"base"` reward-function class that wraps `env.base_reward()`, but it's deliberately **not** added to the active `shaping`/reward-function chain, because doing so would double-count every base signal (that was a real bug, now fixed).
-- Shaping rewards **add** to base reward; they don't replace it
+- `base.enabled` **is functional**: when `true`, `run_from_config.build_environment()`
+  adds the `BaseReward` plugin to the reward pipeline; when `false`, the base reward
+  is omitted. `GridWorldEnv.step()` applies no reward itself, so the base reward has
+  a single application path and cannot be double-counted (issue #32). Do not also
+  list `base` under `shaping`, or it would be added twice.
+- Shaping rewards **add** to the base reward; they don't replace it
 
 ---
 
@@ -151,14 +155,14 @@ actions:
 |-----|-------|---------|
 | `discrete_5` | `DiscreteActionSpace` | RIGHT `[+1,0]`, UP `[0,+1]`, LEFT `[-1,0]`, DOWN `[0,-1]`, NOOP `[0,0]` |
 | `cross` | `CrossActionSpace` | NE `[+1,+1]`, NW `[-1,+1]`, SW `[-1,-1]`, SE `[+1,-1]`, NOOP `[0,0]` — diagonal-only, no cardinal moves |
-| `speed_discrete_5` | `SpeedDiscreteActionSpace` | Same 5 actions as `discrete_5` (subclasses it); adds a `to_moves(action, speed, stamina)` method used by `SpeedWrapper` for sub-step counting |
+| `speed_discrete_5` | `SpeedDiscreteActionSpace` | Same 5 actions as `discrete_5` (subclasses it); adds a standalone `to_moves(action, speed, stamina)` helper (the `SpeedWrapper` no longer uses it — it reads `is_noop` from the configured plugin) |
 
 **Notes:**
 - `params` is optional; none of the three shipped action spaces accept constructor params
 - Any key not in `action_registry` raises `KeyError` at runtime
 - `env.action_space_plugin.n_actions` is the authoritative source for `action_dim`; update `experiment.yaml`'s `action_dim` manually when switching action spaces for IQL/CQL/MixedTrainer (DQN infers and validates it automatically — see `reference/api-reference.md`)
 - `SpeedWrapper` does not read this config's chosen action space at all for its own sub-stepping — it always uses its own internal `SpeedDiscreteActionSpace()` instance regardless of what's configured here (see [concepts/wrappers.md](../concepts/wrappers.md))
-- `register_action_space()` (for custom action spaces) does not validate `issubclass`, unlike the observation/reward registries
+- `register_action_space()` validates `issubclass(cls, ActionSpace)` and raises `TypeError` on a bad class, consistent with the observation/reward registries
 
 ---
 
@@ -223,4 +227,4 @@ configs["experiment"]["experiment"]["algorithm"]["params"]   # {...}
 | `configs/dqn_speed2/` | 1v1, predator speed 2 |
 | `configs/dqn_speed3/` | 1v1, predator speed 3 |
 
-Run any of them with `PYTHONPATH=src python -m multi_agent_package.scripts.run_dqn --config-dir configs/dqn_1v1`.
+Run any of them with `python -m multi_agent_package.scripts.run_dqn --config-dir configs/dqn_1v1`.

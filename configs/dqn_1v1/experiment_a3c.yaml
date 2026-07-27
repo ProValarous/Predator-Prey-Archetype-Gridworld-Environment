@@ -1,0 +1,36 @@
+# configs/dqn_1v1/experiment_a3c.yaml
+# Diagnostic run on the 1v1 config (predator speed 2 / prey speed 1) that
+# already has real DQN/ActorCritic/A2C data to compare against on the
+# identical setup.
+experiment:
+  algorithm:
+    name: a3c
+    params:
+      gamma: 0.99
+      episodes: 2000
+      learning_rate: 0.001
+      hidden_layers: [64, 64]   # matches DQN/ActorCritic/A2C's hidden_layers on this config
+
+      num_workers: 4
+      n_steps: 5
+
+      entropy_coef: 0.01  # lower than the pre-normalize_returns default (0.05) --
+      # the shared normalizer keeps the critic well-calibrated, so advantages run
+      # smaller/more accurate, and 0.05's entropy bonus was strong enough to pin the
+      # policy near max entropy (uniform) instead of letting it commit. At 0.01,
+      # entropy actually differentiates (0.24 -> 0.81 by quarter) and capture rate
+      # is a real learning curve: 32.2% -> 78.2% by quarter, still climbing at the
+      # end (see docs/algorithms/a3c.md)
+      value_coef: 0.5
+      actor_weight_decay: 0.001  # workaround, superseded by normalize_returns below --
+      # left at its prior value, see docs/algorithms/a3c.md
+      normalize_returns: true  # the real fix for the entropy collapse -- ONE shared,
+      # lock-protected estimate across all workers (not per-worker-local), so the
+      # PopArt weight-rescale applies consistently. Fixes the late-training partial
+      # re-collapse the per-worker-local version showed; see docs/algorithms/a3c.md
+      return_norm_decay: 0.999
+      grad_clip: 5.0
+
+      seed: 42
+      log_interval: 10
+      curves_path: "training_curves_a3c_1v1.csv"
