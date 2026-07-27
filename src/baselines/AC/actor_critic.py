@@ -32,6 +32,7 @@ from numpy.random import default_rng
 from baselines.base import BaseAlgorithm
 from baselines.registry.algorithm_registry import register
 from baselines.AC.network import ActorCriticNetwork
+from baselines.AC.return_normalizer import RunningReturnNormalizer
 
 LOGGER = logging.getLogger("actor_critic")
 
@@ -50,6 +51,27 @@ class ActorCritic(BaseAlgorithm):
         self.value_coef = float(config.get("value_coef", 0.5))
         self.entropy_coef = float(config.get("entropy_coef", 0.0))
         self.grad_clip = float(config.get("grad_clip", 5.0))
+        # L2 penalty on the policy head only (see A2C's actor_weight_decay,
+        # docs/algorithms/a2c.md). AC's trunk is SHARED between the policy and
+        # value heads, unlike A2C's fully separate actor/critic networks, so
+        # decay is scoped to policy_head's own parameters via a dedicated
+        # optimizer param group -- decaying the shared trunk would also
+        # regularize the critic's features, not just the actor's. 0.0
+        # preserves the original single-group behavior.
+        self.actor_weight_decay = float(config.get("actor_weight_decay", 0.0))
+        # Normalizes the critic's regression target (not just the reward) by
+        # its own running mean/std -- fixes the actual root cause of the
+        # entropy collapse actor_weight_decay only works around: with nothing
+        # bounding the shared trunk's output scale, the critic's need to
+        # represent this env's large-magnitude returns forces the trunk to
+        # grow without limit, and policy_head's logits (a fixed linear
+        # readout on those same trunk features) inherit that growth for
+        # free, saturating the softmax independent of any actor gradient.
+        # See docs/algorithms/actor-critic.md for the full diagnostic trail.
+        # False preserves the original raw-value behavior (Sutton & Barto
+        # Algorithm 13.5 as originally implemented).
+        self.normalize_returns = bool(config.get("normalize_returns", False))
+        self.return_norm_decay = float(config.get("return_norm_decay", 0.999))
         self.device = torch.device(config.get("device", "cpu"))
         self.verbose = bool(config.get("verbose", True))
         self.log_interval = int(config.get("log_interval", 10))
@@ -83,7 +105,9 @@ class ActorCritic(BaseAlgorithm):
         self._debug(
             "Initialized ActorCritic | "
             f"agents={self.agent_ids} | state_dim={self.state_dim} | "
-            f"action_dim={self.action_dim} | device={self.device}"
+            f"action_dim={self.action_dim} | device={self.device} | "
+            f"actor_weight_decay={self.actor_weight_decay} | "
+            f"normalize_returns={self.normalize_returns}"
         )
 
     # ------------------------------------------------------------------
@@ -116,14 +140,30 @@ class ActorCritic(BaseAlgorithm):
     def _build_learners(self) -> None:
         self.networks = {}
         self.optimizers = {}
+        self.return_normalizers = {}
 
         for agent_id in self.agent_ids:
-            self.networks[agent_id] = ActorCriticNetwork(
+            network = ActorCriticNetwork(
                 self.state_dim, self.hidden_layers, self.action_dim
             ).to(self.device)
+            self.networks[agent_id] = network
             self.optimizers[agent_id] = optim.Adam(
-                self.networks[agent_id].parameters(), lr=self.learning_rate
+                [
+                    {
+                        "params": network.policy_head.parameters(),
+                        "weight_decay": self.actor_weight_decay,
+                    },
+                    {
+                        "params": list(network.trunk.parameters())
+                        + list(network.value_head.parameters()),
+                    },
+                ],
+                lr=self.learning_rate,
             )
+            if self.normalize_returns:
+                self.return_normalizers[agent_id] = RunningReturnNormalizer(
+                    decay=self.return_norm_decay
+                )
 
     def _debug(self, message: str) -> None:
         if self.verbose:
@@ -174,7 +214,7 @@ class ActorCritic(BaseAlgorithm):
         next_state: np.ndarray,
         terminal: bool,
         discount: float,
-    ) -> float:
+    ) -> tuple:
         """One TD(0) actor-critic step (Sutton & Barto, Algorithm 13.5).
 
         `terminal` reflects true termination only (not truncation), so the
@@ -187,15 +227,42 @@ class ActorCritic(BaseAlgorithm):
         next_state_t = torch.from_numpy(next_state).float().unsqueeze(0).to(self.device)
         action_t = torch.tensor([action], device=self.device)
 
+        with torch.no_grad():
+            _, next_value = self.networks[agent_id](next_state_t)
+            next_value = next_value * (0.0 if terminal else 1.0)
+
+            if self.normalize_returns:
+                # `value`/`next_value` are on a NORMALIZED scale once this is
+                # enabled. Un-normalize next_value against the PRIOR estimate
+                # to bootstrap in raw units, then update the running stats
+                # AND analytically rescale value_head's weights (PopArt's
+                # "preserving outputs precisely") so its denormalized
+                # prediction stays consistent across this update -- see
+                # return_normalizer.py's docstring for why the plain,
+                # non-rescaling update() alone can diverge.
+                normalizer = self.return_normalizers[agent_id]
+                next_value_raw = normalizer.denormalize(next_value.item())
+                raw_target = reward + self.gamma * next_value_raw
+                normalizer.update_and_rescale_value_head(
+                    raw_target, self.networks[agent_id].value_head
+                )
+                td_target = torch.tensor(
+                    [normalizer.normalize(raw_target)],
+                    dtype=torch.float32,
+                    device=self.device,
+                )
+            else:
+                td_target = reward + self.gamma * next_value
+
+        # Forward pass for the CURRENT state happens AFTER any value_head
+        # rescale above, so `value` and `td_target` are on the same
+        # (freshly rescaled, if normalize_returns) normalized scale --
+        # policy_head/trunk are untouched by the rescale, so this doesn't
+        # change anything about action selection.
         logits, value = self.networks[agent_id](state_t)
         dist = Categorical(logits=logits)
         log_prob = dist.log_prob(action_t)
         entropy = dist.entropy()
-
-        with torch.no_grad():
-            _, next_value = self.networks[agent_id](next_state_t)
-            next_value = next_value * (0.0 if terminal else 1.0)
-            td_target = reward + self.gamma * next_value
 
         delta = td_target - value
 
@@ -220,7 +287,7 @@ class ActorCritic(BaseAlgorithm):
         )
         optimizer.step()
 
-        return float(loss.item())
+        return float(loss.item()), float(entropy.mean().item())
 
     # ------------------------------------------------------------------
     # Training loop (BaseAlgorithm interface)
@@ -234,8 +301,10 @@ class ActorCritic(BaseAlgorithm):
             csv_file = open(self.curves_path, "w", newline="")
             reward_cols = [f"{aid}_reward" for aid in self.agent_ids]
             loss_cols = [f"{aid}_loss" for aid in self.agent_ids]
+            entropy_cols = [f"{aid}_entropy" for aid in self.agent_ids]
             csv_writer = csv.DictWriter(
-                csv_file, fieldnames=["episode"] + reward_cols + loss_cols
+                csv_file,
+                fieldnames=["episode"] + reward_cols + loss_cols + entropy_cols,
             )
             csv_writer.writeheader()
 
@@ -255,6 +324,7 @@ class ActorCritic(BaseAlgorithm):
             discount = {agent_id: 1.0 for agent_id in self.agent_ids}
             episode_rewards = {agent_id: 0.0 for agent_id in self.agent_ids}
             episode_losses = {agent_id: [] for agent_id in self.agent_ids}
+            episode_entropies = {agent_id: [] for agent_id in self.agent_ids}
             done = False
             step_count = 0
 
@@ -274,7 +344,7 @@ class ActorCritic(BaseAlgorithm):
                     self._validate_state_shape(agent_id, state)
                     self._validate_state_shape(agent_id, next_state)
 
-                    loss = self._update(
+                    loss, entropy = self._update(
                         agent_id,
                         state,
                         int(actions[agent_id]),
@@ -286,6 +356,7 @@ class ActorCritic(BaseAlgorithm):
                     discount[agent_id] *= self.gamma
                     episode_rewards[agent_id] += float(rewards[agent_id])
                     episode_losses[agent_id].append(loss)
+                    episode_entropies[agent_id].append(entropy)
 
                     if episode == 0 and step_count == 0 and self.debug_first_episode:
                         self._debug(
@@ -307,9 +378,14 @@ class ActorCritic(BaseAlgorithm):
                     f"{aid}={np.mean(losses):.5f}"
                     for aid, losses in episode_losses.items()
                 )
+                entropy_str = ", ".join(
+                    f"{aid}={np.mean(ent):.5f}"
+                    for aid, ent in episode_entropies.items()
+                )
                 self._debug(
                     f"Episode {episode + 1}/{self.episodes} | "
-                    f"steps={step_count} | rewards: {reward_str} | avg_loss: {loss_str}"
+                    f"steps={step_count} | rewards: {reward_str} | "
+                    f"avg_loss: {loss_str} | avg_entropy: {entropy_str}"
                 )
 
             if csv_writer:
@@ -319,6 +395,10 @@ class ActorCritic(BaseAlgorithm):
                     losses = episode_losses[aid]
                     row[f"{aid}_loss"] = (
                         round(sum(losses) / len(losses), 6) if losses else ""
+                    )
+                    entropies = episode_entropies[aid]
+                    row[f"{aid}_entropy"] = (
+                        round(sum(entropies) / len(entropies), 6) if entropies else ""
                     )
                 csv_writer.writerow(row)
 
@@ -337,6 +417,15 @@ class ActorCritic(BaseAlgorithm):
                 aid: net.state_dict() for aid, net in self.networks.items()
             },
         }
+        if self.normalize_returns:
+            # Persisted so a resumed/loaded run keeps interpreting the value
+            # head's (normalized-scale) output consistently -- restarting the
+            # normalizer from scratch would silently misinterpret an
+            # already-trained value head's predictions.
+            payload["return_normalizer_state"] = {
+                aid: normalizer.state_dict()
+                for aid, normalizer in self.return_normalizers.items()
+            }
         with open(path, "wb") as fh:
             pickle.dump(payload, fh)
         LOGGER.info("Saved ActorCritic checkpoint -> %s", path)
@@ -353,6 +442,13 @@ class ActorCritic(BaseAlgorithm):
                 instance.networks[agent_id].load_state_dict(
                     payload["state_dicts"][agent_id]
                 )
+
+        if instance.normalize_returns and "return_normalizer_state" in payload:
+            for agent_id in instance.agent_ids:
+                if agent_id in payload["return_normalizer_state"]:
+                    instance.return_normalizers[agent_id].load_state_dict(
+                        payload["return_normalizer_state"][agent_id]
+                    )
 
         LOGGER.info("Loaded ActorCritic checkpoint from %s", path)
         return instance

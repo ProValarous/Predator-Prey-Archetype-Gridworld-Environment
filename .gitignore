@@ -1,6 +1,9 @@
 # Ignore VS Code settings
 .vscode/
 
+# Ignore local Claude Code tool settings
+.claude/
+
 wiki/
 
 site/
@@ -19,6 +22,10 @@ wiki_compressed.zip
 
 # Stray scratch file
 test_file.md
+
+# Personal meeting-prep notes -- never meant to be committed
+PROGRESS_REPORT.md
+PRESENTATION_SCRIPT.txt
 
 # Trained model artifacts
 *.pkl
