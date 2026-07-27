@@ -36,22 +36,3 @@ authors:
     alias: Musab1Blaser
   - family-names: Yazdi Sidhwa
     given-names: Afshad
-preferred-citation:
-  type: article
-  title: "Embodiment-Induced Coordination Regimes in Tabular Multi-Agent Q-Learning"
-  year: 2026
-  journal: "arXiv preprint"
-  identifiers:
-    - type: other
-      value: "arXiv:2601.17454"
-      description: "arXiv ID"
-  url: "https://arxiv.org/abs/2601.17454"
-  authors:
-    - family-names: Atif
-      given-names: M. A.
-    - family-names: Haji
-      given-names: N. N.
-    - family-names: Shaikh
-      given-names: M. S.
-    - family-names: Atif
-      given-names: M. E.
