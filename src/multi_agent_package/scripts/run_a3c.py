@@ -72,6 +72,7 @@ def main():
     else:
         if not args.load_path:
             raise SystemExit("--load-path is required for --mode eval")
+        algo_params["greedy_eval"] = True
         algo = A3C.load(env, algo_params, args.load_path)
         print(algo.evaluate())
 
