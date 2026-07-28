@@ -6,6 +6,7 @@ one-step online ActorCritic algorithm (Sutton & Barto, Algorithm 13.5).
 import pytest
 import torch
 
+from baselines.AC.actor_critic import ActorCritic
 from baselines.AC.network import ActorCriticNetwork
 
 # ------------------------------------------------------------------
@@ -367,7 +368,6 @@ class TestActorCriticPersistence:
         (normalized-scale) output consistently -- resetting the normalizer
         to a fresh (0.0, eps) estimate would silently misinterpret an
         already-trained value head's predictions."""
-        from baselines.AC.actor_critic import ActorCritic
 
         ac_config["normalize_returns"] = True
         algo = ActorCritic(dqn_env, ac_config)
