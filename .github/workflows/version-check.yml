@@ -1,0 +1,68 @@
+name: Suggest Next Version
+
+# Advisory only: computes what the next release-segment version (X.Y.Z)
+# would be based on conventional-commit messages since the last git tag,
+# using scripts/suggest_next_version.py. Never writes to pyproject.toml,
+# never tags, never publishes anything, purely informational.
+on:
+  pull_request:
+    branches: [main, STRP]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  suggest-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run suggestion script
+        id: suggest
+        run: python scripts/suggest_next_version.py | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const level = `${{ steps.suggest.outputs.bump_level }}`;
+            const current = `${{ steps.suggest.outputs.current_version }}`;
+            const suggested = `${{ steps.suggest.outputs.suggested_version }}`;
+            const marker = "<!-- version-check-comment -->";
+            const body = `${marker}\n**Version check**: this PR looks like a **${level}** change. ` +
+              `Current release segment is \`${current}\`; if merged as-is, the next tag ` +
+              `would suggest \`${suggested}\` (release-segment only, pre-release suffix is your call).`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find((c) => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

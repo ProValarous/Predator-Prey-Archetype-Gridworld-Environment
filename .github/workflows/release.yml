@@ -1,0 +1,97 @@
+name: Release
+
+# Triggered by pushing a version tag (e.g. v0.9.0-beta, v1.0.0). Builds the
+# package once, publishes it to PyPI via trusted publishing, and creates a
+# GitHub Release with notes pulled from CHANGELOG.md.
+#
+# One-time setup required before this can succeed:
+#   1. A first manual `python -m build` + `twine upload` to create the
+#      "predator-prey-gridworld" project on PyPI (trusted publishing can
+#      only be linked to a project that already exists).
+#   2. On PyPI: project Settings -> Publishing -> add a GitHub trusted
+#      publisher pointing at this repo, workflow file "release.yml", and
+#      environment "pypi" (matching the job below).
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+
+      - name: Build sdist and wheel
+        run: python -m build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish-pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # required for PyPI trusted publishing
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Extract changelog section
+        id: notes
+        run: |
+          set +e
+          BODY=$(python scripts/extract_changelog_section.py "${{ github.ref_name }}" 2>/dev/null)
+          if [ -z "$BODY" ]; then
+            BODY="No CHANGELOG.md section found for ${{ github.ref_name }}; see the commit history for this range."
+          fi
+          {
+            echo "body<<VERSION_NOTES_EOF"
+            echo "$BODY"
+            echo "VERSION_NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          body: ${{ steps.notes.outputs.body }}
+          prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') || contains(github.ref_name, '-alpha') }}
+          files: dist/*
