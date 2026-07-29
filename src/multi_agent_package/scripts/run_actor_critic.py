@@ -49,6 +49,11 @@ def main():
     env = build_environment(configs)
     algo_params = configs["experiment"]["experiment"]["algorithm"].get("params", {})
 
+    if args.mode == "eval":
+        # AC exploration comes from sampling the stochastic
+        # policy. For evaluation we want the greedy (argmax) action instead.
+        algo_params = dict(algo_params, greedy_eval=True)
+
     if args.mode == "train":
         algo = ActorCritic(env, algo_params)
         algo.train()

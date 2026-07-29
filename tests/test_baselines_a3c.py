@@ -14,9 +14,11 @@ import pytest
 import torch
 import torch.multiprocessing as mp
 
+
 from baselines.AC.network import ActorCriticNetwork
 from baselines.AC.return_normalizer import SharedReturnNormalizer
 from baselines.A3C.shared_adam import SharedAdam
+from baselines.A3C.a3c import A3C
 from baselines.A3C.a3c import _worker_loop
 
 
@@ -382,6 +384,18 @@ class TestA3CSelectActions:
         assert set(actions.keys()) == {"pred_1", "prey_1"}
         for a in actions.values():
             assert 0 <= a < algo.action_dim
+
+    def test_greedy_eval_is_deterministic(self, dqn_env, a3c_config):
+        """With greedy_eval=True, repeated calls on the same observation
+        must return the same action every time (argmax, not sampling)."""
+        a3c_config["env_fn"] = lambda: dqn_env
+        a3c_config["greedy_eval"] = True
+        algo = A3C(dqn_env, a3c_config)
+        obs, _ = dqn_env.reset()
+        first = algo.select_actions(obs)
+        for _ in range(5):
+            again = algo.select_actions(obs)
+            assert again == first
 
 
 class TestA3CTrain:

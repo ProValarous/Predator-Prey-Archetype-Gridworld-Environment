@@ -6,6 +6,7 @@ one-step online ActorCritic algorithm (Sutton & Barto, Algorithm 13.5).
 import pytest
 import torch
 
+from baselines.AC.actor_critic import ActorCritic
 from baselines.AC.network import ActorCriticNetwork
 
 # ------------------------------------------------------------------
@@ -135,7 +136,9 @@ class TestActorCriticInit:
         assert algo.normalize_returns is False
         assert algo.return_normalizers == {}
 
-    def test_normalize_returns_builds_one_normalizer_per_agent(self, dqn_env, ac_config):
+    def test_normalize_returns_builds_one_normalizer_per_agent(
+        self, dqn_env, ac_config
+    ):
         from baselines.AC.actor_critic import ActorCritic
 
         ac_config["normalize_returns"] = True
@@ -167,6 +170,19 @@ class TestActorCriticSelectActions:
         torch.manual_seed(123)
         second = algo_b.select_actions(obs)
         assert first == second
+
+    def test_greedy_eval_is_deterministic(self, dqn_env, ac_config):
+        """With greedy_eval=True, repeated calls on the same observation
+        must return the same action every time (argmax, not sampling)."""
+        from baselines.AC.actor_critic import ActorCritic
+
+        ac_config["greedy_eval"] = True
+        algo = ActorCritic(dqn_env, ac_config)
+        obs, _ = dqn_env.reset()
+        first = algo.select_actions(obs)
+        for _ in range(5):
+            again = algo.select_actions(obs)
+            assert again == first
 
 
 class TestActorCriticUpdate:
@@ -345,12 +361,13 @@ class TestActorCriticPersistence:
         second = loaded.select_actions(obs)
         assert first == second
 
-    def test_normalize_returns_state_survives_save_load(self, dqn_env, ac_config, tmp_path):
+    def test_normalize_returns_state_survives_save_load(
+        self, dqn_env, ac_config, tmp_path
+    ):
         """A loaded checkpoint must keep interpreting the value head's
         (normalized-scale) output consistently -- resetting the normalizer
         to a fresh (0.0, eps) estimate would silently misinterpret an
         already-trained value head's predictions."""
-        from baselines.AC.actor_critic import ActorCritic
 
         ac_config["normalize_returns"] = True
         algo = ActorCritic(dqn_env, ac_config)
@@ -360,7 +377,10 @@ class TestActorCriticPersistence:
 
         loaded = ActorCritic.load(dqn_env, ac_config, str(path))
         for aid in algo.agent_ids:
-            assert loaded.return_normalizers[aid].stats() == algo.return_normalizers[aid].stats()
+            assert (
+                loaded.return_normalizers[aid].stats()
+                == algo.return_normalizers[aid].stats()
+            )
 
     def test_save_without_normalize_returns_has_no_normalizer_payload(
         self, dqn_env, ac_config, tmp_path

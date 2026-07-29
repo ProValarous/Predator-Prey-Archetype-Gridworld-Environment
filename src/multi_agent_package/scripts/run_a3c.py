@@ -65,6 +65,11 @@ def main():
     )
     algo_params["env_fn"] = EnvFactory(configs)
 
+    if args.mode == "eval":
+        # A3C exploration comes from sampling the stochastic
+        # policy. For evaluation we want the greedy (argmax) action instead.
+        algo_params = dict(algo_params, greedy_eval=True)
+
     if args.mode == "train":
         algo = A3C(env, algo_params)
         algo.train()

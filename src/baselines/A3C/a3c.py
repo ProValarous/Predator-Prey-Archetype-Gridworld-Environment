@@ -366,6 +366,10 @@ class A3C(BaseAlgorithm):
         self.return_norm_decay = float(config.get("return_norm_decay", 0.999))
         self.num_workers = int(config.get("num_workers", 4))
         self.verbose = bool(config.get("verbose", True))
+        # If True, select_actions() acts greedily (argmax over the policy's
+        # probabilities) instead of sampling. Exploration comes from sampling
+        # the stochastic policy. Evaluation scripts set this to True.
+        self.greedy_eval = bool(config.get("greedy_eval", False))
         self.log_interval = int(config.get("log_interval", 10))
         self.save_path = config.get("save_path", None)
         self.curves_path: Optional[str] = config.get("curves_path", None)
@@ -497,7 +501,11 @@ class A3C(BaseAlgorithm):
             with torch.no_grad():
                 logits, _ = self.networks[agent_id](state_t)
             dist = Categorical(logits=logits)
-            actions[agent_id] = int(dist.sample().item())
+            if self.greedy_eval:
+                action = torch.argmax(dist.probs, dim=1)
+            else:
+                action = dist.sample()
+            actions[agent_id] = int(action.item())
         return actions
 
     # ------------------------------------------------------------------
