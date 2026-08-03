@@ -31,7 +31,7 @@ from baselines.registry import get, list_algorithms
 from multi_agent_package.core.agent import Agent
 from multi_agent_package.core.gridworld import GridWorldEnv
 
-TABULAR_ALGORITHMS = ("iql", "cql", "mixed")
+TABULAR_ALGORITHMS = ("iql", "cql", "mixed", "jalgt")
 
 
 def build_test_env():
@@ -51,6 +51,16 @@ def build_test_env():
         perc_num_obstacle=10,  # light obstacle density
         render_mode=None,
         seed=42,
+        # Without this, episodes have no time-based truncation at all, and an
+        # untrained/near-random policy can go arbitrarily long without ever
+        # coincidentally achieving capture -- every real experiment config
+        # sets termination.max_steps for exactly this reason (see
+        # configs/*/env.yaml). CQL/IQL's near-instant per-step cost (a numpy
+        # argmax/mean) hid this gap; it surfaced concretely diagnosing a
+        # multi-minute hang on JAL-GT, whose per-step cost (an LP solve, a
+        # few ms) is ~20-30x higher and compounds over however many steps an
+        # untruncated episode happens to run.
+        max_steps=200,
     )
 
     return env

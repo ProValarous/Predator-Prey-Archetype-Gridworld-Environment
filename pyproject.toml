@@ -39,6 +39,7 @@ dependencies = [
     "pyyaml",
     "torch",
     "tensorboard",
+    "scipy",
 ]
 
 [project.optional-dependencies]

@@ -6,3 +6,4 @@ from baselines.DQN.dqn import DQN  # noqa: F401
 from baselines.AC.actor_critic import ActorCritic  # noqa: F401
 from baselines.A2C.a2c import A2C  # noqa: F401
 from baselines.A3C.a3c import A3C  # noqa: F401
+from baselines.JALGT.jal_gt import JALGT  # noqa: F401

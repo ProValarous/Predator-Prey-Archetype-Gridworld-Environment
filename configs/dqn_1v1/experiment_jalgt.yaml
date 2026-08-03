@@ -1,0 +1,13 @@
+experiment:
+  algorithm:
+    name: jalgt
+    params:
+      alpha: 0.1                    # Q-table learning rate
+      gamma: 0.99                   # discount factor
+      epsilon: 1.0                  # start fully random
+      epsilon_decay: 0.995
+      min_epsilon: 0.05             # floor for exploration
+      action_dim: 5                 # discrete_5 action space
+
+      episodes: 1000
+      seed: 42
