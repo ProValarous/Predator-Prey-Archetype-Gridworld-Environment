@@ -1,10 +1,15 @@
 # JAL-GT — Joint-Action Learning with Game Theory
 
-> **Status: implemented and verified.** `src/baselines/JALGT/jal_gt.py` ships
-> Correlated Q-learning as described below. Correctness is checked directly
-> against the book's own worked examples (exact Prisoner's Dilemma ground
-> truth, Chicken-game welfare bound), and learning behavior is cross-checked
-> against CQL under matched conditions — see [Verification](#verification).
+> **Status: implemented; LP correctness verified; a real learning-effectiveness
+> limitation found and root-caused.** `src/baselines/JALGT/jal_gt.py` ships
+> Correlated Q-learning as described below. The equilibrium computation
+> itself is checked directly against the book's own worked examples (exact
+> Prisoner's Dilemma ground truth, Chicken-game welfare bound) and is
+> correct. A longer training run found that it substantially underperforms
+> CQL on this environment — a genuine, structural characteristic (applying
+> the equilibrium directly to raw, unmarginalized per-joint-action values
+> is noise-sensitive at most states), not a bug — see
+> [Verification](#verification) for the full, evidence-based writeup.
 
 Where [CQL](cql-mixed.md) reduces the multi-agent problem to a single
 centralized decision-maker (one shared Q-table, summed reward), **JAL-GT**
@@ -225,27 +230,105 @@ that the fix took effect by inspecting actual per-step rewards before and
 after (flat `-5.0` before, varying `-7.0 / -6.5 / -6.5...` after).
 
 That fix is a genuine correctness improvement to the config regardless of
-what came next: re-running the full curve with shaping restored produced
-**the exact same numbers again**, unchanged to the decimal, for both
-algorithms. At this point the honest conclusion is that 3000 episodes simply
-isn't enough training budget for *either* tabular method to meaningfully
-differentiate itself from tie-broken default behavior on this task —
-`GridWorldEnv`'s obstacle positions are also re-randomized every episode
-via a persistent RNG that `reset()` never re-seeds (confirmed by reading
-`_initialize_obstacles`), and since `local_radius`'s observation encoding
-bakes obstacle-relative-position directly into the hashable state, the same
-predator/prey scenario rarely re-hashes to the same joint state across
-episodes even on a small grid — a state-fragmentation factor that applies
-to CQL and IQL equally, not something specific to JAL-GT. Demonstrating a
-clearly-improving curve on this environment would need substantially more
-training budget (or a coarser, obstacle-invariant state encoding) than what
-was tried here — a real limitation, being reported as one rather than
-re-run until a better-looking number appeared. The load-bearing verification
-result stands regardless: across every variant tested (the original
-`dqn_1v1` config, the no-shaping quick-start config, and the
-shaping-restored quick-start config), **JAL-GT's behavior was indistinguishable
-from CQL's under matched conditions** — the actual question this
-verification pass was for.
+what came next: re-running the same 3000-episode curve with shaping restored
+produced the exact same numbers again, unchanged to the decimal, for both
+algorithms. At 3000 episodes the honest reading was "neither algorithm has
+converged yet" — which turned out to be correct, but incomplete, and the
+next experiment retracts the conclusion drawn from it.
+
+**Retraction, from a longer, better-controlled run:** `GridWorldEnv`'s
+obstacle positions are re-randomized every episode via a persistent RNG that
+`reset()` never re-seeds (confirmed by reading `_initialize_obstacles`), and
+since `local_radius` bakes obstacle-relative-position into the hashable
+state, this fragments the tabular state space regardless of algorithm. To
+separate "not enough episodes" from "structurally can't converge," both
+algorithms were re-run for **30,000 episodes** (10x the original budget, 10
+checkpoints) in two conditions: obstacles present (the config as committed)
+and obstacles forced to 0 (isolating that one variable, with shaping still
+present this time).
+
+*With obstacles*, both algorithms stayed flat and noisy (10-17%) across the
+full 30,000 episodes — confirms the state fragmentation caps both
+regardless of training time; more budget alone doesn't fix it.
+
+*Without obstacles*, the picture changed completely: **CQL climbed cleanly
+from 7.3% to 56.0%** across the 10 checkpoints — direct proof the task is
+learnable by a tabular method given enough episodes once that confound is
+removed. **JAL-GT stayed at a literal, sustained 0.0% capture rate across
+every one of the 10 checkpoints and all 30,000 episodes.** Not "learns
+slower" — zero captures in every 150-episode evaluation window, for the
+entire run. This is a genuine divergence between the two algorithms under
+conditions proven to be learnable, not a shared limitation — the "JAL-GT is
+indistinguishable from CQL" conclusion above does not survive this longer,
+better-controlled experiment, and is retracted rather than left standing
+alongside contradicting evidence.
+
+**Root cause, found by direct inspection, not speculation:** trained JAL-GT
+on the no-obstacle config and inspected its actual learned data at several
+visited states. Two things stood out:
+
+1. **Prey's Q-values were exactly zero at every sampled state** — never
+   learned at all (prey's own reward is 0 except on the rare actual
+   capture). Since the correlated-equilibrium LP's objective maximizes the
+   *sum* of both agents' Q-values (Eq. 4.20), a uniformly-zero prey
+   contribution means the objective silently collapses to "maximize the
+   predator's Q alone" — confirmed directly: at every sampled state, the
+   equilibrium's chosen joint action exactly matched the `argmax` of the
+   predator's own raw Q-vector. The LP is doing precisely what it's
+   supposed to; there is no bug in the equilibrium computation itself.
+2. **But the predator's raw per-joint-action Q-values rarely differ enough
+   to mean anything.** Across 1260 learned states, the spread (max − min)
+   of the predator's raw Q-vector had a **median of just 0.98** on a
+   baseline around −10 — a few states developed a long tail of much
+   stronger differentiation (mean 8.15, max 55.4, presumably states
+   adjacent to an actual experienced capture), but *most* states show
+   almost no signal. The equilibrium correctly argmaxes this data every
+   time, but when the data itself is this close to noise, "correctly
+   argmax the noise" produces a policy that flips direction unpredictably
+   between updates rather than committing to and reinforcing "approach the
+   prey" — exactly the permanent-`noop`/2-cell-cycle behavior traced
+   earlier.
+
+**Why CQL doesn't hit the same wall, checked directly rather than assumed:**
+CQL's *raw*, unmarginalized joint Q-vector isn't dramatically more
+differentiated (median spread 4.5, no long tail, max only 8.2) — so the gap
+isn't really about how much signal exists in the raw table. It's about what
+each algorithm *does* with that data before choosing an action. CQL's
+`select_actions()` marginalizes — averages the joint Q-vector over the
+*other* agent's action axis before taking `argmax` — and the resulting
+predator-marginal spread is **tiny** (median 0.086, smaller than JAL-GT's
+raw median). And yet that tiny, averaged margin is what drives CQL's 56%
+capture rate. Averaging over the prey's 5 actions acts as free variance
+reduction: the resulting signal is small but *stable*, so the same `argmax`
+keeps resolving the same way update after update, letting Q-learning's
+ordinary repeated reinforcement (`alpha=0.1` nudges toward the same
+direction every time) actually accumulate into a real policy. JAL-GT's
+correlated-equilibrium selection, applied directly to the **raw**,
+unmarginalized per-joint-action values — exactly as Algorithm 7 and Section
+6.2.3 specify, with no marginalization step in the book's formulation —
+gets no such smoothing for free, and at the majority of states pays for it.
+
+**This is a genuine, structural characteristic of correlated-equilibrium
+JAL-GT, not a bug in this implementation** — it follows directly from
+Algorithm 7 as written, verified independently to be computing the correct
+LP (the Prisoner's Dilemma and Chicken ground-truth tests above), and
+connects to a caveat the book itself already raises: Section 6.2.2 notes
+Nash-Q's convergence guarantee requires every encountered stage game to have
+a "global optimum" — informally, a state where all agents' raw payoffs
+clearly agree on a jointly-best action, which is exactly the long-tail,
+high-spread states observed above (Q-value differentiation of 20-55,
+essentially unambiguous). The book's convergence theory is built around that
+clear-consensus case; it says nothing about what a raw-value equilibrium
+concept should do at the *median* state, where the data is closer to noise
+than signal — which is most of them, in a small-reward, exploration-limited
+tabular setting like this one. Worth flagging as a real, useful characteristic
+for anyone extending this baseline: a version of JAL-GT that marginalizes
+each agent's own payoff matrix before constructing the stage game (closer
+to what CQL does implicitly at decision time, while keeping more
+game-theoretic structure than CQL's plain `argmax`) is a concrete, promising
+follow-up — not implemented here, since it would be a genuine, deliberate
+departure from Algorithm 7's literal specification, and deserves its own
+design discussion rather than a silent patch.
 
 ## Papers
 
