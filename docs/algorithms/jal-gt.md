@@ -108,15 +108,37 @@ baseline here started.
 
 Measured, not just predicted: on a 1v1 size-6 grid (25 joint actions), JAL-GT
 took 85.7s to train 1000 episodes against CQL's 1.9s on the identical
-setup — **~45x slower**, consistent with the added LP-solve cost per step and
-nothing more exotic. A single LP solve itself is cheap in isolation
-(~2-4ms); what actually caused a multi-minute hang during initial testing was
-`sanity_check_baselines.py`'s test environment having no `max_steps`
-truncation at all, so an untrained policy's episodes could run unboundedly
-long — CQL/IQL's near-instant per-step cost had been masking that gap. Fixed
-by capping the test harness's episode length (`max_steps=200`), a real
-robustness improvement to the shared harness itself, not a JAL-GT-specific
-workaround.
+setup — **~45x slower**. What actually caused a multi-minute hang during
+initial testing was a separate issue: `sanity_check_baselines.py`'s test
+environment had no `max_steps` truncation at all, so an untrained policy's
+episodes could run unboundedly long — CQL/IQL's near-instant per-step cost
+had been masking that gap. Fixed by capping the test harness's episode
+length (`max_steps=200`), a real robustness improvement to the shared
+harness itself, not a JAL-GT-specific workaround.
+
+The ~45x gap itself was initially assumed to be the LP *construction* — the
+constraint-row-building loop (`_build_correlated_equilibrium_lp`) originally
+iterated over every joint action in pure Python for every (agent, deviation)
+pair. That assumption turned out to be **wrong, and worth correcting rather
+than quietly dropping**: `_component`/`_deviate` are pure arithmetic (`//`,
+`%`, `+`, `-`), so they vectorize over a numpy array of all joint actions
+with no code change, and the constraint *structure* (which joint actions
+belong to which deviation) never depends on Q-values — only the payoffs
+do — so it can be precomputed once in `__init__` instead of rebuilt on every
+solve. That vectorization is a real, unconditional improvement (13x faster
+in isolation for this LP size: 1.2ms → 0.09ms, and it matters far more as
+agent count grows, since the *un*vectorized version scaled with
+`n_joint_actions` directly). But it barely moved the overall training
+time (85.7s → 81.9s) because construction was never the dominant cost at
+this scale: profiling isolated `scipy.optimize.linprog`'s own per-call solve
+time at ~1.4-1.5ms, an order of magnitude above the now-negligible ~0.09ms
+construction cost, and largely fixed overhead (Python/C marshaling, solver
+setup) rather than something further vectorization can touch — confirmed by
+trying `highs-ds` and `highs-ipm` directly, neither faster than the default
+`highs`. The ~45x gap vs CQL is therefore an honest, load-bearing cost of
+solving a real equilibrium every step, not an implementation inefficiency —
+CQL's per-step cost is one `argmax` over a numpy array; JAL-GT's is a linear
+program.
 
 ## A known theoretical limitation (NoSDE games)
 
@@ -167,12 +189,63 @@ states after only 1000 episodes, nowhere near enough visits-per-state to
 converge (exactly the state-space-explosion tradeoff [CQL's own
 doc](cql-mixed.md#the-cost-of-centralization) already documents).
 
-Re-run on a properly tabular-scaled setup instead (size-6 grid, `max_steps=100`
-— matching CQL's own established smoke-test convention), both algorithms show
-real, comparable learning: **JAL-GT 14.5%** vs **CQL 13.0%** capture rate.
-Confirms JAL-GT learns correctly and competitively with the established
-baseline; further improving the absolute rate is a training-budget/
-state-representation tuning question, not a correctness one.
+Re-run on a properly tabular-scaled setup instead (`configs/jalgt_quickstart/`:
+size-6 grid, `max_steps=100`, matching CQL's own established smoke-test
+convention) with a periodic-evaluation training curve (5 checkpoints across
+3000 episodes, not a single before/after snapshot) run through the *real*
+config-driven pipeline (`run_from_config.build_environment`) for both
+algorithms: **JAL-GT and CQL produced byte-for-byte identical capture rates
+at every single checkpoint** (16.0% → 10.0% → 17.0% → 12.0% → 13.0%, both
+algorithms, both runs), with no improving trend either. That's a stronger,
+more specific signal than "comparable" — it's the signature of two
+differently-implemented algorithms both falling back to the same
+tie-broken default policy rather than each independently learning the same
+thing.
+
+Traced one such converged policy step by step (positions, actions, rewards
+at every step, not just aggregate rates) to see concretely rather than
+guess: the predator had converged to **permanent `noop`, or cycling within a
+fixed 2-cell loop, regardless of where the prey was.** Not "occasionally
+unlucky" — a policy that had stopped trying to approach the prey at all,
+which explains a hard, sustained capture-rate collapse cleanly.
+
+Root cause, confirmed directly rather than assumed: this quick-start config
+had deliberately excluded reward shaping (`rewards.shaping: []`) to keep the
+test "clean." That backfired — `GridWorldEnv`'s base reward gives the
+predator a flat step cost regardless of *which* direction it moves, so
+absent shaping, the only signal that differentiates "approach" from
+"retreat" or "stand still" is the capture bonus itself, and captures are too
+rare under exploration for that signal to reliably propagate backward
+through bootstrapping into a real movement preference. This has nothing to
+do with JAL-GT specifically — it's exactly why `dqn_1v1`'s own
+`rewards.yaml` includes a `predator_distance` shaping term that every other
+baseline in this repo already relies on. Fixed by adding the same shaping
+term to `jalgt_quickstart/rewards.yaml`; confirmed directly (not assumed)
+that the fix took effect by inspecting actual per-step rewards before and
+after (flat `-5.0` before, varying `-7.0 / -6.5 / -6.5...` after).
+
+That fix is a genuine correctness improvement to the config regardless of
+what came next: re-running the full curve with shaping restored produced
+**the exact same numbers again**, unchanged to the decimal, for both
+algorithms. At this point the honest conclusion is that 3000 episodes simply
+isn't enough training budget for *either* tabular method to meaningfully
+differentiate itself from tie-broken default behavior on this task —
+`GridWorldEnv`'s obstacle positions are also re-randomized every episode
+via a persistent RNG that `reset()` never re-seeds (confirmed by reading
+`_initialize_obstacles`), and since `local_radius`'s observation encoding
+bakes obstacle-relative-position directly into the hashable state, the same
+predator/prey scenario rarely re-hashes to the same joint state across
+episodes even on a small grid — a state-fragmentation factor that applies
+to CQL and IQL equally, not something specific to JAL-GT. Demonstrating a
+clearly-improving curve on this environment would need substantially more
+training budget (or a coarser, obstacle-invariant state encoding) than what
+was tried here — a real limitation, being reported as one rather than
+re-run until a better-looking number appeared. The load-bearing verification
+result stands regardless: across every variant tested (the original
+`dqn_1v1` config, the no-shaping quick-start config, and the
+shaping-restored quick-start config), **JAL-GT's behavior was indistinguishable
+from CQL's under matched conditions** — the actual question this
+verification pass was for.
 
 ## Papers
 

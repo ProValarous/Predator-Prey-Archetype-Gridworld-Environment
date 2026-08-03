@@ -1,0 +1,9 @@
+observations:
+  type: local_radius
+  params:
+    include_agents: true
+    include_obstacles: true
+    radius: 10            # on a 6x6 grid, max Manhattan distance is 10, so this
+                           # is effectively full visibility -- keeps the tabular
+                           # state space determined by actual positions on this
+                           # small grid, not an arbitrary partial-visibility cut

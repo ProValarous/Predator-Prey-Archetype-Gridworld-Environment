@@ -1,0 +1,16 @@
+agents:
+  predators:
+    count: 1
+    base_type: predator
+    speed: 1              # no speed advantage -- keep this a clean tabular test,
+    stamina: 9999          # not conflated with dqn_1v1's speed-advantage dynamic
+
+  preys:
+    count: 1
+    base_type: prey
+    speed: 1
+    stamina: 9999
+
+  naming:
+    predator_prefix: predator
+    prey_prefix: prey

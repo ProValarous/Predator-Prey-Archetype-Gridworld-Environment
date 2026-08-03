@@ -106,6 +106,34 @@ class JALGT(BaseAlgorithm):
             for aid in self.agent_ids
         }
 
+        # Precomputed structure for the correlated-equilibrium LP's deviation
+        # constraints (Eq. 4.21) -- which joint actions belong to each
+        # (agent position, recommended action) group, and where each such
+        # joint action lands if that agent deviates to each alternate action.
+        # This depends only on n_agents/action_dim, never on Q-values, so it
+        # is built ONCE here rather than rebuilt on every LP solve -- solving
+        # the stage game happens twice per environment step during training,
+        # and rebuilding this from scratch every time was the dominant cost
+        # in an unvectorized first version (see docs/algorithms/jal-gt.md's
+        # Scalability section for the measured ~45x-slower-than-CQL finding
+        # this closes).
+        self._all_joint_actions = np.arange(self.n_joint_actions)
+        self._pos_components = [
+            self._component(self._all_joint_actions, pos)
+            for pos in range(self.n_agents)
+        ]
+        self._pos_masks = [
+            [self._pos_components[pos] == a_prime for a_prime in range(self.action_dim)]
+            for pos in range(self.n_agents)
+        ]
+        self._deviated_indices = [
+            [
+                self._deviate(self._all_joint_actions, pos, a)
+                for a in range(self.action_dim)
+            ]
+            for pos in range(self.n_agents)
+        ]
+
     # ------------------------------------------------------------------
     # State encoding (wrapper-compatible, same approach as CQL/IQL)
     # ------------------------------------------------------------------
@@ -152,17 +180,22 @@ class JALGT(BaseAlgorithm):
         digits.reverse()
         return {aid: digits[i] for i, aid in enumerate(self.agent_ids)}
 
-    def _component(self, idx: int, pos: int) -> int:
+    def _component(self, idx, pos: int):
         """The action of the agent at position `pos` (0 = agent_ids[0],
-        the most significant digit) within joint-action index `idx`."""
+        the most significant digit) within joint-action index `idx`. `idx`
+        may be a scalar int or a numpy array -- pure arithmetic (//, %), so
+        it vectorizes over an array of indices with no code change, which is
+        exactly how __init__ precomputes _pos_components/_pos_masks/
+        _deviated_indices for every joint action at once."""
         power = self.action_dim ** (self.n_agents - 1 - pos)
         return (idx // power) % self.action_dim
 
-    def _deviate(self, idx: int, pos: int, new_action: int) -> int:
+    def _deviate(self, idx, pos: int, new_action: int):
         """Joint-action index identical to `idx` except the agent at
-        position `pos` plays `new_action` instead. O(1): exploits the
-        place-value structure of _joint_action_index directly rather than
-        decoding and re-encoding the whole tuple."""
+        position `pos` plays `new_action` instead. O(1) per element:
+        exploits the place-value structure of _joint_action_index directly
+        rather than decoding and re-encoding the whole tuple. `idx` may be a
+        scalar int or a numpy array, same as _component."""
         old_action = self._component(idx, pos)
         power = self.action_dim ** (self.n_agents - 1 - pos)
         return idx + (new_action - old_action) * power
@@ -188,6 +221,12 @@ class JALGT(BaseAlgorithm):
         Rearranged into linprog's <= 0 form. Rows where a'=a'' are omitted --
         they reduce to the trivial 0 >= 0 and don't affect feasibility or the
         optimum, only LP size.
+
+        Vectorized using the deviation structure precomputed once in
+        __init__ (_pos_masks, _deviated_indices): that structure depends
+        only on n_agents/action_dim, never on q_values, so each row here is
+        one numpy boolean-mask assignment over all joint actions at once
+        rather than a Python-level loop over every individual joint action.
         """
         n = self.n_joint_actions
         total_reward = np.zeros(n, dtype=np.float64)
@@ -199,15 +238,15 @@ class JALGT(BaseAlgorithm):
         for pos, aid in enumerate(self.agent_ids):
             qi = q_values[aid]
             for a_prime in range(self.action_dim):
+                mask = self._pos_masks[pos][a_prime]
+                if not mask.any():
+                    continue
                 for a_double_prime in range(self.action_dim):
                     if a_prime == a_double_prime:
                         continue
+                    deviated = self._deviated_indices[pos][a_double_prime]
                     row = np.zeros(n, dtype=np.float64)
-                    for ja in range(n):
-                        if self._component(ja, pos) != a_prime:
-                            continue
-                        deviated = self._deviate(ja, pos, a_double_prime)
-                        row[ja] += qi[deviated] - qi[ja]
+                    row[mask] = qi[deviated[mask]] - qi[self._all_joint_actions[mask]]
                     rows.append(row)
 
         A_ub = np.array(rows, dtype=np.float64)

@@ -1,0 +1,20 @@
+rewards:
+  base:
+    enabled: true
+
+  shaping:
+    # Without this, the only reward gradient available to a tabular learner
+    # is the capture bonus itself, which is rare enough under exploration
+    # that it doesn't propagate through bootstrapping into a real movement
+    # preference -- confirmed directly: an earlier version of this config
+    # with shaping=[] left both JAL-GT and CQL unable to learn effective
+    # chasing at all (JAL-GT's predator converged to permanent noop, CQL
+    # stayed noisy/flat) purely because neither had a signal to learn from,
+    # not because of any algorithm defect. Matches dqn_1v1's own rewards.yaml
+    # and every other baseline in this repo -- this isn't a JAL-GT-specific
+    # crutch, it's what makes this task learnable by anything tabular.
+    - name: predator_distance
+      weight: 0.5
+
+  normalization:
+    enabled: false
