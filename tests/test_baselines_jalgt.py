@@ -292,6 +292,65 @@ class TestCorrelatedEquilibriumLP:
 # ------------------------------------------------------------------
 
 
+class TestMarginalWeight:
+    def test_rejects_invalid_marginal_weight(self):
+        env = make_env(n_pred=1, n_prey=1)
+        with pytest.raises(ValueError):
+            JALGT(env, base_config(marginal_weight=-0.1))
+        with pytest.raises(ValueError):
+            JALGT(env, base_config(marginal_weight=1.1))
+
+    def test_default_weight_is_zero_and_is_a_no_op(self):
+        env = make_env(n_pred=1, n_prey=1)
+        algo = JALGT(env, base_config(action_dim=5))
+        assert algo.marginal_weight == 0.0
+        q_values = {
+            aid: np.random.default_rng(0).normal(size=25) for aid in algo.agent_ids
+        }
+        smoothed = algo._marginalized_q_values(q_values)
+        for aid in algo.agent_ids:
+            assert smoothed[aid] is q_values[aid]  # same object, not even copied
+
+    def test_weight_one_replaces_with_pure_marginal(self):
+        """At weight=1.0, every joint action sharing agent i's own action a_i
+        must get EXACTLY the mean of agent i's raw Q over all joint actions
+        with that a_i -- computed independently here, not by calling the
+        method under test with different inputs."""
+        env = make_env(n_pred=1, n_prey=1)
+        algo = JALGT(env, base_config(action_dim=5, marginal_weight=1.0))
+        pred_id, prey_id = algo.agent_ids
+        rng = np.random.default_rng(1)
+        qi = rng.normal(size=25)
+        q_values = {pred_id: qi, prey_id: np.zeros(25)}
+
+        smoothed = algo._marginalized_q_values(q_values)
+
+        # independent, brute-force expected marginal: predator is position 0
+        # (most significant digit), so its own action = joint_idx // 5
+        for joint_idx in range(25):
+            own_action = joint_idx // 5
+            same_own_action = [j for j in range(25) if j // 5 == own_action]
+            expected = np.mean([qi[j] for j in same_own_action])
+            assert smoothed[pred_id][joint_idx] == pytest.approx(expected)
+
+    def test_intermediate_weight_is_a_convex_combination(self):
+        env = make_env(n_pred=1, n_prey=1)
+        algo_raw = JALGT(env, base_config(action_dim=5, marginal_weight=0.0))
+        algo_full = JALGT(env, base_config(action_dim=5, marginal_weight=1.0))
+        algo_half = JALGT(env, base_config(action_dim=5, marginal_weight=0.5))
+        rng = np.random.default_rng(2)
+        qi = rng.normal(size=25)
+        q_values = {algo_half.agent_ids[0]: qi, algo_half.agent_ids[1]: np.zeros(25)}
+
+        raw = algo_raw._marginalized_q_values(dict(q_values))
+        full = algo_full._marginalized_q_values(dict(q_values))
+        half = algo_half._marginalized_q_values(dict(q_values))
+
+        aid = algo_half.agent_ids[0]
+        expected_half = 0.5 * raw[aid] + 0.5 * full[aid]
+        assert half[aid] == pytest.approx(expected_half)
+
+
 class TestJALGTSelectActions:
     def test_returns_all_agents(self):
         env = make_env()

@@ -1,15 +1,21 @@
 # JAL-GT — Joint-Action Learning with Game Theory
 
 > **Status: implemented; LP correctness verified; a real learning-effectiveness
-> limitation found and root-caused.** `src/baselines/JALGT/jal_gt.py` ships
+> limitation found, root-caused, and one mitigation attempt (marginalization)
+> tried and found insufficient.** `src/baselines/JALGT/jal_gt.py` ships
 > Correlated Q-learning as described below. The equilibrium computation
 > itself is checked directly against the book's own worked examples (exact
 > Prisoner's Dilemma ground truth, Chicken-game welfare bound) and is
 > correct. A longer training run found that it substantially underperforms
-> CQL on this environment — a genuine, structural characteristic (applying
-> the equilibrium directly to raw, unmarginalized per-joint-action values
-> is noise-sensitive at most states), not a bug — see
-> [Verification](#verification) for the full, evidence-based writeup.
+> CQL on this environment. The actual mechanism, found by direct inspection
+> rather than assumed: sparse per-joint-action data contains extreme outlier
+> values (single unlucky/lucky episodes passing through a rarely-visited
+> cell), and the correlated-equilibrium LP's raw argmax — and, it turns out,
+> mean-based marginalization too — are both non-robust to that kind of
+> outlier, unlike CQL's `max()`-based bootstrap. See
+> [Verification](#verification) for the full, evidence-based writeup,
+> including a real bug found and fixed along the way (bootstrap dilution)
+> and a flagged-but-untested idea for anyone picking this up next.
 
 Where [CQL](cql-mixed.md) reduces the multi-agent problem to a single
 centralized decision-maker (one shared Q-table, summed reward), **JAL-GT**
@@ -321,14 +327,74 @@ essentially unambiguous). The book's convergence theory is built around that
 clear-consensus case; it says nothing about what a raw-value equilibrium
 concept should do at the *median* state, where the data is closer to noise
 than signal — which is most of them, in a small-reward, exploration-limited
-tabular setting like this one. Worth flagging as a real, useful characteristic
-for anyone extending this baseline: a version of JAL-GT that marginalizes
-each agent's own payoff matrix before constructing the stage game (closer
-to what CQL does implicitly at decision time, while keeping more
-game-theoretic structure than CQL's plain `argmax`) is a concrete, promising
-follow-up — not implemented here, since it would be a genuine, deliberate
-departure from Algorithm 7's literal specification, and deserves its own
-design discussion rather than a silent patch.
+tabular setting like this one.
+
+### Marginalized JAL-GT: implemented, tested at scale, found insufficient
+
+The obvious follow-up from the reasoning above — a version of JAL-GT that
+marginalizes each agent's own payoff matrix (averaging over the *other*
+agent's actions, holding this agent's own action fixed) before constructing
+the stage game, closer to what CQL does implicitly at decision time — was
+implemented (`marginal_weight` config parameter, 0.0 = pure Algorithm 7,
+1.0 = fully marginalized, blended in between) and tested, not just proposed.
+
+**A real bug, found along the way:** the first version marginalized both the
+equilibrium *and* the bootstrap target, "for internal consistency." That
+consistency argument was wrong in a way that actively mattered:
+`_marginalized_q_values` averages over every joint action sharing an agent's
+own action, *including* still-unvisited (defaultdict-zero) slots — tolerable
+for choosing an action (a diluted value can still be the largest of a few
+near-zero options), but using the same diluted value as the **bootstrap
+target** meant every backward TD step propagated an already-attenuated
+value, compounding across the length of a chase and fully suppressing
+learning regardless of `marginal_weight`. Fixed by reverting the bootstrap
+to always use raw Q-values — matching CQL, which only ever marginalizes at
+decision time, never inside its `max()`-based bootstrap.
+
+**Even after that fix, marginalization did not help.** Re-run at the same
+30,000-episode budget where CQL's own curve went from 7.3% to 56.0%: both
+`marginal_weight=0.5` and `marginal_weight=1.0` stayed at a hard, sustained
+~0.0% throughout — the identical failure mode as the unmarginalized version,
+not a partial improvement.
+
+**The actual mechanism, found by direct inspection of the trained model
+rather than further assumption:** sampled states' raw per-joint-action
+Q-values show a consistent, striking pattern — whenever one specific *other
+agent's* action co-occurs in a joint-action slot, that slot's value is an
+extreme outlier (e.g. −140 to −190) against a backdrop of much smaller
+values (−1 to −45) for every other co-occurring action. This is consistent
+with what sparse coverage predicts: each individual (state, joint-action)
+cell gets only a handful of visits, so a single unusually bad (or good)
+episode can dominate that one cell's estimate entirely. Averaging five such
+cells to build a marginal doesn't dilute that outlier away — a **mean is not
+a robust statistic against outliers** — it drags the whole average toward
+whichever cell happens to carry the extreme value, which turns out to
+swamp the real, smaller-magnitude signal the marginalization was meant to
+surface. Confirmed directly: aggregated over 1257 learned states, the
+equilibrium's chosen action matched the marginal's own `argmax` **100% of
+the time** (so the LP itself has no bug here either — it faithfully
+optimizes whatever data it's given), and the marginal spread across actions
+came out even *smaller* than the raw spread had been (mean 1.2, median
+0.64) — marginalization made the noise problem measurably worse here, not
+better, because averaging is the wrong tool against outlier-heavy data.
+
+This reframes why CQL succeeds: it isn't that CQL's marginalization step is
+inherently smarter, it's that CQL's **bootstrap** is a `max()`, and `max` is
+naturally robust to a single bad-but-rarely-visited joint-action cell —
+capturing behavior only needs *one* consistently-good option to be found and
+propagated, and a bad outlier elsewhere in the same row simply doesn't
+matter to a `max`. JAL-GT's correlated-equilibrium selection, and any
+mean-based smoothing applied to it, keeps averaging that outlier back in.
+
+**Not chased further in this pass, flagged explicitly for whoever picks this
+up next:** a stage-game construction based on a robust statistic (a
+trimmed mean, a median, or a visit-count-weighted estimate that discounts
+sparsely-observed cells rather than averaging them in at full weight) is a
+concrete, motivated idea this investigation points to directly — untested,
+and a large enough change to deserve its own verification pass rather than
+another same-session iteration. `marginal_weight` ships as implemented and
+tested (default `0.0`, a verified no-op, preserving the original,
+book-faithful behavior) — it just isn't the fix.
 
 ## Papers
 

@@ -76,6 +76,14 @@ class JALGT(BaseAlgorithm):
                    the sum of agents' expected rewards) to pick among the
                    possibly many equilibria -- the same selection rule the
                    book uses in its own worked example.
+    marginal_weight : optional (default 0.0 = pure Algorithm 7). Blends each
+                   agent's raw Q_i(s, a) with a marginal estimate before
+                   building the stage game -- see the docstring on
+                   self.marginal_weight in __init__ and
+                   docs/algorithms/jal-gt.md's Verification section for why:
+                   raw per-joint-action values turned out to be
+                   noise-dominated at most states in practice, unlike CQL's
+                   marginalize-then-argmax action selection.
     """
 
     def __init__(self, env, config: dict):
@@ -88,6 +96,30 @@ class JALGT(BaseAlgorithm):
         self.min_epsilon = config.get("min_epsilon", 0.05)
         self.action_dim = config.get("action_dim", 5)
         self.episodes = config.get("episodes", 1000)
+
+        # Blends each agent's raw per-joint-action Q-values with a marginal
+        # estimate (averaged over the OTHER agents' actions, holding this
+        # agent's own action fixed) before constructing the stage game.
+        # 0.0 (default) is pure Algorithm 7 as specified -- the exact
+        # behavior already verified against the book's ground-truth
+        # examples. See docs/algorithms/jal-gt.md's Verification section for
+        # why weight > 0 exists: raw per-joint-action Q-values turned out to
+        # be noise-dominated at most states in practice (median spread under
+        # 1 unit on this environment), while CQL's marginalize-then-argmax
+        # action selection gets meaningful noise reduction for free from
+        # averaging over the other agent's action axis. Full marginalization
+        # (weight=1.0 with the joint-action term dropped entirely) would
+        # collapse each agent's payoff to depend only on its own action,
+        # degenerating the "equilibrium" into independent per-agent
+        # optimization -- i.e. CQL with extra steps. Blending keeps genuine
+        # joint-action-dependent payoffs (weight < 1.0 always retains some
+        # raw-value sensitivity) while trading toward CQL's stability by
+        # degree, not switching to it outright.
+        self.marginal_weight = float(config.get("marginal_weight", 0.0))
+        if not 0.0 <= self.marginal_weight <= 1.0:
+            raise ValueError(
+                f"marginal_weight must be in [0, 1], got {self.marginal_weight}"
+            )
 
         self.rng = default_rng(config.get("seed", None))
 
@@ -204,6 +236,35 @@ class JALGT(BaseAlgorithm):
     # Stage game: build + solve the correlated-equilibrium LP
     # ------------------------------------------------------------------
 
+    def _marginalized_q_values(self, q_values: dict) -> dict:
+        """Blends each agent's raw per-joint-action Q-vector with a marginal
+        estimate -- averaged over the OTHER agents' actions, holding this
+        agent's own action fixed -- via self.marginal_weight. At weight=0.0
+        (default) returns q_values completely unchanged: the exact,
+        already-verified Algorithm 7 behavior. See the docstring on
+        self.marginal_weight in __init__ for why this exists.
+
+        For agent i at position `pos`, the marginal for its own action a_i
+        is mean(qi[ja] for ja where that agent plays a_i) -- exactly what
+        CQL's action-selection marginalization computes, just computed here
+        over Q-VALUES going INTO the stage game rather than over a shared
+        table at DECISION time.
+        """
+        if self.marginal_weight <= 0.0:
+            return q_values
+
+        smoothed = {}
+        for pos, aid in enumerate(self.agent_ids):
+            qi = q_values[aid]
+            marginal = np.array(
+                [qi[self._pos_masks[pos][a]].mean() for a in range(self.action_dim)]
+            )
+            broadcast = marginal[self._pos_components[pos]]
+            smoothed[aid] = (
+                1.0 - self.marginal_weight
+            ) * qi + self.marginal_weight * broadcast
+        return smoothed
+
     def _build_correlated_equilibrium_lp(self, q_values: dict) -> tuple:
         """Builds the correlated-equilibrium LP (Eq. 4.20-4.23) for the stage
         game induced by q_values = {agent_id: Q-vector of length
@@ -257,8 +318,10 @@ class JALGT(BaseAlgorithm):
 
     def _solve_stage_game(self, joint_state: tuple) -> np.ndarray:
         """Solves Gamma_{joint_state} via the correlated-equilibrium LP and
-        returns a probability vector of length n_joint_actions."""
+        returns a probability vector of length n_joint_actions. Uses
+        _marginalized_q_values -- a no-op at the default marginal_weight=0."""
         q_values = {aid: self.q_tables[aid][joint_state] for aid in self.agent_ids}
+        q_values = self._marginalized_q_values(q_values)
         c, A_ub, b_ub, A_eq, b_eq = self._build_correlated_equilibrium_lp(q_values)
         res = linprog(
             c,
@@ -349,6 +412,28 @@ class JALGT(BaseAlgorithm):
                     # bootstrap target -- Value_i and Value_j differ only in
                     # which agent's Q-vector the SAME equilibrium is dotted
                     # against (Eq. 6.11), not in the equilibrium itself.
+                    #
+                    # Dotted against the RAW table, deliberately NOT the
+                    # marginal_weight-smoothed values used to pick next_probs.
+                    # An earlier version used the smoothed values here too
+                    # "for internal consistency" -- that was a real bug, not
+                    # a style choice: _marginalized_q_values averages over
+                    # every joint action sharing an agent's own action,
+                    # INCLUDING still-unvisited (defaultdict-zero) slots, so
+                    # a genuinely learned value gets diluted by however many
+                    # neighboring cells haven't been visited yet. That's
+                    # tolerable for picking an action (the diluted value can
+                    # still be the largest of a few near-zero options), but
+                    # using it as the BOOTSTRAP TARGET means every single
+                    # backward TD step propagates an already-attenuated
+                    # value, compounding across the chase -- confirmed
+                    # empirically to fully suppress learning even at 30,000
+                    # episodes (see docs/algorithms/jal-gt.md's Verification
+                    # section). CQL never has this problem because it
+                    # marginalizes ONLY at decision time (select_actions);
+                    # its bootstrap is a plain max() over the raw table.
+                    # Matching that split here: marginal_weight steers which
+                    # action gets chosen, never what a state is worth.
                     next_probs = self._solve_stage_game(joint_s_next)
                     next_values = {
                         aid: float(np.dot(next_probs, self.q_tables[aid][joint_s_next]))
