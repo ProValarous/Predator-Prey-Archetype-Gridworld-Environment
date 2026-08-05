@@ -197,12 +197,12 @@ algo._encode_observation(obs) -> np.ndarray   # flattened float32 vector via obs
 ```
 
 ```python
-# src/baselines/DQN/q_network.py
+# src/ppage/baselines/DQN/q_network.py
 QNetwork(input_dim, hidden_layers, output_dim)          # plain MLP, linear output (Q-values can be negative)
 DuelingQNetwork(input_dim, hidden_layers, output_dim)   # value_head + advantage_head, recombined:
                                                           # Q(s,a) = V(s) + (A(s,a) - mean_a A(s,a))
 
-# src/baselines/DQN/replay_buffer.py
+# src/ppage/baselines/DQN/replay_buffer.py
 ReplayBuffer(capacity: int, state_dim: int, seed=None)
 buffer.push(state, action, reward, next_state, done)
 buffer.sample(batch_size) -> (states, actions, rewards, next_states, dones)  # without replacement
@@ -214,7 +214,7 @@ len(buffer)   # current size (<= capacity)
 ## Wrappers
 
 ```python
-# src/multi_agent_package/wrappers/speed.py
+# src/ppage/wrappers/speed.py
 SpeedWrapper(env)   # wraps a fully-wired GridWorldEnv; apply LAST in build_environment()
 
 wrapper.step(actions: Dict[str, int]) -> dict     # same {"obs","reward","terminated","truncated","info"} shape
@@ -231,25 +231,25 @@ wrapper.NOOP                                       # class constant, 4
 
 ```python
 # Observation registry
-from multi_agent_package.registry.observation_registry import (
+from ppage.registry.observation_registry import (
     get_observation_builder,      # (name: str, **params) -> ObservationBuilder
     register_observation,         # (name: str, cls: Type[ObservationBuilder]) -> None  (validates issubclass)
 )
 
 # Reward registry
-from multi_agent_package.registry.reward_registry import (
+from ppage.registry.reward_registry import (
     get_reward_function,          # (name: str, weight: float = 1.0, **params) -> RewardFunction
     register_reward,              # (name: str, cls: Type[RewardFunction]) -> None  (validates issubclass)
 )
 
 # Action registry
-from multi_agent_package.registry.action_registry import (
+from ppage.registry.action_registry import (
     get_action_space,             # (name: str, **params) -> ActionSpace
     register_action_space,        # (name: str, cls: Type[ActionSpace]) -> None  (validates issubclass, raises TypeError)
 )
 
 # Algorithm registry
-from baselines.registry.algorithm_registry import (
+from ppage.baselines.registry.algorithm_registry import (
     get,                          # (name: str) -> Type[BaseAlgorithm]
     register,                     # (name: str, cls) -> None  (raises if name already registered)
     list_algorithms,              # () -> List[str]

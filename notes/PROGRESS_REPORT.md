@@ -123,7 +123,7 @@ Implementation, Huber-loss fix, entropy-regularization fix, and both verificatio
 
 ### Merge
 
-Pulled Areesha's `A2C` branch (`src/baselines/A2C/`: separate actor + critic networks per agent, on-policy `n_steps`-rollout updates) into `feat/a2c-integration`, cut from the finished AC branch. Two conflicts, both purely additive (`src/baselines/__init__.py` registry import, `src/baselines/README.md` directory/algorithm sections) — resolved by keeping both entries. Her actual algorithm code merged with zero conflicts. Combined suite: 376 tests passing (344 AC/existing + 32 hers).
+Pulled Areesha's `A2C` branch (`src/ppage/baselines/A2C/`: separate actor + critic networks per agent, on-policy `n_steps`-rollout updates) into `feat/a2c-integration`, cut from the finished AC branch. Two conflicts, both purely additive (`src/ppage/baselines/__init__.py` registry import, `src/ppage/baselines/README.md` directory/algorithm sections) — resolved by keeping both entries. Her actual algorithm code merged with zero conflicts. Combined suite: 376 tests passing (344 AC/existing + 32 hers).
 
 Also fixed pre-existing Black/flake8 findings in her new files (`a2c.py`, `actor_network.py`, `critic_network.py`, `run_a2c.py`, `test_baselines_a2c.py`) — unlike the earlier STRP-wide formatting gap, these were new-to-this-branch issues, not pre-existing upstream debt, so fixed directly rather than just flagged.
 

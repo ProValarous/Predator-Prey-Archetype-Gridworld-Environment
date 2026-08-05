@@ -8,7 +8,7 @@
 exclude: |
   (?x)^(
       \.new_venv/
-    | src/multi_agent_package/core/
+    | src/ppage/core/
     | miscellenous/
     | slides/
     | wiki_compressed\.zip

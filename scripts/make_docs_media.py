@@ -36,10 +36,10 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import imageio.v2 as imageio  # noqa: E402
 
-from multi_agent_package.core.agent import Agent  # noqa: E402
-from multi_agent_package.core.gridworld import GridWorldEnv  # noqa: E402
-from multi_agent_package.rewards.base_reward import BaseReward  # noqa: E402
-from multi_agent_package.rewards.predator_distance import (  # noqa: E402
+from ppage.core.agent import Agent  # noqa: E402
+from ppage.core.gridworld import GridWorldEnv  # noqa: E402
+from ppage.rewards.base_reward import BaseReward  # noqa: E402
+from ppage.rewards.predator_distance import (  # noqa: E402
     PredatorDistanceReward,
 )
 

@@ -4,18 +4,18 @@ Tests for observation registry and reward registry.
 
 import pytest
 
-from multi_agent_package.registry.observation_registry import (
+from ppage.registry.observation_registry import (
     get_observation_builder,
     register_observation,
     _OBSERVATION_REGISTRY,
 )
-from multi_agent_package.registry.reward_registry import (
+from ppage.registry.reward_registry import (
     get_reward_function,
     register_reward,
     _REWARD_REGISTRY,
 )
-from multi_agent_package.observations.base import ObservationBuilder
-from multi_agent_package.rewards.base import RewardFunction
+from ppage.observations.base import ObservationBuilder
+from ppage.rewards.base import RewardFunction
 
 # ------------------------------------------------------------------
 # Observation registry
@@ -142,8 +142,8 @@ class TestRewardRegistry:
 
 class TestAlgorithmRegistry:
     def test_all_four_algorithms_registered(self):
-        import baselines  # noqa: F401 (trigger registrations)
-        from baselines.registry.algorithm_registry import list_algorithms
+        import ppage.baselines  # noqa: F401 (trigger registrations)
+        from ppage.baselines.registry.algorithm_registry import list_algorithms
 
         algos = list_algorithms()
         assert "iql" in algos
@@ -152,12 +152,12 @@ class TestAlgorithmRegistry:
         assert "dqn" in algos
 
     def test_get_returns_class(self):
-        import baselines  # noqa: F401 (trigger registrations)
-        from baselines.registry.algorithm_registry import get
-        from baselines.IQL.iql import IQL
-        from baselines.CQL.cql import CQL
-        from baselines.MIXED.mix_train import MixedTrainer
-        from baselines.DQN.dqn import DQN
+        import ppage.baselines  # noqa: F401 (trigger registrations)
+        from ppage.baselines.registry.algorithm_registry import get
+        from ppage.baselines.IQL.iql import IQL
+        from ppage.baselines.CQL.cql import CQL
+        from ppage.baselines.MIXED.mix_train import MixedTrainer
+        from ppage.baselines.DQN.dqn import DQN
 
         assert get("iql") is IQL
         assert get("cql") is CQL
@@ -165,7 +165,7 @@ class TestAlgorithmRegistry:
         assert get("dqn") is DQN
 
     def test_unknown_algorithm_raises_value_error(self):
-        from baselines.registry.algorithm_registry import get
+        from ppage.baselines.registry.algorithm_registry import get
 
         with pytest.raises(ValueError):
             get("nonexistent_algo")
@@ -178,37 +178,37 @@ class TestAlgorithmRegistry:
 
 class TestActionRegistry:
     def test_discrete_5_registered(self):
-        from multi_agent_package.registry.action_registry import get_action_space
+        from ppage.registry.action_registry import get_action_space
 
         sp = get_action_space("discrete_5")
         assert sp is not None
 
     def test_cross_registered(self):
-        from multi_agent_package.registry.action_registry import get_action_space
+        from ppage.registry.action_registry import get_action_space
 
         sp = get_action_space("cross")
         assert sp.n_actions == 5
 
     def test_speed_discrete_5_registered(self):
-        from multi_agent_package.registry.action_registry import get_action_space
+        from ppage.registry.action_registry import get_action_space
 
         sp = get_action_space("speed_discrete_5")
         assert sp is not None
 
     def test_speed_discrete_5_has_to_moves(self):
-        from multi_agent_package.registry.action_registry import get_action_space
+        from ppage.registry.action_registry import get_action_space
 
         sp = get_action_space("speed_discrete_5")
         assert hasattr(sp, "to_moves") and callable(sp.to_moves)
 
     def test_unknown_action_space_raises_key_error(self):
-        from multi_agent_package.registry.action_registry import get_action_space
+        from ppage.registry.action_registry import get_action_space
 
         with pytest.raises(KeyError):
             get_action_space("nonexistent_action")
 
     def test_register_non_subclass_raises_type_error(self):
-        from multi_agent_package.registry.action_registry import register_action_space
+        from ppage.registry.action_registry import register_action_space
 
         class NotAnActionSpace:
             pass
@@ -224,39 +224,39 @@ class TestActionRegistry:
 
 class TestActionSpaceIsNoop:
     def test_discrete_noop_action(self):
-        from multi_agent_package.actions.discrete_actions import DiscreteActionSpace
+        from ppage.actions.discrete_actions import DiscreteActionSpace
 
         sp = DiscreteActionSpace()
         assert sp.is_noop(4) is True
 
     def test_discrete_movement_action(self):
-        from multi_agent_package.actions.discrete_actions import DiscreteActionSpace
+        from ppage.actions.discrete_actions import DiscreteActionSpace
 
         sp = DiscreteActionSpace()
         for a in range(4):
             assert sp.is_noop(a) is False
 
     def test_cross_noop_action(self):
-        from multi_agent_package.actions.cross_actions import CrossActionSpace
+        from ppage.actions.cross_actions import CrossActionSpace
 
         sp = CrossActionSpace()
         assert sp.is_noop(4) is True
 
     def test_cross_movement_action(self):
-        from multi_agent_package.actions.cross_actions import CrossActionSpace
+        from ppage.actions.cross_actions import CrossActionSpace
 
         sp = CrossActionSpace()
         for a in range(4):
             assert sp.is_noop(a) is False
 
     def test_speed_discrete_noop_action(self):
-        from multi_agent_package.actions.speed_discrete import SpeedDiscreteActionSpace
+        from ppage.actions.speed_discrete import SpeedDiscreteActionSpace
 
         sp = SpeedDiscreteActionSpace()
         assert sp.is_noop(4) is True
 
     def test_speed_discrete_movement_action(self):
-        from multi_agent_package.actions.speed_discrete import SpeedDiscreteActionSpace
+        from ppage.actions.speed_discrete import SpeedDiscreteActionSpace
 
         sp = SpeedDiscreteActionSpace()
         for a in range(4):

@@ -27,9 +27,7 @@ def main() -> None:
     version = sys.argv[1].lstrip("v")
     text = CHANGELOG.read_text(encoding="utf-8")
 
-    heading_re = re.compile(
-        r"^## \[" + re.escape(version) + r"\].*$", re.MULTILINE
-    )
+    heading_re = re.compile(r"^## \[" + re.escape(version) + r"\].*$", re.MULTILINE)
     match = heading_re.search(text)
     if not match:
         raise SystemExit(f"No CHANGELOG.md section found for version {version!r}")

@@ -4,7 +4,7 @@
 
 An **action space** defines the set of moves an agent can make and translates discrete integer commands into grid movement vectors. Every call to `env.step(actions)` passes integer actions; the action space plugin converts each integer to a `[dx, dy]` direction vector before movement is applied.
 
-Implemented as a plugin in `src/multi_agent_package/actions/`.
+Implemented as a plugin in `src/ppage/actions/`.
 
 ---
 

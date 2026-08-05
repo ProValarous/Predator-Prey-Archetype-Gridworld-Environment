@@ -68,14 +68,14 @@ source .venv/bin/activate        # Windows: .venv\Scripts\Activate.ps1
 pip install -e .
 
 # Train the default experiment (3 predators vs 3 prey, IQL)
-python -m multi_agent_package.scripts.run_from_config
+python -m ppage.scripts.run_from_config
 ```
 
 ### Minimal example
 
 ```python
-from multi_agent_package.core.gridworld import GridWorldEnv
-from multi_agent_package.core.agent import Agent
+from ppage.core.gridworld import GridWorldEnv
+from ppage.core.agent import Agent
 
 # Agent(agent_type, agent_team, agent_name)
 predator = Agent("predator", "predator_1", "Hunter")

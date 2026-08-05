@@ -5,11 +5,11 @@ Tests for all three reward functions.
 import numpy as np
 import pytest
 
-from multi_agent_package.core.agent import Agent
-from multi_agent_package.core.gridworld import GridWorldEnv
-from multi_agent_package.rewards.base_reward import BaseReward
-from multi_agent_package.rewards.predator_distance import PredatorDistanceReward
-from multi_agent_package.rewards.survival_reward import SurvivalReward
+from ppage.core.agent import Agent
+from ppage.core.gridworld import GridWorldEnv
+from ppage.rewards.base_reward import BaseReward
+from ppage.rewards.predator_distance import PredatorDistanceReward
+from ppage.rewards.survival_reward import SurvivalReward
 
 # ------------------------------------------------------------------
 # Helpers

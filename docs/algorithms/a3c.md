@@ -56,7 +56,7 @@ flowchart TD
     W3 -->|"local gradients (Hogwild, no lock)"| G
 ```
 
-**Implementation:** `src/baselines/A3C/`.
+**Implementation:** `src/ppage/baselines/A3C/`.
 
 - `a3c.py` — the `A3C` algorithm class plus the module-level `_worker_loop`
   function that each spawned process runs. `A3C.__init__` builds one shared
@@ -127,7 +127,7 @@ experiment:
 ```
 
 ```bash
-python -m multi_agent_package.scripts.run_a3c
+python -m ppage.scripts.run_a3c
 ```
 
 ## Verification run
@@ -231,7 +231,7 @@ faster-adapting `return_norm_decay=0.99` caused an outright numerical
 overflow, not just a milder version of the wrinkle).
 
 **Fixed properly: `SharedReturnNormalizer`
-(`baselines/AC/return_normalizer.py`) — ONE running estimate, shared and
+(`ppage/baselines/AC/return_normalizer.py`) — ONE running estimate, shared and
 lock-protected across all 4 workers, backed by the same
 `multiprocessing.Value`/`Lock` primitives already used for A3C's
 `episode_counter`.** Collapsing every worker onto one consistent estimate

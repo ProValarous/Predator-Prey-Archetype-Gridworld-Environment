@@ -36,7 +36,7 @@ flowchart LR
     RET -->|"critic loss: Huber(v(s), R_t)"| COPT["critic optimizer"]
 ```
 
-**Implementation:** `src/baselines/A2C/`.
+**Implementation:** `src/ppage/baselines/A2C/`.
 
 - `a2c.py` — the `A2C` algorithm: per-agent `actors`, `critics`, separate
   `actor_optimizers`/`critic_optimizers` (the critic typically wants to learn
@@ -79,7 +79,7 @@ experiment:
 ```
 
 ```bash
-python -m multi_agent_package.scripts.run_a2c
+python -m ppage.scripts.run_a2c
 ```
 
 ## When to use A2C

@@ -1,10 +1,10 @@
 """
-Tests for multi_agent_package.core.agent.Agent
+Tests for ppage.core.agent.Agent
 """
 
 import numpy as np
 
-from multi_agent_package.core.agent import Agent
+from ppage.core.agent import Agent
 
 
 class TestAgentIdentity:

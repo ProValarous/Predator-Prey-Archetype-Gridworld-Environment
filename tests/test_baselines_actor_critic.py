@@ -6,7 +6,7 @@ one-step online ActorCritic algorithm (Sutton & Barto, Algorithm 13.5).
 import pytest
 import torch
 
-from baselines.AC.network import ActorCriticNetwork
+from ppage.baselines.AC.network import ActorCriticNetwork
 
 # ------------------------------------------------------------------
 # ActorCriticNetwork
@@ -50,23 +50,23 @@ class TestActorCriticNetwork:
 
 class TestActorCriticInit:
     def test_infers_state_dim_and_action_dim(self, dqn_env, ac_config):
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         algo = ActorCritic(dqn_env, ac_config)
         assert algo.state_dim == 2  # local_only encodes [x, y]
         assert algo.action_dim == 5  # discrete_5
 
     def test_one_learner_per_agent(self, dqn_env, ac_config):
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         algo = ActorCritic(dqn_env, ac_config)
         assert set(algo.networks.keys()) == {"pred_1", "prey_1"}
         assert set(algo.optimizers.keys()) == {"pred_1", "prey_1"}
 
     def test_missing_observation_encoder_raises(self, one_predator_one_prey, ac_config):
-        from multi_agent_package.core.gridworld import GridWorldEnv
-        from multi_agent_package.actions.discrete_actions import DiscreteActionSpace
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.core.gridworld import GridWorldEnv
+        from ppage.actions.discrete_actions import DiscreteActionSpace
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         env = GridWorldEnv(
             agents=one_predator_one_prey,
@@ -81,14 +81,14 @@ class TestActorCriticInit:
             ActorCritic(env, ac_config)
 
     def test_action_dim_mismatch_raises(self, dqn_env, ac_config):
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         ac_config["action_dim"] = 9
         with pytest.raises(ValueError):
             ActorCritic(dqn_env, ac_config)
 
     def test_action_dim_matching_config_is_accepted(self, dqn_env, ac_config):
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         ac_config["action_dim"] = 5
         algo = ActorCritic(dqn_env, ac_config)
@@ -99,7 +99,7 @@ class TestActorCriticInit:
         the trunk and value_head are shared with the critic, so decaying them
         too would regularize value estimation, not just the policy (see
         docs/algorithms/actor-critic.md)."""
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         ac_config["actor_weight_decay"] = 0.001
         algo = ActorCritic(dqn_env, ac_config)
@@ -123,20 +123,22 @@ class TestActorCriticInit:
         assert seen == policy_head_params | other_params
 
     def test_default_actor_weight_decay_is_zero(self, dqn_env, ac_config):
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         algo = ActorCritic(dqn_env, ac_config)
         assert algo.actor_weight_decay == 0.0
 
     def test_default_normalize_returns_is_false(self, dqn_env, ac_config):
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         algo = ActorCritic(dqn_env, ac_config)
         assert algo.normalize_returns is False
         assert algo.return_normalizers == {}
 
-    def test_normalize_returns_builds_one_normalizer_per_agent(self, dqn_env, ac_config):
-        from baselines.AC.actor_critic import ActorCritic
+    def test_normalize_returns_builds_one_normalizer_per_agent(
+        self, dqn_env, ac_config
+    ):
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         ac_config["normalize_returns"] = True
         algo = ActorCritic(dqn_env, ac_config)
@@ -145,7 +147,7 @@ class TestActorCriticInit:
 
 class TestActorCriticSelectActions:
     def test_returns_valid_actions_for_all_agents(self, dqn_env, ac_config):
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         algo = ActorCritic(dqn_env, ac_config)
         obs, _ = dqn_env.reset()
@@ -155,7 +157,7 @@ class TestActorCriticSelectActions:
             assert 0 <= a < algo.action_dim
 
     def test_seeded_construction_is_reproducible(self, dqn_env, ac_config):
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         ac_config["seed"] = 7
         algo_a = ActorCritic(dqn_env, ac_config)
@@ -171,7 +173,7 @@ class TestActorCriticSelectActions:
 
 class TestActorCriticUpdate:
     def test_update_returns_float_loss(self, dqn_env, ac_config):
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         algo = ActorCritic(dqn_env, ac_config)
         agent_id = algo.agent_ids[0]
@@ -185,7 +187,7 @@ class TestActorCriticUpdate:
         assert isinstance(entropy, float)
 
     def test_update_changes_network_weights(self, dqn_env, ac_config):
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         algo = ActorCritic(dqn_env, ac_config)
         agent_id = algo.agent_ids[0]
@@ -198,7 +200,7 @@ class TestActorCriticUpdate:
         assert any(not torch.equal(before[k], after[k]) for k in before)
 
     def test_terminal_update_does_not_raise(self, dqn_env, ac_config):
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         algo = ActorCritic(dqn_env, ac_config)
         agent_id = algo.agent_ids[0]
@@ -214,7 +216,7 @@ class TestActorCriticUpdate:
     def test_normalize_returns_update_does_not_raise_and_updates_weights(
         self, dqn_env, ac_config
     ):
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         ac_config["normalize_returns"] = True
         algo = ActorCritic(dqn_env, ac_config)
@@ -232,7 +234,7 @@ class TestActorCriticUpdate:
         assert any(not torch.equal(before[k], after[k]) for k in before)
 
     def test_normalize_returns_advances_the_normalizer(self, dqn_env, ac_config):
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         ac_config["normalize_returns"] = True
         algo = ActorCritic(dqn_env, ac_config)
@@ -251,7 +253,7 @@ class TestActorCriticUpdate:
         bootstrap) -- just confirms the normalized-target path handles
         terminal=True the same way the unnormalized path already does,
         without raising or skipping the normalizer update."""
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         ac_config["normalize_returns"] = True
         algo = ActorCritic(dqn_env, ac_config)
@@ -265,7 +267,7 @@ class TestActorCriticUpdate:
 
 class TestActorCriticTrain:
     def test_trains_without_error_and_updates_weights(self, dqn_env, ac_config):
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         algo = ActorCritic(dqn_env, ac_config)
         agent_id = algo.agent_ids[0]
@@ -277,7 +279,7 @@ class TestActorCriticTrain:
         assert any(not torch.equal(before[k], after[k]) for k in before)
 
     def test_writes_curve_csv_when_configured(self, dqn_env, ac_config, tmp_path):
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         csv_path = tmp_path / "curves.csv"
         ac_config["curves_path"] = str(csv_path)
@@ -301,7 +303,7 @@ class TestActorCriticTrain:
 
 class TestActorCriticPersistence:
     def test_save_creates_file(self, dqn_env, ac_config, tmp_path):
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         algo = ActorCritic(dqn_env, ac_config)
         path = tmp_path / "ac.pkl"
@@ -309,7 +311,7 @@ class TestActorCriticPersistence:
         assert path.exists()
 
     def test_load_restores_weights(self, dqn_env, ac_config, tmp_path):
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         algo = ActorCritic(dqn_env, ac_config)
         algo.train()
@@ -326,7 +328,7 @@ class TestActorCriticPersistence:
     def test_loaded_model_matches_original_sampled_actions(
         self, dqn_env, ac_config, tmp_path
     ):
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         algo = ActorCritic(dqn_env, ac_config)
         algo.train()
@@ -345,12 +347,14 @@ class TestActorCriticPersistence:
         second = loaded.select_actions(obs)
         assert first == second
 
-    def test_normalize_returns_state_survives_save_load(self, dqn_env, ac_config, tmp_path):
+    def test_normalize_returns_state_survives_save_load(
+        self, dqn_env, ac_config, tmp_path
+    ):
         """A loaded checkpoint must keep interpreting the value head's
         (normalized-scale) output consistently -- resetting the normalizer
         to a fresh (0.0, eps) estimate would silently misinterpret an
         already-trained value head's predictions."""
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         ac_config["normalize_returns"] = True
         algo = ActorCritic(dqn_env, ac_config)
@@ -360,14 +364,17 @@ class TestActorCriticPersistence:
 
         loaded = ActorCritic.load(dqn_env, ac_config, str(path))
         for aid in algo.agent_ids:
-            assert loaded.return_normalizers[aid].stats() == algo.return_normalizers[aid].stats()
+            assert (
+                loaded.return_normalizers[aid].stats()
+                == algo.return_normalizers[aid].stats()
+            )
 
     def test_save_without_normalize_returns_has_no_normalizer_payload(
         self, dqn_env, ac_config, tmp_path
     ):
         import pickle
 
-        from baselines.AC.actor_critic import ActorCritic
+        from ppage.baselines.AC.actor_critic import ActorCritic
 
         algo = ActorCritic(dqn_env, ac_config)
         path = tmp_path / "ac_plain.pkl"

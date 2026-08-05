@@ -227,4 +227,4 @@ configs["experiment"]["experiment"]["algorithm"]["params"]   # {...}
 | `configs/dqn_speed2/` | 1v1, predator speed 2 |
 | `configs/dqn_speed3/` | 1v1, predator speed 3 |
 
-Run any of them with `python -m multi_agent_package.scripts.run_dqn --config-dir configs/dqn_1v1`.
+Run any of them with `python -m ppage.scripts.run_dqn --config-dir configs/dqn_1v1`.

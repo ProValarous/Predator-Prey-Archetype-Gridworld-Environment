@@ -8,10 +8,10 @@ import tempfile
 import numpy as np
 import pytest
 
-from multi_agent_package.core.agent import Agent
-from multi_agent_package.core.gridworld import GridWorldEnv
-from multi_agent_package.rewards.base_reward import BaseReward
-from baselines.CQL.cql import CQL
+from ppage.core.agent import Agent
+from ppage.core.gridworld import GridWorldEnv
+from ppage.rewards.base_reward import BaseReward
+from ppage.baselines.CQL.cql import CQL
 
 # ------------------------------------------------------------------
 # Fixtures

@@ -7,7 +7,7 @@ How the system goes from YAML files on disk to a wired, ready-to-train environme
 ## Trigger
 
 ```bash
-python -m multi_agent_package.scripts.run_from_config
+python -m ppage.scripts.run_from_config
 ```
 
 ---
@@ -86,5 +86,5 @@ places obstacles and agents.
 | `KeyError: 'local_raidus'` | Typo in `observations.yaml` type field |
 | `KeyError: 'discrete_X'` | Unknown key in `actions.yaml` type field; check `action_registry.py` |
 | `TypeError: 'NoneType' is not callable` on `step()` | `observation_builder` not wired; `reset()`/`step()` called before wiring |
-| `ValueError: Algorithm 'X' not registered` | `import baselines` missing before `get()`; auto-registration never ran |
+| `ValueError: Algorithm 'X' not registered` | `import ppage.baselines` missing before `get()`; auto-registration never ran |
 | `KeyError: 'algorithm'` on algo lookup | The real path is the double-nested `configs["experiment"]["experiment"]["algorithm"]` — the parsed file keeps its own top-level `experiment:` key. Not a typo. |

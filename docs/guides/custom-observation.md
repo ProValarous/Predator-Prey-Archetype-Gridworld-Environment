@@ -13,12 +13,12 @@ An observation builder gives each agent a view of the world at each step. You co
 ## Step 1 — Create the file
 
 ```
-src/multi_agent_package/observations/my_obs.py
+src/ppage/observations/my_obs.py
 ```
 
 ```python
 import numpy as np
-from multi_agent_package.observations.base import ObservationBuilder
+from ppage.observations.base import ObservationBuilder
 
 
 class MyObservation(ObservationBuilder):
@@ -70,10 +70,10 @@ class MyObservation(ObservationBuilder):
 
 ## Step 2 — Register it
 
-Open `src/multi_agent_package/registry/observation_registry.py`:
+Open `src/ppage/registry/observation_registry.py`:
 
 ```python
-from multi_agent_package.observations.my_obs import MyObservation
+from ppage.observations.my_obs import MyObservation
 
 _OBSERVATION_REGISTRY = {
     "default":      DefaultObservation,
@@ -89,10 +89,10 @@ _OBSERVATION_REGISTRY = {
 
 ## Step 3 — Export it (optional but good practice)
 
-Open `src/multi_agent_package/observations/__init__.py`, add:
+Open `src/ppage/observations/__init__.py`, add:
 
 ```python
-from multi_agent_package.observations.my_obs import MyObservation
+from ppage.observations.my_obs import MyObservation
 __all__ = [..., "MyObservation"]
 ```
 
@@ -113,9 +113,9 @@ observations:
 ## Step 5 — Test it
 
 ```python
-from multi_agent_package.core.agent import Agent
-from multi_agent_package.core.gridworld import GridWorldEnv
-from multi_agent_package.observations.my_obs import MyObservation
+from ppage.core.agent import Agent
+from ppage.core.gridworld import GridWorldEnv
+from ppage.observations.my_obs import MyObservation
 
 agents = [
     Agent(agent_type="predator", agent_team="predator_1", agent_name="pred_1"),
@@ -146,7 +146,7 @@ print("Observation output:", obs)
 `IQL._encode_state()` recursively converts the observation dict to a hashable tuple. Your observation is compatible if:
 
 ```python
-from baselines.IQL.iql import IQL
+from ppage.baselines.IQL.iql import IQL
 
 env.observation_builder = builder.build
 env.reset()

@@ -66,7 +66,7 @@ The Predator-Prey Archetype Gridworld is a **discrete, deterministic multi-agent
 │                  Baselines Layer                        │
 │  IQL (tabular)  CQL (tabular, centralized)              │
 │  MixedTrainer (per-team)  DQN (PyTorch, +Double/Dueling)│
-│   (baselines/ — extensible)                             │
+│   (ppage/baselines/ — extensible)                             │
 └─────────────────────────────────────────────────────────┘
 ```
 

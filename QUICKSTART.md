@@ -31,10 +31,10 @@ All experiments are driven by the YAML files in `configs/`.
 cd src
 
 # Windows
-..\.new_venv\Scripts\python.exe -m multi_agent_package.scripts.run_from_config
+..\.new_venv\Scripts\python.exe -m ppage.scripts.run_from_config
 
 # macOS / Linux
-../.new_venv/bin/python -m multi_agent_package.scripts.run_from_config
+../.new_venv/bin/python -m ppage.scripts.run_from_config
 ```
 
 This runs IQL for 500 episodes on a 10×10 grid with 3 predators and 3 prey.  
@@ -46,7 +46,7 @@ Set `render_mode: human` in `configs/env.yaml` (it is the default), then:
 
 ```bash
 cd src
-python -m multi_agent_package.scripts.render
+python -m ppage.scripts.render
 ```
 
 A pygame window opens and plays one training run visually.  
@@ -60,13 +60,13 @@ For quick experiments without editing YAML files:
 cd src
 
 # IQL
-python -m baselines.IQL.iql --episodes 1000 --size 8 --predators 1 --preys 1
+python -m ppage.baselines.IQL.iql --episodes 1000 --size 8 --predators 1 --preys 1
 
 # CQL
-python -m baselines.CQL.cql --episodes 1000 --cql-alpha 0.1
+python -m ppage.baselines.CQL.cql --episodes 1000 --cql-alpha 0.1
 
 # Mixed (predators CQL, prey IQL)
-python -m baselines.MIXED.mix_train --predator-algo cql --prey-algo iql --episodes 1000
+python -m ppage.baselines.MIXED.mix_train --predator-algo cql --prey-algo iql --episodes 1000
 ```
 
 All scripts save trained Q-tables to a `.pkl` file (see `--save-path`).
@@ -77,13 +77,13 @@ All scripts save trained Q-tables to a `.pkl` file (see `--save-path`).
 cd src
 
 # IQL
-python -m baselines.IQL.iql --mode eval --load-path trained_iql.pkl
+python -m ppage.baselines.IQL.iql --mode eval --load-path trained_iql.pkl
 
 # CQL
-python -m baselines.CQL.cql --mode eval --load-path trained_cql.pkl
+python -m ppage.baselines.CQL.cql --mode eval --load-path trained_cql.pkl
 
 # Mixed
-python -m baselines.MIXED.mix_train --mode eval --load-path trained_mixed.pkl
+python -m ppage.baselines.MIXED.mix_train --mode eval --load-path trained_mixed.pkl
 ```
 
 ---
@@ -104,14 +104,14 @@ python -m baselines.MIXED.mix_train --mode eval --load-path trained_mixed.pkl
 
 ```
 src/
-  multi_agent_package/        # Environment core
+  ppage/                      # Environment core
     core/                     # GridWorldEnv, Agent
     observations/             # Pluggable observation builders
     rewards/                  # Pluggable reward functions
     scripts/                  # run_from_config.py, render.py
-  baselines/
-    IQL/                      # Independent Q-Learning
-    CQL/                      # Centralized Q-Learning
+    baselines/
+      IQL/                    # Independent Q-Learning
+      CQL/                    # Centralized Q-Learning
 configs/                      # All experiment YAML files
 wiki/                         # Architecture specs and ADRs
 ```

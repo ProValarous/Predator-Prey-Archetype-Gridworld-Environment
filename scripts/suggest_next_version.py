@@ -72,7 +72,7 @@ def current_release_segment() -> tuple[int, int, int]:
     text = PYPROJECT.read_text(encoding="utf-8")
     match = VERSION_RE.search(text)
     if not match:
-        raise SystemExit("Could not find version = \"...\" in pyproject.toml")
+        raise SystemExit('Could not find version = "..." in pyproject.toml')
     seg_match = RELEASE_SEGMENT_RE.match(match.group(1))
     if not seg_match:
         raise SystemExit(f"Could not parse release segment from {match.group(1)!r}")

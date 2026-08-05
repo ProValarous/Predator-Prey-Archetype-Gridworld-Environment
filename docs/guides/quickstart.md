@@ -7,17 +7,17 @@ Five steps from a fresh clone to a trained agent.
 ## 1. Install
 
 The package uses a standard `src/` layout with a `pyproject.toml` build backend,
-so an editable install makes `multi_agent_package` and `baselines` importable
+so an editable install makes `ppage` (including `ppage.baselines`) importable
 without setting `PYTHONPATH`. Run commands from the repository root.
 
 ```bash
-pip install -e .            # add ".[dev]" for the test/lint tools
+pip install -e ".[baselines]"   # add dev to the extras for the test/lint tools
 ```
 
 Verify the install:
 
 ```bash
-python -c "from multi_agent_package.core.gridworld import GridWorldEnv; print('OK')"
+python -c "from ppage.core.gridworld import GridWorldEnv; print('OK')"
 ```
 
 ---
@@ -39,22 +39,22 @@ Each algorithm has its own dedicated runner script that reads the matching exper
 
 ```bash
 # IQL — reads configs/experiment_iql.yaml
-python -m multi_agent_package.scripts.run_iql
+python -m ppage.scripts.run_iql
 
 # CQL — reads configs/experiment_cql.yaml
-python -m multi_agent_package.scripts.run_cql
+python -m ppage.scripts.run_cql
 
 # MixedTrainer — reads configs/experiment_mixed.yaml
-python -m multi_agent_package.scripts.run_mixed
+python -m ppage.scripts.run_mixed
 
 # DQN — reads configs/experiment_dqn.yaml
-python -m multi_agent_package.scripts.run_dqn
+python -m ppage.scripts.run_dqn
 
 # Or a ready-made DQN experiment set (1 predator vs 1 prey, double+dueling enabled)
-python -m multi_agent_package.scripts.run_dqn --config-dir configs/dqn_1v1
+python -m ppage.scripts.run_dqn --config-dir configs/dqn_1v1
 
 # Generic launcher — reads configs/experiment.yaml, whatever algorithm.name it specifies (default: iql)
-python -m multi_agent_package.scripts.run_from_config
+python -m ppage.scripts.run_from_config
 ```
 
 ---
@@ -65,19 +65,19 @@ Each `run_<algo>.py` script trains and saves a checkpoint by default:
 
 ```bash
 # IQL, 1000 episodes (override via experiment_iql.yaml, not a CLI flag)
-python -m multi_agent_package.scripts.run_iql --save-path my_iql.pkl
+python -m ppage.scripts.run_iql --save-path my_iql.pkl
 
 # CQL
-python -m multi_agent_package.scripts.run_cql --save-path my_cql.pkl
+python -m ppage.scripts.run_cql --save-path my_cql.pkl
 
 # MixedTrainer (predator/prey algorithm assignment comes from experiment_mixed.yaml)
-python -m multi_agent_package.scripts.run_mixed --save-path my_mixed.pkl
+python -m ppage.scripts.run_mixed --save-path my_mixed.pkl
 
 # DQN
-python -m multi_agent_package.scripts.run_dqn --save-path my_dqn.pkl
+python -m ppage.scripts.run_dqn --save-path my_dqn.pkl
 ```
 
-Each algorithm also has its own standalone CLI with hyperparameters as flags (e.g. `python -m baselines.IQL.iql --episodes 1000 --alpha 0.1 ...`), which builds its own `GridWorldEnv` directly rather than going through `run_from_config` — see [reference/api-reference.md](../reference/api-reference.md).
+Each algorithm also has its own standalone CLI with hyperparameters as flags (e.g. `python -m ppage.baselines.IQL.iql --episodes 1000 --alpha 0.1 ...`), which builds its own `GridWorldEnv` directly rather than going through `run_from_config` — see [reference/api-reference.md](../reference/api-reference.md).
 
 Training logs to stdout every 100 episodes (10 for DQN, via `log_interval`).
 
@@ -87,16 +87,16 @@ Training logs to stdout every 100 episodes (10 for DQN, via `log_interval`).
 
 ```bash
 # Evaluate a saved checkpoint (headless)
-python -m baselines.IQL.iql --mode eval --load-path my_iql.pkl --episodes 20
+python -m ppage.baselines.IQL.iql --mode eval --load-path my_iql.pkl --episodes 20
 
 # Evaluate with pygame visualization (requires a display)
-python -m baselines.IQL.iql --mode eval --load-path my_iql.pkl --episodes 5 --render
+python -m ppage.baselines.IQL.iql --mode eval --load-path my_iql.pkl --episodes 5 --render
 ```
 
 Or use `evaluate.py`, which builds its own env + algorithm from a config directory (it does **not** take an existing `algo`/`env` — see [guides/using-evaluate.md](using-evaluate.md) for the exact signature and output shape):
 
 ```python
-from multi_agent_package.scripts.evaluate import evaluate
+from ppage.scripts.evaluate import evaluate
 results = evaluate(config_dir="configs", episodes=20)
 print(results)
 # {"mean_episode_length": 47.2, "std_episode_length": 8.1, "mean_return_pred_1": -12.4, ...}
@@ -147,8 +147,8 @@ experiment:
 | Symptom | Cause |
 |---------|-------|
 | `KeyError: 'local_raidus'` | Typo in `observations.yaml` type |
-| `ValueError: Algorithm 'X' not registered` | `import baselines` missing before registry lookup |
+| `ValueError: Algorithm 'X' not registered` | `import ppage.baselines` missing before registry lookup |
 | `KeyError: 'experiment'` | Config nested as `configs["experiment"]["experiment"]["algorithm"]` — two levels |
 | Training finishes instantly (0 steps) | `max_steps: 0` or `capture_threshold: 0` in `env.yaml` |
 | Q-tables always empty | `episodes` too low or env always truncating before any step |
-| `ModuleNotFoundError: multi_agent_package` | The package isn't installed — run `pip install -e .` from the repository root |
+| `ModuleNotFoundError: ppage` | The package isn't installed — run `pip install -e .` from the repository root |

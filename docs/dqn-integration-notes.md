@@ -27,7 +27,7 @@ None of the three `dqn.py` files should be adopted wholesale; the right base is 
 
 ### Architectural precedent: check against `BaseAlgorithm` and `IQL`
 
-`src/baselines/base.py` states the contract plainly: *"Algorithms treat env as a black box."* `IQL` (`src/baselines/IQL/iql.py`) follows this literally — it encodes whatever observation dict it receives into a hashable tuple **internally**, with no assumption about structure and no external attribute the environment must be pre-wired with. That's the existing convention in this codebase.
+`src/ppage/baselines/base.py` states the contract plainly: *"Algorithms treat env as a black box."* `IQL` (`src/ppage/baselines/IQL/iql.py`) follows this literally — it encodes whatever observation dict it receives into a hashable tuple **internally**, with no assumption about structure and no external attribute the environment must be pre-wired with. That's the existing convention in this codebase.
 
 All three DQN PRs *technically* deviate from that in the same direction — they all need a fixed-length numeric vector, which a hashable-tuple scheme doesn't give them — but they diverge in how:
 

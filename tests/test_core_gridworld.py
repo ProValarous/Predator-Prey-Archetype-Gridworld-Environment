@@ -1,12 +1,12 @@
 """
-Tests for multi_agent_package.core.gridworld.GridWorldEnv
+Tests for ppage.core.gridworld.GridWorldEnv
 """
 
 import numpy as np
 import pytest
 
-from multi_agent_package.core.agent import Agent
-from multi_agent_package.core.gridworld import GridWorldEnv
+from ppage.core.agent import Agent
+from ppage.core.gridworld import GridWorldEnv
 
 # ------------------------------------------------------------------
 # Helpers
@@ -153,7 +153,7 @@ class TestStepCost:
     def test_base_reward_plugin_applies_step_cost_once(self):
         # With the BaseReward plugin as the reward_fn, the predator's -5 step
         # cost is applied exactly once (not -10).
-        from multi_agent_package.rewards.base_reward import BaseReward
+        from ppage.rewards.base_reward import BaseReward
 
         env = make_env(perc_obstacle=0)
         env.reward_fn = BaseReward(weight=1.0).compute

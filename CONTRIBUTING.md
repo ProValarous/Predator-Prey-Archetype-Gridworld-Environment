@@ -148,7 +148,7 @@ Allowed only if:
 All scripts must be runnable as:
 
 ```bash
-python -m multi_agent_package.scripts.<script_name>
+python -m ppage.scripts.<script_name>
 ```
 
 ---

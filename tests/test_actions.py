@@ -1,11 +1,11 @@
 import numpy as np
 import pytest
 
-from multi_agent_package.actions.cross_actions import CrossActionSpace
-from multi_agent_package.actions.discrete_actions import DiscreteActionSpace
-from multi_agent_package.actions.speed_discrete import SpeedDiscreteActionSpace
-from multi_agent_package.core.agent import Agent
-from multi_agent_package.core.gridworld import GridWorldEnv
+from ppage.actions.cross_actions import CrossActionSpace
+from ppage.actions.discrete_actions import DiscreteActionSpace
+from ppage.actions.speed_discrete import SpeedDiscreteActionSpace
+from ppage.core.agent import Agent
+from ppage.core.gridworld import GridWorldEnv
 
 
 class TestCrossActionSpace:

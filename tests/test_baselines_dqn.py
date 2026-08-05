@@ -5,9 +5,9 @@ Tests for the DQN baseline: ReplayBuffer, QNetwork, and the DQN algorithm.
 import pytest
 import torch
 
-from baselines.DQN.replay_buffer import ReplayBuffer
-from baselines.DQN.q_network import QNetwork, DuelingQNetwork
-from baselines.DQN.curve_recorder import CurveRecorder
+from ppage.baselines.DQN.replay_buffer import ReplayBuffer
+from ppage.baselines.DQN.q_network import QNetwork, DuelingQNetwork
+from ppage.baselines.DQN.curve_recorder import CurveRecorder
 
 # ------------------------------------------------------------------
 # ReplayBuffer
@@ -185,14 +185,14 @@ class TestCurveRecorder:
 
 class TestDQNInit:
     def test_infers_state_dim_and_action_dim(self, dqn_env, dqn_config):
-        from baselines.DQN.dqn import DQN
+        from ppage.baselines.DQN.dqn import DQN
 
         algo = DQN(dqn_env, dqn_config)
         assert algo.state_dim == 2  # local_only encodes [x, y]
         assert algo.action_dim == 5  # discrete_5
 
     def test_one_learner_per_agent(self, dqn_env, dqn_config):
-        from baselines.DQN.dqn import DQN
+        from ppage.baselines.DQN.dqn import DQN
 
         algo = DQN(dqn_env, dqn_config)
         assert set(algo.q_networks.keys()) == {"pred_1", "prey_1"}
@@ -200,7 +200,7 @@ class TestDQNInit:
         assert set(algo.replay_buffers.keys()) == {"pred_1", "prey_1"}
 
     def test_target_starts_synced_with_policy(self, dqn_env, dqn_config):
-        from baselines.DQN.dqn import DQN
+        from ppage.baselines.DQN.dqn import DQN
 
         algo = DQN(dqn_env, dqn_config)
         for aid in algo.agent_ids:
@@ -212,9 +212,9 @@ class TestDQNInit:
     def test_missing_observation_encoder_raises(
         self, one_predator_one_prey, dqn_config
     ):
-        from multi_agent_package.core.gridworld import GridWorldEnv
-        from multi_agent_package.actions.discrete_actions import DiscreteActionSpace
-        from baselines.DQN.dqn import DQN
+        from ppage.core.gridworld import GridWorldEnv
+        from ppage.actions.discrete_actions import DiscreteActionSpace
+        from ppage.baselines.DQN.dqn import DQN
 
         env = GridWorldEnv(
             agents=one_predator_one_prey,
@@ -229,21 +229,21 @@ class TestDQNInit:
             DQN(env, dqn_config)
 
     def test_action_dim_mismatch_raises(self, dqn_env, dqn_config):
-        from baselines.DQN.dqn import DQN
+        from ppage.baselines.DQN.dqn import DQN
 
         dqn_config["action_dim"] = 9
         with pytest.raises(ValueError):
             DQN(dqn_env, dqn_config)
 
     def test_action_dim_matching_config_is_accepted(self, dqn_env, dqn_config):
-        from baselines.DQN.dqn import DQN
+        from ppage.baselines.DQN.dqn import DQN
 
         dqn_config["action_dim"] = 5
         algo = DQN(dqn_env, dqn_config)
         assert algo.action_dim == 5
 
     def test_buffer_smaller_than_batch_warns(self, dqn_env, dqn_config):
-        from baselines.DQN.dqn import DQN
+        from ppage.baselines.DQN.dqn import DQN
 
         dqn_config["buffer_size"] = 2
         dqn_config["batch_size"] = 8
@@ -251,7 +251,7 @@ class TestDQNInit:
             DQN(dqn_env, dqn_config)
 
     def test_dueling_flag_uses_dueling_network(self, dqn_env, dqn_config):
-        from baselines.DQN.dqn import DQN
+        from ppage.baselines.DQN.dqn import DQN
 
         dqn_config["dueling"] = True
         algo = DQN(dqn_env, dqn_config)
@@ -261,7 +261,7 @@ class TestDQNInit:
             assert isinstance(net, DuelingQNetwork)
 
     def test_no_dueling_flag_uses_plain_network(self, dqn_env, dqn_config):
-        from baselines.DQN.dqn import DQN
+        from ppage.baselines.DQN.dqn import DQN
 
         dqn_config["dueling"] = False
         algo = DQN(dqn_env, dqn_config)
@@ -272,7 +272,7 @@ class TestDQNInit:
 
 class TestDQNSelectActions:
     def test_epsilon_one_is_fully_random(self, dqn_env, dqn_config):
-        from baselines.DQN.dqn import DQN
+        from ppage.baselines.DQN.dqn import DQN
 
         dqn_config["epsilon"] = 1.0
         algo = DQN(dqn_env, dqn_config)
@@ -283,7 +283,7 @@ class TestDQNSelectActions:
             assert 0 <= a < algo.action_dim
 
     def test_epsilon_zero_is_deterministic(self, dqn_env, dqn_config):
-        from baselines.DQN.dqn import DQN
+        from ppage.baselines.DQN.dqn import DQN
 
         dqn_config["epsilon"] = 0.0
         algo = DQN(dqn_env, dqn_config)
@@ -295,14 +295,14 @@ class TestDQNSelectActions:
 
 class TestDQNTrain:
     def test_trains_without_error(self, dqn_env, dqn_config):
-        from baselines.DQN.dqn import DQN
+        from ppage.baselines.DQN.dqn import DQN
 
         algo = DQN(dqn_env, dqn_config)
         algo.train()
         assert all(len(buf) > 0 for buf in algo.replay_buffers.values())
 
     def test_epsilon_decays(self, dqn_env, dqn_config):
-        from baselines.DQN.dqn import DQN
+        from ppage.baselines.DQN.dqn import DQN
 
         dqn_config["epsilon"] = 1.0
         dqn_config["epsilon_decay"] = 0.9
@@ -312,7 +312,7 @@ class TestDQNTrain:
         assert algo.epsilon < 1.0
 
     def test_trains_with_double_dqn_enabled(self, dqn_env, dqn_config):
-        from baselines.DQN.dqn import DQN
+        from ppage.baselines.DQN.dqn import DQN
 
         dqn_config["double_dqn"] = True
         algo = DQN(dqn_env, dqn_config)
@@ -320,7 +320,7 @@ class TestDQNTrain:
         assert all(len(buf) > 0 for buf in algo.replay_buffers.values())
 
     def test_trains_with_dueling_enabled(self, dqn_env, dqn_config):
-        from baselines.DQN.dqn import DQN
+        from ppage.baselines.DQN.dqn import DQN
 
         dqn_config["dueling"] = True
         algo = DQN(dqn_env, dqn_config)
@@ -328,7 +328,7 @@ class TestDQNTrain:
         assert all(len(buf) > 0 for buf in algo.replay_buffers.values())
 
     def test_trains_with_double_dqn_and_dueling(self, dqn_env, dqn_config):
-        from baselines.DQN.dqn import DQN
+        from ppage.baselines.DQN.dqn import DQN
 
         dqn_config["double_dqn"] = True
         dqn_config["dueling"] = True
@@ -337,7 +337,7 @@ class TestDQNTrain:
         assert all(len(buf) > 0 for buf in algo.replay_buffers.values())
 
     def test_writes_curve_csv_when_configured(self, dqn_env, dqn_config, tmp_path):
-        from baselines.DQN.dqn import DQN
+        from ppage.baselines.DQN.dqn import DQN
 
         csv_path = tmp_path / "curves.csv"
         dqn_config["curves_path"] = str(csv_path)
@@ -350,7 +350,7 @@ class TestDQNTrain:
 
 class TestDQNPersistence:
     def test_save_creates_file(self, dqn_env, dqn_config, tmp_path):
-        from baselines.DQN.dqn import DQN
+        from ppage.baselines.DQN.dqn import DQN
 
         algo = DQN(dqn_env, dqn_config)
         path = tmp_path / "dqn.pkl"
@@ -358,7 +358,7 @@ class TestDQNPersistence:
         assert path.exists()
 
     def test_load_restores_weights(self, dqn_env, dqn_config, tmp_path):
-        from baselines.DQN.dqn import DQN
+        from ppage.baselines.DQN.dqn import DQN
 
         algo = DQN(dqn_env, dqn_config)
         algo.train()
@@ -375,7 +375,7 @@ class TestDQNPersistence:
     def test_loaded_model_matches_original_greedy_actions(
         self, dqn_env, dqn_config, tmp_path
     ):
-        from baselines.DQN.dqn import DQN
+        from ppage.baselines.DQN.dqn import DQN
 
         dqn_config["epsilon"] = 0.0
         algo = DQN(dqn_env, dqn_config)

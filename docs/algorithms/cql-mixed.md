@@ -37,7 +37,7 @@ flowchart LR
 
 ## How CQL works here
 
-**Implementation:** `src/baselines/CQL/cql.py`.
+**Implementation:** `src/ppage/baselines/CQL/cql.py`.
 
 - **One shared table** `self.q_table`: encoded joint state → `np.zeros(action_dim ** n_agents)`.
 - **Joint state** `_joint_state()` = tuple of each agent's `_encode_state()`
@@ -77,7 +77,7 @@ Keep grids and agent counts small when using CQL.
 
 ## MixedTrainer
 
-`MixedTrainer` (`src/baselines/MIXED/mix_train.py`) assigns an algorithm to each
+`MixedTrainer` (`src/ppage/baselines/MIXED/mix_train.py`) assigns an algorithm to each
 team separately: predators and prey can each be `iql` or `cql`. CQL teams share one
 joint table over that team's joint space; IQL teams keep per-agent tables. Both
 update kinds run inside each step.
@@ -120,8 +120,8 @@ experiment:
 ```
 
 ```bash
-python -m multi_agent_package.scripts.run_cql
-python -m multi_agent_package.scripts.run_mixed
+python -m ppage.scripts.run_cql
+python -m ppage.scripts.run_mixed
 ```
 
 ## Papers

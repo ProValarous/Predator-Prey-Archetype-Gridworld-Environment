@@ -1,7 +1,7 @@
 """
 Tests for RunningReturnNormalizer and SharedReturnNormalizer -- the running
 mean/std normalizers used by AC/A3C's normalize_returns fix (see
-baselines/AC/return_normalizer.py and docs/algorithms/actor-critic.md's
+ppage/baselines/AC/return_normalizer.py and docs/algorithms/actor-critic.md's
 "instant collapse" writeup).
 """
 
@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 import torch.multiprocessing as mp
 
-from baselines.AC.return_normalizer import (
+from ppage.baselines.AC.return_normalizer import (
     RunningReturnNormalizer,
     SharedReturnNormalizer,
 )

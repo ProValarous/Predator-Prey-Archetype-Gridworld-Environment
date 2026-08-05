@@ -9,7 +9,7 @@ Formal contract for all observation builder implementations.
 | Property | Value |
 |----------|-------|
 | Abstract base | `ObservationBuilder` |
-| File | `src/multi_agent_package/observations/base.py` |
+| File | `src/ppage/observations/base.py` |
 | Registry | `observation_registry.py` |
 | Extensible by | All contributors |
 
@@ -75,7 +75,7 @@ Every builder must be registered before it can be used via config:
 "my_obs": MyObservation,
 
 # Or at runtime (e.g. in a custom script):
-from multi_agent_package.registry.observation_registry import register_observation
+from ppage.registry.observation_registry import register_observation
 register_observation("my_obs", MyObservation)
 ```
 

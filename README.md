@@ -87,7 +87,7 @@ The goal is **clarity, modularity, and scientific control**.
 
 The repository is divided into two major components:
 
-### 1️⃣ `multi_agent_package`: The Environment
+### 1️⃣ `ppage`: The Environment
 
 Implements:
 
@@ -109,7 +109,7 @@ Currently registered plug-ins:
 | Actions      | `discrete_5`, `cross`, `speed_discrete_5`                               |
 | Wrappers     | `SpeedWrapper` (per-agent speed/stamina, applied last in the build chain) |
 
-### 2️⃣ `baselines`: The Learning Algorithms
+### 2️⃣ `ppage.baselines`: The Learning Algorithms
 
 Implements:
 
@@ -118,7 +118,7 @@ Implements:
 * **MixedTrainer**: per-team algorithm assignment (e.g. CQL predators vs IQL prey)
 * **DQN**: Deep Q-Network (PyTorch, generic observation encoder, replay buffer)
 
-See [`src/baselines/README.md`](src/baselines/README.md) for the algorithm contract and when to use each one.
+See [`src/ppage/baselines/README.md`](src/ppage/baselines/README.md) for the algorithm contract and when to use each one.
 
 Algorithms interact with the environment only through:
 
@@ -152,17 +152,17 @@ This is enforced, not assumed.
 
 ```
 src/
-├── baselines/                # Learning algorithms
-│   ├── IQL/  CQL/  MIXED/  DQN/
-│   └── registry/              # Algorithm name -> class
-└── multi_agent_package/      # Environment
+└── ppage/                    # Environment
     ├── core/                 # Immutable environment dynamics (maintainers only)
     ├── observations/         # Perception plug-ins
     ├── rewards/              # Incentive plug-ins
     ├── actions/              # Action-space plug-ins
     ├── wrappers/             # Cross-cutting mechanics (e.g. SpeedWrapper)
     ├── registry/             # Safe plug-in selection
-    └── scripts/              # Experiment runners (run_from_config, run_dqn, ...)
+    ├── scripts/              # Experiment runners (run_from_config, run_dqn, ...)
+    └── baselines/            # Learning algorithms
+        ├── IQL/  CQL/  MIXED/  DQN/
+        └── registry/         # Algorithm name -> class
 
 configs/                      # YAML experiment definitions
 ├── env.yaml, agents.yaml, observations.yaml, rewards.yaml, actions.yaml
@@ -202,7 +202,7 @@ This environment is meant for:
 ## ⚡ Quickstart
 
 The package uses a standard `src/` layout with a `pyproject.toml` build backend,
-so an editable install makes `multi_agent_package` and `baselines` importable
+so an editable install makes `ppage` (including `ppage.baselines`) importable
 without setting `PYTHONPATH`.
 
 ```bash
@@ -212,13 +212,13 @@ cd PPAGE
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\Activate.ps1
 
-pip install -e .
+pip install -e ".[baselines]"   # plain `pip install -e .` skips the PyTorch baselines
 
 # Run the default experiment (3 predators vs 3 prey, IQL, configs/experiment.yaml)
-python -m multi_agent_package.scripts.run_from_config
+python -m ppage.scripts.run_from_config
 
 # Or one of the ready-made DQN experiments
-python -m multi_agent_package.scripts.run_dqn --config-dir configs/dqn_1v1
+python -m ppage.scripts.run_dqn --config-dir configs/dqn_1v1
 ```
 
 All experiments are launched from the repository root.
@@ -226,7 +226,7 @@ All experiments are launched from the repository root.
 ### Running the tests
 
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev,baselines]"
 python -m pytest tests/ -q
 ```
 
@@ -244,7 +244,7 @@ You are encouraged to:
 * Run structured experiments
 * Perform reproducible ablations
 
-You are not expected to modify core environment dynamics; this is enforced automatically: a CI check fails any pull request that touches `src/multi_agent_package/core/`. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full contribution rules, and [`docs/git-workflow.md`](docs/git-workflow.md) for branching, commits, and how to open a PR.
+You are not expected to modify core environment dynamics; this is enforced automatically: a CI check fails any pull request that touches `src/ppage/core/`. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full contribution rules, and [`docs/git-workflow.md`](docs/git-workflow.md) for branching, commits, and how to open a PR.
 
 This mirrors how research infrastructure is structured in practice.
 

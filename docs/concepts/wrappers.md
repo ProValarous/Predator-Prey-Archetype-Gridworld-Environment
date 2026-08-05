@@ -4,7 +4,7 @@
 
 A wrapper sits *around* the environment (or another wrapper) and can override its behavior while transparently forwarding everything it doesn't care about. Unlike observations/rewards/actions, wrappers are not a registry-driven plugin category — there's no `wrapper_registry.py` and no YAML `type:` key. There is currently exactly one wrapper: `SpeedWrapper`, applied explicitly (not config-driven) as the last step of `run_from_config.build_environment()`.
 
-Implemented in `src/multi_agent_package/wrappers/speed.py`.
+Implemented in `src/ppage/wrappers/speed.py`.
 
 ---
 

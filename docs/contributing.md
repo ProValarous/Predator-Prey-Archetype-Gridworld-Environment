@@ -53,7 +53,7 @@ source venv/bin/activate
 pip install -e ".[dev]"
 ```
 
-`pip install -e .` makes `multi_agent_package` and `baselines` importable without
+`pip install -e .` makes `ppage` (including `ppage.baselines`) importable without
 setting `PYTHONPATH`, so the verification commands below run as-is from the
 repository root.
 

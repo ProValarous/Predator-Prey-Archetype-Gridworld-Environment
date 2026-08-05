@@ -23,7 +23,7 @@ pip install -e .
 Confirm it worked:
 
 ```bash
-python -c "import multi_agent_package, baselines; print('ok')"
+python -c "import ppage, baselines; print('ok')"
 ```
 
 ---
@@ -34,7 +34,7 @@ The default config (`configs/experiment.yaml`) is 3 predators vs 3 prey learning
 with [IQL](../algorithms/iql.md). Train it:
 
 ```bash
-python -m multi_agent_package.scripts.run_iql
+python -m ppage.scripts.run_iql
 ```
 
 You will see periodic log lines as epsilon decays and the agents improve. Training
@@ -58,7 +58,7 @@ in training the predator wanders; after training it moves purposefully toward th
 prey. To watch a live episode yourself (opens a window):
 
 ```bash
-python -m multi_agent_package.scripts.render --load-path trained_iql.pkl
+python -m ppage.scripts.render --load-path trained_iql.pkl
 ```
 
 ---
@@ -95,7 +95,7 @@ python scripts/make_docs_media.py
 Measure the trained policy greedily (no exploration) and print summary metrics:
 
 ```bash
-python -m multi_agent_package.scripts.run_iql --mode eval --load-path trained_iql.pkl
+python -m ppage.scripts.run_iql --mode eval --load-path trained_iql.pkl
 ```
 
 This prints the mean episode length and mean per-agent return over several

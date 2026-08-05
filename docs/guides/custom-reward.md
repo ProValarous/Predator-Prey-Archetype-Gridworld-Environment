@@ -7,11 +7,11 @@ Full working example from file to config-driven.
 ## Step 1 — Create the file
 
 ```
-src/multi_agent_package/rewards/my_reward.py
+src/ppage/rewards/my_reward.py
 ```
 
 ```python
-from multi_agent_package.rewards.base import RewardFunction
+from ppage.rewards.base import RewardFunction
 
 
 class TeamProximityReward(RewardFunction):
@@ -53,10 +53,10 @@ class TeamProximityReward(RewardFunction):
 
 ## Step 2 — Register it
 
-Open `src/multi_agent_package/registry/reward_registry.py`:
+Open `src/ppage/registry/reward_registry.py`:
 
 ```python
-from multi_agent_package.rewards.my_reward import TeamProximityReward
+from ppage.rewards.my_reward import TeamProximityReward
 
 _REWARD_REGISTRY = {
     "base":               BaseReward,
@@ -90,9 +90,9 @@ rewards:
 ## Step 4 — Test it
 
 ```python
-from multi_agent_package.core.agent import Agent
-from multi_agent_package.core.gridworld import GridWorldEnv
-from multi_agent_package.rewards.my_reward import TeamProximityReward
+from ppage.core.agent import Agent
+from ppage.core.gridworld import GridWorldEnv
+from ppage.rewards.my_reward import TeamProximityReward
 import numpy as np
 
 agents = [

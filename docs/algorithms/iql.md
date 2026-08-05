@@ -40,7 +40,7 @@ flowchart LR
 
 Each agent has an independent table and its own update; nothing is shared.
 
-**Implementation:** `src/baselines/IQL/iql.py`.
+**Implementation:** `src/ppage/baselines/IQL/iql.py`.
 
 - **Q-tables** — one `defaultdict` per agent, mapping an encoded state to a vector
   of `action_dim` Q-values: `self.q_tables[agent_id]`.
@@ -80,8 +80,8 @@ experiment:
 Run it:
 
 ```bash
-python -m multi_agent_package.scripts.run_iql            # train
-python -m multi_agent_package.scripts.run_iql --mode eval --load-path trained_iql.pkl
+python -m ppage.scripts.run_iql            # train
+python -m ppage.scripts.run_iql --mode eval --load-path trained_iql.pkl
 ```
 
 ## Worked example

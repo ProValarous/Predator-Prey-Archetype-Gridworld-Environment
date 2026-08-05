@@ -19,7 +19,7 @@ CONFIGS_DIR = REPO_ROOT / "configs"
 
 class TestLoadAllConfigs:
     def test_loads_five_sections(self):
-        from multi_agent_package.scripts.run_from_config import load_all_configs
+        from ppage.scripts.run_from_config import load_all_configs
 
         configs = load_all_configs()
         assert set(configs.keys()) == {
@@ -32,62 +32,62 @@ class TestLoadAllConfigs:
         }
 
     def test_env_section_has_size(self):
-        from multi_agent_package.scripts.run_from_config import load_all_configs
+        from ppage.scripts.run_from_config import load_all_configs
 
         configs = load_all_configs()
         assert "size" in configs["env"]["env"]
 
     def test_agents_section_has_predators_and_preys(self):
-        from multi_agent_package.scripts.run_from_config import load_all_configs
+        from ppage.scripts.run_from_config import load_all_configs
 
         configs = load_all_configs()
         assert "predators" in configs["agents"]["agents"]
         assert "preys" in configs["agents"]["agents"]
 
     def test_observations_has_type(self):
-        from multi_agent_package.scripts.run_from_config import load_all_configs
+        from ppage.scripts.run_from_config import load_all_configs
 
         configs = load_all_configs()
         assert "type" in configs["observations"]["observations"]
 
     def test_rewards_has_base(self):
-        from multi_agent_package.scripts.run_from_config import load_all_configs
+        from ppage.scripts.run_from_config import load_all_configs
 
         configs = load_all_configs()
         assert "base" in configs["rewards"]["rewards"]
 
     def test_experiment_has_algorithm(self):
-        from multi_agent_package.scripts.run_from_config import load_all_configs
+        from ppage.scripts.run_from_config import load_all_configs
 
         configs = load_all_configs()
         assert "algorithm" in configs["experiment"]["experiment"]
 
     def test_algorithm_has_name(self):
-        from multi_agent_package.scripts.run_from_config import load_all_configs
+        from ppage.scripts.run_from_config import load_all_configs
 
         configs = load_all_configs()
         assert "name" in configs["experiment"]["experiment"]["algorithm"]
 
     def test_iql_experiment_file(self):
-        from multi_agent_package.scripts.run_from_config import load_all_configs
+        from ppage.scripts.run_from_config import load_all_configs
 
         configs = load_all_configs(experiment_file="experiment_iql.yaml")
         assert configs["experiment"]["experiment"]["algorithm"]["name"] == "iql"
 
     def test_cql_experiment_file(self):
-        from multi_agent_package.scripts.run_from_config import load_all_configs
+        from ppage.scripts.run_from_config import load_all_configs
 
         configs = load_all_configs(experiment_file="experiment_cql.yaml")
         assert configs["experiment"]["experiment"]["algorithm"]["name"] == "cql"
 
     def test_mixed_experiment_file(self):
-        from multi_agent_package.scripts.run_from_config import load_all_configs
+        from ppage.scripts.run_from_config import load_all_configs
 
         configs = load_all_configs(experiment_file="experiment_mixed.yaml")
         assert configs["experiment"]["experiment"]["algorithm"]["name"] == "mixed"
 
     def test_dqn_experiment_file(self):
-        from multi_agent_package.scripts.run_from_config import load_all_configs
+        from ppage.scripts.run_from_config import load_all_configs
 
         configs = load_all_configs(experiment_file="experiment_dqn.yaml")
         assert configs["experiment"]["experiment"]["algorithm"]["name"] == "dqn"
@@ -100,7 +100,7 @@ class TestLoadAllConfigs:
 
 class TestBuildAgents:
     def test_correct_agent_count(self):
-        from multi_agent_package.scripts.run_from_config import (
+        from ppage.scripts.run_from_config import (
             build_agents,
             load_all_configs,
         )
@@ -112,7 +112,7 @@ class TestBuildAgents:
         assert len(agents) == pred_count + prey_count
 
     def test_agent_types_correct(self):
-        from multi_agent_package.scripts.run_from_config import (
+        from ppage.scripts.run_from_config import (
             build_agents,
             load_all_configs,
         )
@@ -124,7 +124,7 @@ class TestBuildAgents:
         assert types[:pred_count] == ["predator"] * pred_count
 
     def test_agent_names_unique(self):
-        from multi_agent_package.scripts.run_from_config import (
+        from ppage.scripts.run_from_config import (
             build_agents,
             load_all_configs,
         )
@@ -142,7 +142,7 @@ class TestBuildAgents:
 
 class TestBuildEnvironment:
     def _load_and_build(self, experiment_file="experiment_iql.yaml"):
-        from multi_agent_package.scripts.run_from_config import (
+        from ppage.scripts.run_from_config import (
             load_all_configs,
             build_environment,
         )
@@ -153,8 +153,8 @@ class TestBuildEnvironment:
         return build_environment(configs)
 
     def test_returns_gridworld_env(self):
-        from multi_agent_package.core.gridworld import GridWorldEnv
-        from multi_agent_package.wrappers.speed import SpeedWrapper
+        from ppage.core.gridworld import GridWorldEnv
+        from ppage.wrappers.speed import SpeedWrapper
 
         env = self._load_and_build()
         # build_environment wraps the raw GridWorldEnv in SpeedWrapper to honor
@@ -194,7 +194,7 @@ class TestBuildEnvironment:
 
 class TestBaseRewardIsPluginDriven:
     def _build(self, base_enabled):
-        from multi_agent_package.scripts.run_from_config import (
+        from ppage.scripts.run_from_config import (
             load_all_configs,
             build_environment,
         )
@@ -233,12 +233,12 @@ class TestBaseRewardIsPluginDriven:
 
 class TestEndToEndIQL:
     def test_iql_trains_without_error(self):
-        from multi_agent_package.scripts.run_from_config import (
+        from ppage.scripts.run_from_config import (
             load_all_configs,
             build_environment,
         )
-        import baselines  # noqa: F401
-        from baselines.IQL.iql import IQL
+        import ppage.baselines  # noqa: F401
+        from ppage.baselines.IQL.iql import IQL
 
         configs = load_all_configs(experiment_file="experiment_iql.yaml")
         configs["env"]["env"]["render_mode"] = None
@@ -261,12 +261,12 @@ class TestEndToEndIQL:
 
 class TestEndToEndCQL:
     def test_cql_trains_without_error(self):
-        from multi_agent_package.scripts.run_from_config import (
+        from ppage.scripts.run_from_config import (
             load_all_configs,
             build_environment,
         )
-        import baselines  # noqa: F401
-        from baselines.CQL.cql import CQL
+        import ppage.baselines  # noqa: F401
+        from ppage.baselines.CQL.cql import CQL
 
         configs = load_all_configs(experiment_file="experiment_cql.yaml")
         configs["env"]["env"]["render_mode"] = None
@@ -287,12 +287,12 @@ class TestEndToEndCQL:
 
 class TestEndToEndMixed:
     def test_mixed_trains_without_error(self):
-        from multi_agent_package.scripts.run_from_config import (
+        from ppage.scripts.run_from_config import (
             load_all_configs,
             build_environment,
         )
-        import baselines  # noqa: F401
-        from baselines.MIXED.mix_train import MixedTrainer
+        import ppage.baselines  # noqa: F401
+        from ppage.baselines.MIXED.mix_train import MixedTrainer
 
         configs = load_all_configs(experiment_file="experiment_mixed.yaml")
         configs["env"]["env"]["render_mode"] = None
@@ -316,12 +316,12 @@ class TestEndToEndMixed:
 
 class TestEndToEndDQN:
     def test_dqn_trains_without_error(self):
-        from multi_agent_package.scripts.run_from_config import (
+        from ppage.scripts.run_from_config import (
             load_all_configs,
             build_environment,
         )
-        import baselines  # noqa: F401
-        from baselines.DQN.dqn import DQN
+        import ppage.baselines  # noqa: F401
+        from ppage.baselines.DQN.dqn import DQN
 
         configs = load_all_configs(experiment_file="experiment_dqn.yaml")
         configs["env"]["env"]["render_mode"] = None
@@ -344,7 +344,7 @@ class TestEndToEndDQN:
 
 class TestEndToEndDQN1v1:
     def test_dqn_1v1_config_loads(self):
-        from multi_agent_package.scripts.run_from_config import load_all_configs
+        from ppage.scripts.run_from_config import load_all_configs
 
         configs = load_all_configs(
             config_dir="configs/dqn_1v1",
@@ -356,12 +356,12 @@ class TestEndToEndDQN1v1:
         assert configs["experiment"]["experiment"]["algorithm"]["name"] == "dqn"
 
     def test_dqn_1v1_trains_without_error(self):
-        from multi_agent_package.scripts.run_from_config import (
+        from ppage.scripts.run_from_config import (
             load_all_configs,
             build_environment,
         )
-        import baselines  # noqa: F401
-        from baselines.DQN.dqn import DQN
+        import ppage.baselines  # noqa: F401
+        from ppage.baselines.DQN.dqn import DQN
 
         configs = load_all_configs(
             config_dir="configs/dqn_1v1",
@@ -390,11 +390,11 @@ class TestSpeedWrapper:
     def _make_wrapped(
         self, pred_speed=2, pred_stamina=9999, prey_speed=1, prey_stamina=9999
     ):
-        from multi_agent_package.core.agent import Agent
-        from multi_agent_package.core.gridworld import GridWorldEnv
-        from multi_agent_package.observations.local_only import LocalOnlyObservation
-        from multi_agent_package.actions.discrete_actions import DiscreteActionSpace
-        from multi_agent_package.wrappers.speed import SpeedWrapper
+        from ppage.core.agent import Agent
+        from ppage.core.gridworld import GridWorldEnv
+        from ppage.observations.local_only import LocalOnlyObservation
+        from ppage.actions.discrete_actions import DiscreteActionSpace
+        from ppage.wrappers.speed import SpeedWrapper
 
         agents = [
             Agent(agent_type="predator", agent_team="pred", agent_name="pred_1"),

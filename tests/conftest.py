@@ -9,8 +9,8 @@ import pytest
 # Make src/ importable without installing the package
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from multi_agent_package.core.agent import Agent  # noqa: E402
-from multi_agent_package.core.gridworld import GridWorldEnv  # noqa: E402
+from ppage.core.agent import Agent  # noqa: E402
+from ppage.core.gridworld import GridWorldEnv  # noqa: E402
 
 # ------------------------------------------------------------------
 # Agent fixtures
@@ -194,9 +194,9 @@ def a3c_config():
 @pytest.fixture
 def dqn_env(one_predator_one_prey):
     """5×5 env with local_only observation + discrete_5 actions wired for DQN."""
-    from multi_agent_package.observations.local_only import LocalOnlyObservation
-    from multi_agent_package.actions.discrete_actions import DiscreteActionSpace
-    from multi_agent_package.rewards.base_reward import BaseReward
+    from ppage.observations.local_only import LocalOnlyObservation
+    from ppage.actions.discrete_actions import DiscreteActionSpace
+    from ppage.rewards.base_reward import BaseReward
 
     env = GridWorldEnv(
         agents=one_predator_one_prey,

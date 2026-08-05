@@ -5,13 +5,13 @@ Tests for all five observation builders.
 import numpy as np
 import pytest
 
-from multi_agent_package.core.agent import Agent
-from multi_agent_package.core.gridworld import GridWorldEnv
-from multi_agent_package.observations.default import DefaultObservation
-from multi_agent_package.observations.local_only import LocalOnlyObservation
-from multi_agent_package.observations.absolute import AbsoluteObservation
-from multi_agent_package.observations.relative import RelativeObservation
-from multi_agent_package.observations.local_radius import LocalRadiusObservation
+from ppage.core.agent import Agent
+from ppage.core.gridworld import GridWorldEnv
+from ppage.observations.default import DefaultObservation
+from ppage.observations.local_only import LocalOnlyObservation
+from ppage.observations.absolute import AbsoluteObservation
+from ppage.observations.relative import RelativeObservation
+from ppage.observations.local_radius import LocalRadiusObservation
 
 # ------------------------------------------------------------------
 # Helpers

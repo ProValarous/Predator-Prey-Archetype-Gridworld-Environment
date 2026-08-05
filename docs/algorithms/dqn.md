@@ -43,7 +43,7 @@ flowchart LR
     OPT -->|"every N steps: hard sync"| TN
 ```
 
-**Implementation:** `src/baselines/DQN/`.
+**Implementation:** `src/ppage/baselines/DQN/`.
 
 - `dqn.py` — the `DQN` algorithm: per-agent `q_networks`, `target_networks`,
   `optimizers`, `replay_buffers`; ε-greedy `select_actions`; `_optimize_agent`
@@ -93,7 +93,7 @@ vector; `local_only`, `absolute`, `relative`, and `local_radius` all qualify.
 Ready-made presets live in `configs/dqn_1v1/` and `configs/dqn_speed{1,2,3}/`.
 
 ```bash
-python -m multi_agent_package.scripts.run_dqn --config-dir configs/dqn_1v1
+python -m ppage.scripts.run_dqn --config-dir configs/dqn_1v1
 ```
 
 ## When to use DQN

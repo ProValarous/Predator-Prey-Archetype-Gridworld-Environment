@@ -10,12 +10,12 @@ import numpy as np
 import pytest
 import torch
 
-from multi_agent_package.core.agent import Agent
-from multi_agent_package.core.gridworld import GridWorldEnv
-from multi_agent_package.observations.relative import RelativeObservation
-from baselines.A2C.a2c import A2C
-from baselines.A2C.actor_network import ActorNetwork
-from baselines.A2C.critic_network import CriticNetwork
+from ppage.core.agent import Agent
+from ppage.core.gridworld import GridWorldEnv
+from ppage.observations.relative import RelativeObservation
+from ppage.baselines.A2C.a2c import A2C
+from ppage.baselines.A2C.actor_network import ActorNetwork
+from ppage.baselines.A2C.critic_network import CriticNetwork
 
 # ------------------------------------------------------------------
 # Helpers

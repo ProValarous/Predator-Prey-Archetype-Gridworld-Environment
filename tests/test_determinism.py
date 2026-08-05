@@ -8,9 +8,9 @@ in CI.
 
 import numpy as np
 
-from multi_agent_package.core.agent import Agent
-from multi_agent_package.core.gridworld import GridWorldEnv
-from multi_agent_package.rewards.base_reward import BaseReward
+from ppage.core.agent import Agent
+from ppage.core.gridworld import GridWorldEnv
+from ppage.rewards.base_reward import BaseReward
 
 
 def _make_env(seed):
@@ -74,7 +74,7 @@ def test_same_seed_reproduces_full_trajectory():
 
 
 def test_build_environment_is_seed_deterministic():
-    from multi_agent_package.scripts.run_from_config import (
+    from ppage.scripts.run_from_config import (
         load_all_configs,
         build_environment,
     )

@@ -37,11 +37,15 @@ dependencies = [
     "numpy",
     "pygame",
     "pyyaml",
-    "torch",
-    "tensorboard",
 ]
 
 [project.optional-dependencies]
+# Neural-network baselines (DQN, AC, A2C, A3C) and their training scripts
+# need PyTorch; the environment itself and the tabular baselines do not.
+baselines = [
+    "torch",
+    "tensorboard",
+]
 dev = [
     "pytest",
     "pytest-cov",
@@ -76,6 +80,6 @@ target-version = ["py310", "py311", "py312"]
 extend-exclude = '''
 /(
     \.new_venv
-    | src/multi_agent_package/core
+    | src/ppage/core
 )/
 '''

@@ -102,26 +102,26 @@ plugins:
       default_handler: python
       handlers:
         python:
-          # multi_agent_package/core/ and each baselines/<ALGO>/ subdir have
+          # ppage/core/ and each ppage/baselines/<ALGO>/ subdir have
           # no __init__.py (namespace packages) — griffe can't traverse
           # them as submodules of their parent package. core/ is
           # deliberately kept that way (off-limits per CONTRIBUTING.md's
           # Golden Rule, so adding __init__.py there isn't an option);
-          # the baselines/ subdirs are just an existing gap. Rather than
+          # the ppage/baselines/ subdirs are just an existing gap. Rather than
           # touch source for a docs config, each is listed here as its
           # own search root instead, referenced with a bare module name
           # in docs/api/*.md (e.g. `agent.Agent`, `iql.IQL`).
           paths:
             - src
-            - src/multi_agent_package/core
-            - src/baselines
-            - src/baselines/IQL
-            - src/baselines/CQL
-            - src/baselines/MIXED
-            - src/baselines/DQN
-            - src/baselines/AC
-            - src/baselines/A2C
-            - src/baselines/A3C
+            - src/ppage/core
+            - src/ppage/baselines
+            - src/ppage/baselines/IQL
+            - src/ppage/baselines/CQL
+            - src/ppage/baselines/MIXED
+            - src/ppage/baselines/DQN
+            - src/ppage/baselines/AC
+            - src/ppage/baselines/A2C
+            - src/ppage/baselines/A3C
           options:
             docstring_style: numpy
             show_source: true

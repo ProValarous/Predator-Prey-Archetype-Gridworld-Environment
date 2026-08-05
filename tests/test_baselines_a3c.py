@@ -14,10 +14,10 @@ import pytest
 import torch
 import torch.multiprocessing as mp
 
-from baselines.AC.network import ActorCriticNetwork
-from baselines.AC.return_normalizer import SharedReturnNormalizer
-from baselines.A3C.shared_adam import SharedAdam
-from baselines.A3C.a3c import _worker_loop
+from ppage.baselines.AC.network import ActorCriticNetwork
+from ppage.baselines.AC.return_normalizer import SharedReturnNormalizer
+from ppage.baselines.A3C.shared_adam import SharedAdam
+from ppage.baselines.A3C.a3c import _worker_loop
 
 
 class _PicklableEnvFactory:
@@ -25,11 +25,11 @@ class _PicklableEnvFactory:
     test since a lambda/closure will not survive pickling under 'spawn'."""
 
     def __call__(self):
-        from multi_agent_package.core.agent import Agent
-        from multi_agent_package.core.gridworld import GridWorldEnv
-        from multi_agent_package.observations.local_only import LocalOnlyObservation
-        from multi_agent_package.actions.discrete_actions import DiscreteActionSpace
-        from multi_agent_package.rewards.base_reward import BaseReward
+        from ppage.core.agent import Agent
+        from ppage.core.gridworld import GridWorldEnv
+        from ppage.observations.local_only import LocalOnlyObservation
+        from ppage.actions.discrete_actions import DiscreteActionSpace
+        from ppage.rewards.base_reward import BaseReward
 
         agents = [
             Agent(agent_type="predator", agent_team="predator_1", agent_name="pred_1"),
@@ -246,7 +246,7 @@ class TestWorkerLoopLogic:
 
 class TestA3CInit:
     def test_infers_state_dim_and_action_dim(self, dqn_env, a3c_config):
-        from baselines.A3C.a3c import A3C
+        from ppage.baselines.A3C.a3c import A3C
 
         a3c_config["env_fn"] = lambda: dqn_env
         algo = A3C(dqn_env, a3c_config)
@@ -254,7 +254,7 @@ class TestA3CInit:
         assert algo.action_dim == 5
 
     def test_one_learner_per_agent(self, dqn_env, a3c_config):
-        from baselines.A3C.a3c import A3C
+        from ppage.baselines.A3C.a3c import A3C
 
         a3c_config["env_fn"] = lambda: dqn_env
         algo = A3C(dqn_env, a3c_config)
@@ -266,7 +266,7 @@ class TestA3CInit:
         the trunk and value_head are shared with the critic across every
         worker, so decaying them too would regularize value estimation, not
         just the policy (see docs/algorithms/a3c.md)."""
-        from baselines.A3C.a3c import A3C
+        from ppage.baselines.A3C.a3c import A3C
 
         a3c_config["env_fn"] = lambda: dqn_env
         a3c_config["actor_weight_decay"] = 0.001
@@ -291,21 +291,21 @@ class TestA3CInit:
         assert seen == policy_head_params | other_params
 
     def test_default_actor_weight_decay_is_zero(self, dqn_env, a3c_config):
-        from baselines.A3C.a3c import A3C
+        from ppage.baselines.A3C.a3c import A3C
 
         a3c_config["env_fn"] = lambda: dqn_env
         algo = A3C(dqn_env, a3c_config)
         assert algo.actor_weight_decay == 0.0
 
     def test_default_normalize_returns_is_false(self, dqn_env, a3c_config):
-        from baselines.A3C.a3c import A3C
+        from ppage.baselines.A3C.a3c import A3C
 
         a3c_config["env_fn"] = lambda: dqn_env
         algo = A3C(dqn_env, a3c_config)
         assert algo.normalize_returns is False
 
     def test_normalize_returns_config_is_parsed(self, dqn_env, a3c_config):
-        from baselines.A3C.a3c import A3C
+        from ppage.baselines.A3C.a3c import A3C
 
         a3c_config["env_fn"] = lambda: dqn_env
         a3c_config["normalize_returns"] = True
@@ -315,13 +315,13 @@ class TestA3CInit:
         assert algo.return_norm_decay == 0.95
 
     def test_missing_env_fn_raises(self, dqn_env, a3c_config):
-        from baselines.A3C.a3c import A3C
+        from ppage.baselines.A3C.a3c import A3C
 
         with pytest.raises(ValueError):
             A3C(dqn_env, a3c_config)
 
     def test_non_callable_env_fn_raises(self, dqn_env, a3c_config):
-        from baselines.A3C.a3c import A3C
+        from ppage.baselines.A3C.a3c import A3C
 
         a3c_config["env_fn"] = "not a callable"
         with pytest.raises(ValueError):
@@ -330,9 +330,9 @@ class TestA3CInit:
     def test_missing_observation_encoder_raises(
         self, one_predator_one_prey, a3c_config
     ):
-        from multi_agent_package.core.gridworld import GridWorldEnv
-        from multi_agent_package.actions.discrete_actions import DiscreteActionSpace
-        from baselines.A3C.a3c import A3C
+        from ppage.core.gridworld import GridWorldEnv
+        from ppage.actions.discrete_actions import DiscreteActionSpace
+        from ppage.baselines.A3C.a3c import A3C
 
         env = GridWorldEnv(
             agents=one_predator_one_prey,
@@ -347,7 +347,7 @@ class TestA3CInit:
             A3C(env, a3c_config)
 
     def test_action_dim_mismatch_raises(self, dqn_env, a3c_config):
-        from baselines.A3C.a3c import A3C
+        from ppage.baselines.A3C.a3c import A3C
 
         a3c_config["env_fn"] = lambda: dqn_env
         a3c_config["action_dim"] = 9
@@ -355,7 +355,7 @@ class TestA3CInit:
             A3C(dqn_env, a3c_config)
 
     def test_non_positive_n_steps_raises(self, dqn_env, a3c_config):
-        from baselines.A3C.a3c import A3C
+        from ppage.baselines.A3C.a3c import A3C
 
         a3c_config["env_fn"] = lambda: dqn_env
         a3c_config["n_steps"] = 0
@@ -363,7 +363,7 @@ class TestA3CInit:
             A3C(dqn_env, a3c_config)
 
     def test_non_positive_num_workers_raises(self, dqn_env, a3c_config):
-        from baselines.A3C.a3c import A3C
+        from ppage.baselines.A3C.a3c import A3C
 
         a3c_config["env_fn"] = lambda: dqn_env
         a3c_config["num_workers"] = 0
@@ -373,7 +373,7 @@ class TestA3CInit:
 
 class TestA3CSelectActions:
     def test_returns_valid_actions_for_all_agents(self, dqn_env, a3c_config):
-        from baselines.A3C.a3c import A3C
+        from ppage.baselines.A3C.a3c import A3C
 
         a3c_config["env_fn"] = lambda: dqn_env
         algo = A3C(dqn_env, a3c_config)
@@ -390,7 +390,7 @@ class TestA3CTrain:
         exercises pickling of env_fn/networks/optimizers and the actual
         'spawn' start method, which the direct _worker_loop tests above
         cannot catch."""
-        from baselines.A3C.a3c import A3C
+        from ppage.baselines.A3C.a3c import A3C
 
         env_fn = _PicklableEnvFactory()
         env = env_fn()
@@ -420,7 +420,7 @@ class TestA3CTrain:
         only way to catch a pickling/spawn failure in that plumbing, since
         the direct _worker_loop tests call it in-process and wouldn't
         notice if the shared primitives failed to survive a real spawn."""
-        from baselines.A3C.a3c import A3C
+        from ppage.baselines.A3C.a3c import A3C
 
         env_fn = _PicklableEnvFactory()
         env = env_fn()
@@ -447,7 +447,7 @@ class TestA3CTrain:
         """train() writes the CSV header itself, separately from the rows
         _worker_loop appends -- a header/row column mismatch here would slip
         past every other test since none of them read the header back."""
-        from baselines.A3C.a3c import A3C
+        from ppage.baselines.A3C.a3c import A3C
 
         env_fn = _PicklableEnvFactory()
         env = env_fn()
@@ -477,7 +477,7 @@ class TestA3CTrain:
 
 class TestA3CPersistence:
     def test_save_creates_file(self, dqn_env, a3c_config, tmp_path):
-        from baselines.A3C.a3c import A3C
+        from ppage.baselines.A3C.a3c import A3C
 
         a3c_config["env_fn"] = lambda: dqn_env
         algo = A3C(dqn_env, a3c_config)
@@ -486,7 +486,7 @@ class TestA3CPersistence:
         assert path.exists()
 
     def test_load_restores_weights(self, dqn_env, a3c_config, tmp_path):
-        from baselines.A3C.a3c import A3C
+        from ppage.baselines.A3C.a3c import A3C
 
         a3c_config["env_fn"] = lambda: dqn_env
         algo = A3C(dqn_env, a3c_config)
@@ -508,7 +508,7 @@ class TestA3CPersistence:
         normalizer to a fresh (0.0, eps) estimate would silently
         misinterpret an already-trained value head's predictions. Mirrors
         ActorCritic's equivalent test."""
-        from baselines.A3C.a3c import A3C
+        from ppage.baselines.A3C.a3c import A3C
 
         a3c_config["env_fn"] = lambda: dqn_env
         a3c_config["normalize_returns"] = True
@@ -535,7 +535,7 @@ class TestA3CPersistence:
     ):
         import pickle
 
-        from baselines.A3C.a3c import A3C
+        from ppage.baselines.A3C.a3c import A3C
 
         a3c_config["env_fn"] = lambda: dqn_env
         algo = A3C(dqn_env, a3c_config)

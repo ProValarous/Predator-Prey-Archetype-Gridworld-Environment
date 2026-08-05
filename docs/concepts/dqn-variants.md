@@ -39,7 +39,7 @@ a*  = argmax_a' Q_online(s', a')
 y   = r + γ · (1 − done) · Q_target(s', a*)
 ```
 
-**Where it lives.** `src/baselines/DQN/dqn.py`, in `_optimize_agent`, guarded by
+**Where it lives.** `src/ppage/baselines/DQN/dqn.py`, in `_optimize_agent`, guarded by
 `self.double_dqn`:
 
 ```python
@@ -69,7 +69,7 @@ the network learn the value of a state independently of which action is taken,
 which helps when many actions have similar value (common in a gridworld where
 most cells are unremarkable).
 
-**Where it lives.** `src/baselines/DQN/q_network.py`, class `DuelingQNetwork`
+**Where it lives.** `src/ppage/baselines/DQN/q_network.py`, class `DuelingQNetwork`
 (shared trunk → `value_head` + `advantage_head`, combined in `forward`). DQN swaps
 it in for the plain `QNetwork` in `_build_learners`:
 
@@ -107,18 +107,18 @@ experiment:
 Run it like any other config:
 
 ```bash
-python -m multi_agent_package.scripts.run_dqn --config-dir configs/d3qn
+python -m ppage.scripts.run_dqn --config-dir configs/d3qn
 ```
 
 ## Where everything is
 
 | Piece | File | Symbol |
 | --- | --- | --- |
-| Variant flags read from config | `src/baselines/DQN/dqn.py` | `self.double_dqn`, `self.dueling` |
-| Double DQN target | `src/baselines/DQN/dqn.py` | `_optimize_agent` |
-| Network selection | `src/baselines/DQN/dqn.py` | `_build_learners` (`network_cls`) |
-| Dueling architecture | `src/baselines/DQN/q_network.py` | `DuelingQNetwork` |
-| Plain architecture | `src/baselines/DQN/q_network.py` | `QNetwork` |
+| Variant flags read from config | `src/ppage/baselines/DQN/dqn.py` | `self.double_dqn`, `self.dueling` |
+| Double DQN target | `src/ppage/baselines/DQN/dqn.py` | `_optimize_agent` |
+| Network selection | `src/ppage/baselines/DQN/dqn.py` | `_build_learners` (`network_cls`) |
+| Dueling architecture | `src/ppage/baselines/DQN/q_network.py` | `DuelingQNetwork` |
+| Plain architecture | `src/ppage/baselines/DQN/q_network.py` | `QNetwork` |
 | D3QN preset | `configs/d3qn/` | `experiment_dqn.yaml` |
 | Tests | `tests/test_baselines_dqn.py` | `TestDuelingQNetwork`, dueling/double training tests |
 

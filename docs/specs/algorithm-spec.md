@@ -9,8 +9,8 @@ Formal contract for all learning algorithm implementations.
 | Property | Value |
 |----------|-------|
 | Abstract base | `BaseAlgorithm` |
-| File | `src/baselines/base.py` |
-| Registry | `baselines/registry/algorithm_registry.py` |
+| File | `src/ppage/baselines/base.py` |
+| Registry | `ppage/baselines/registry/algorithm_registry.py` |
 | Extensible by | All contributors |
 
 ---
@@ -110,12 +110,12 @@ It must **not** call:
 ## Registration
 
 ```python
-# In baselines/__init__.py — import triggers self-registration:
-from baselines.my_algo.my_algo import MyAlgorithm
+# In ppage/baselines/__init__.py — import triggers self-registration:
+from ppage.baselines.my_algo.my_algo import MyAlgorithm
 
 # In my_algo.py — bottom of file (registration guard prevents double-registration
 # when the module is run as __main__ via python -m):
-from baselines.registry.algorithm_registry import register
+from ppage.baselines.registry.algorithm_registry import register
 if __name__ != "__main__":
     register("my_algo", MyAlgorithm)
 ```
@@ -137,7 +137,7 @@ Registered algorithms: `iql`, `cql`, `mixed` (MixedTrainer — assign IQL or CQL
 
 ## DQN — the Neural Algorithm
 
-Unlike IQL/CQL/MixedTrainer (tabular), `DQN` (`baselines/DQN/dqn.py`) uses one independent PyTorch `QNetwork` (or `DuelingQNetwork`) plus a target network and a replay buffer **per agent** — architecturally, it's IQL's independent-per-agent structure with a function approximator instead of a table.
+Unlike IQL/CQL/MixedTrainer (tabular), `DQN` (`ppage/baselines/DQN/dqn.py`) uses one independent PyTorch `QNetwork` (or `DuelingQNetwork`) plus a target network and a replay buffer **per agent** — architecturally, it's IQL's independent-per-agent structure with a function approximator instead of a table.
 
 **Extra precondition beyond `BaseAlgorithm`:** DQN requires `env.observation_encoder` to already be attached — a callable `encode(obs, env) -> array-like`, flattened internally to a 1-D `float32` array. `run_from_config.build_environment()` attaches this automatically from the configured observation builder's `encode()` method; constructing `DQN` directly on an env missing this attribute raises `ValueError`.
 
@@ -158,7 +158,7 @@ Unlike IQL/CQL/MixedTrainer (tabular), `DQN` (`baselines/DQN/dqn.py`) uses one i
 ## ActorCritic — the On-Policy Algorithm
 
 Unlike IQL/CQL/MixedTrainer/DQN (all value-based, act greedy-over-Q), `ActorCritic`
-(`baselines/AC/actor_critic.py`) is a **policy-gradient** method: it learns a
+(`ppage/baselines/AC/actor_critic.py`) is a **policy-gradient** method: it learns a
 stochastic policy directly and uses a state-value critic only to reduce gradient
 variance. It is architecturally closest to DQN — one independent `ActorCriticNetwork`
 plus optimizer per agent — but learns fully **on-policy**: every `_update()` call
@@ -242,7 +242,7 @@ returns — confirmed by freezing the actor completely (zero gradient into
 1000+ within ~220 steps, collapsing entropy purely as a side effect of the
 critic fitting its targets. `policy_head` is a plain linear readout on those
 same trunk features, so its logits inherit that unbounded growth for free.
-`normalize_returns` (`baselines/AC/return_normalizer.py`, a PopArt-style
+`normalize_returns` (`ppage/baselines/AC/return_normalizer.py`, a PopArt-style
 running mean/std normalizer, van Hasselt et al. 2016) trains the critic
 against the bootstrapped return's own normalized (properly O(1)) scale
 instead of the raw one, keeping trunk feature norms small (2-10 instead of
@@ -268,7 +268,7 @@ export (columns: `episode`, `<agent>_reward`, `<agent>_loss`, `<agent>_entropy`
 
 ## A2C — the Batched On-Policy Algorithm
 
-`A2C` (`baselines/A2C/a2c.py`) is ActorCritic's batched sibling: same
+`A2C` (`ppage/baselines/A2C/a2c.py`) is ActorCritic's batched sibling: same
 policy-gradient idea, but accumulates an `n_steps` rollout and updates once from an
 n-step bootstrapped return, instead of updating after every single env step.
 Unlike ActorCritic's shared-trunk `ActorCriticNetwork`, A2C uses **separate**
@@ -313,10 +313,10 @@ and `docs/algorithms/a3c.md#actor_weight_decay-shared-trunk-caveat`.
 
 ## A3C — the Asynchronous On-Policy Algorithm
 
-`A3C` (`baselines/A3C/a3c.py`) runs A2C's same n-step rollout/update logic across
+`A3C` (`ppage/baselines/A3C/a3c.py`) runs A2C's same n-step rollout/update logic across
 **multiple worker processes**, each stepping its own independent environment.
 Workers periodically sync a local network copy from a **shared global network**
-(`ActorCriticNetwork`, reused from `baselines/AC/network.py` rather than
+(`ActorCriticNetwork`, reused from `ppage/baselines/AC/network.py` rather than
 duplicated), compute gradients locally, then apply those gradients directly to the
 shared network and step a shared `SharedAdam` optimizer — lock-free ("Hogwild"),
 exactly as Mnih et al. (2016) describe. There is no replay buffer and no
@@ -342,7 +342,7 @@ around.
 `actor_weight_decay`, `grad_clip`, `seed`, `curves_path` (plus the required
 `env_fn`, supplied by the calling script, not the YAML).
 
-**`SharedAdam`** (`baselines/A3C/shared_adam.py`): a `torch.optim.Adam` subclass
+**`SharedAdam`** (`ppage/baselines/A3C/shared_adam.py`): a `torch.optim.Adam` subclass
 whose per-parameter state (`exp_avg`, `exp_avg_sq`, step count) is moved to shared
 memory at construction. Without this, each worker process would keep its own
 private, diverging view of the Adam moment estimates instead of a consistent
@@ -414,7 +414,7 @@ use it, confirmed concretely (not just in theory) when a faster
 `return_norm_decay=0.99` caused an outright numerical overflow rather than a
 milder version of the wrinkle.
 
-**Fixed with `SharedReturnNormalizer`** (`baselines/AC/return_normalizer.py`)
+**Fixed with `SharedReturnNormalizer`** (`ppage/baselines/AC/return_normalizer.py`)
 — ONE running estimate, shared and lock-protected across all 4 workers via
 the same `multiprocessing.Value`/`Lock` primitives already used for
 `episode_counter`, letting the PopArt rescale apply consistently. Each worker
@@ -515,7 +515,7 @@ value-based vs. policy-gradient baselines on this environment.
 - [ ] No direct reads of env internals
 - [ ] Hyperparameters accepted as `config: dict` in `__init__`
 - [ ] Self-registers at module load via `register()` — guarded with `if __name__ != "__main__":`
-- [ ] Import added to `baselines/__init__.py`
+- [ ] Import added to `ppage/baselines/__init__.py`
 - [ ] Standalone CLI (`--mode train|eval`) built into the algorithm file itself, building its own env directly — this is in addition to, not instead of, a thin `run_<algo>.py` wrapper under `scripts/` that reads the matching `experiment_<algo>.yaml` via `run_from_config`'s `load_all_configs`/`build_environment`
 - [ ] `train()` calls `algo.save(path)` to persist; `load(cls, env, config, path)` classmethod restores it
 - [ ] Evaluation uses `algo.evaluate()` from `BaseAlgorithm` (or overrides it)

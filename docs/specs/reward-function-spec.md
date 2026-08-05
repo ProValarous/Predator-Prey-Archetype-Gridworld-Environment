@@ -9,7 +9,7 @@ Formal contract for all reward function implementations.
 | Property | Value |
 |----------|-------|
 | Abstract base | `RewardFunction` |
-| File | `src/multi_agent_package/rewards/base.py` |
+| File | `src/ppage/rewards/base.py` |
 | Registry | `reward_registry.py` |
 | Extensible by | All contributors |
 
@@ -103,7 +103,7 @@ total[agent] = fn1.compute(env)[agent]
 "my_reward": MyReward,
 
 # Or at runtime:
-from multi_agent_package.registry.reward_registry import register_reward
+from ppage.registry.reward_registry import register_reward
 register_reward("my_reward", MyReward)
 ```
 

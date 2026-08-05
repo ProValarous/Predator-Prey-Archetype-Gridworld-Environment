@@ -41,7 +41,7 @@ The modules `core/gridworld.py` and `core/agent.py`. These define environment ph
 Any `ObservationBuilder`, `RewardFunction`, or `ActionSpace` subclass. Plugins are loaded at runtime via the registry and injected into the environment. They may read but must not write env state.
 
 **Registry**
-A dict-based lookup table mapping string names (used in YAML) to Python classes. Four registries exist: `observation_registry`, `reward_registry`, `action_registry` (all three under `multi_agent_package/registry/`), and `algorithm_registry` (under `baselines/registry/`).
+A dict-based lookup table mapping string names (used in YAML) to Python classes. Four registries exist: `observation_registry`, `reward_registry`, `action_registry` (all three under `ppage/registry/`), and `algorithm_registry` (under `ppage/baselines/registry/`).
 
 **Callable Injection**
 The pattern where the environment holds a function pointer (`env.reward_fn`, `env.observation_builder`) rather than a class reference. The plugin's method is bound at wiring time in `run_from_config.py`. The action space (`env.action_space_plugin`) follows the same injection pattern but is stored as an object rather than a bound method, because `to_direction()` requires an argument.
@@ -88,10 +88,10 @@ A coordinate system using the grid's absolute coordinates (origin at top-left). 
 ## Algorithm Terms
 
 **IQL (Independent Q-Learning)**
-Each agent maintains its own Q-table and learns independently. No explicit modeling of other agents. Tabular: state must be hashable. Implemented in `baselines/IQL/iql.py`.
+Each agent maintains its own Q-table and learns independently. No explicit modeling of other agents. Tabular: state must be hashable. Implemented in `ppage/baselines/IQL/iql.py`.
 
 **CQL (Centralized Q-Learning)**
-Q-learning with a shared (centralized) Q-table over the joint state-action space of all agents. A single table covers all agents collectively, enabling coordinated learning at the cost of state-space scaling. Implemented in `baselines/CQL/cql.py`.
+Q-learning with a shared (centralized) Q-table over the joint state-action space of all agents. A single table covers all agents collectively, enabling coordinated learning at the cost of state-space scaling. Implemented in `ppage/baselines/CQL/cql.py`.
 
 > ⚠️ **Naming collision:** this "CQL" is unrelated to the well-known offline-RL algorithm "Conservative Q-Learning" (Kumar et al., 2020) that shares the same acronym in the broader RL literature. This repo's CQL is plain online joint-action tabular Q-learning — no conservative/pessimistic regularization, no offline dataset, no distributional-shift penalty.
 
@@ -102,7 +102,7 @@ A lookup table `Q[state][action] → expected_return`. In IQL, one table per age
 A multi-algorithm baseline where predators and prey are assigned different learning algorithms (IQL or CQL) via `predator_algo` / `prey_algo` config params. Registered as `"mixed"` in the algorithm registry.
 
 **DQN (Deep Q-Network)**
-A PyTorch neural-network baseline: one independent `QNetwork` (or `DuelingQNetwork`) plus target network and replay buffer per agent — architecturally similar to IQL (independent per-agent learning) but with a function approximator instead of a table. Requires `env.observation_encoder` to be attached (an `encode(obs, env) -> np.ndarray` callable). Implemented in `baselines/DQN/dqn.py`.
+A PyTorch neural-network baseline: one independent `QNetwork` (or `DuelingQNetwork`) plus target network and replay buffer per agent — architecturally similar to IQL (independent per-agent learning) but with a function approximator instead of a table. Requires `env.observation_encoder` to be attached (an `encode(obs, env) -> np.ndarray` callable). Implemented in `ppage/baselines/DQN/dqn.py`.
 
 **Double DQN**
 A DQN variant (`double_dqn: true` config flag) that selects the bootstrap action using the *online* network but evaluates its Q-value using the *target* network, decoupling action selection from evaluation to reduce the max-operator's overestimation bias.
@@ -111,7 +111,7 @@ A DQN variant (`double_dqn: true` config flag) that selects the bootstrap action
 A DQN variant (`dueling: true` config flag) using `DuelingQNetwork`, which splits the network into a value stream `V(s)` and an advantage stream `A(s,a)`, recombined as `Q(s,a) = V(s) + (A(s,a) - mean_a A(s,a))`.
 
 **Replay Buffer**
-A fixed-capacity ring buffer of `(state, action, reward, next_state, done)` transitions, sampled without replacement in random batches for DQN's gradient updates. Implemented in `baselines/DQN/replay_buffer.py` as preallocated numpy arrays (not a `deque`), for O(1) vectorized batch sampling.
+A fixed-capacity ring buffer of `(state, action, reward, next_state, done)` transitions, sampled without replacement in random batches for DQN's gradient updates. Implemented in `ppage/baselines/DQN/replay_buffer.py` as preallocated numpy arrays (not a `deque`), for O(1) vectorized batch sampling.
 
 **Epsilon-Greedy**
 Exploration strategy: with probability `epsilon`, select a random action; otherwise select the greedy (highest Q-value) action. `epsilon` decays over episodes. Used by all four baselines (IQL, CQL, MixedTrainer, DQN).

@@ -4,7 +4,7 @@
 
 An agent is an **entity that can observe, decide, and act** in the gridworld. Each agent has a fixed identity (type, team, name) and mutable state (position, stamina).
 
-Implemented in `src/multi_agent_package/core/agent.py`.
+Implemented in `src/ppage/core/agent.py`.
 
 ---
 

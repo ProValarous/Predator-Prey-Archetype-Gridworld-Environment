@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Breaking:** the import surface is now a single top-level package, `ppage`,
+  in preparation for the first PyPI release. `multi_agent_package` became
+  `ppage` and `baselines` became `ppage.baselines`; all imports, module CLIs
+  (`python -m ppage.scripts...`, `python -m ppage.baselines...`), docs, and CI
+  paths were updated. Reinstall with `pip install -e .` after pulling.
+- **Breaking:** `torch` and `tensorboard` are no longer hard dependencies.
+  They moved to a new `baselines` extra (`pip install -e ".[baselines]"`),
+  so installing the environment alone no longer pulls in PyTorch. The tabular
+  baselines (IQL, CQL, MixedTrainer) still work without the extra.
+- Repository moved to the `UHUMALAB` GitHub org as `UHUMALAB/PPAGE`; repo,
+  docs-site, and issue URLs across README, docs, packaging metadata, and
+  `CITATION.cff` now point there.
+
 ## [0.8.0-beta] - 2026-07-27
 
 ### Added

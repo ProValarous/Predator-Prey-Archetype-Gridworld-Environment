@@ -9,7 +9,7 @@ Formal contract for all action space implementations.
 | Property | Value |
 |----------|-------|
 | Abstract base | `ActionSpace` |
-| File | `src/multi_agent_package/actions/base.py` |
+| File | `src/ppage/actions/base.py` |
 | Registry | `action_registry.py` |
 | Extensible by | All contributors |
 
@@ -92,7 +92,7 @@ Every action space must be registered before it can be used via config:
 "my_action_space": MyActionSpace,
 
 # Or at runtime:
-from multi_agent_package.registry.action_registry import register_action_space
+from ppage.registry.action_registry import register_action_space
 register_action_space("my_action_space", MyActionSpace)
 ```
 

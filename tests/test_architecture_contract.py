@@ -18,13 +18,13 @@ import os
 
 import pytest
 
-from multi_agent_package.actions.base import ActionSpace
-from multi_agent_package.observations.base import ObservationBuilder
-from multi_agent_package.registry import get_observation_builder, get_reward_function
-from multi_agent_package.registry.action_registry import _ACTION_REGISTRY
-from multi_agent_package.registry.observation_registry import _OBSERVATION_REGISTRY
-from multi_agent_package.registry.reward_registry import _REWARD_REGISTRY
-from multi_agent_package.rewards.base import RewardFunction
+from ppage.actions.base import ActionSpace
+from ppage.observations.base import ObservationBuilder
+from ppage.registry import get_observation_builder, get_reward_function
+from ppage.registry.action_registry import _ACTION_REGISTRY
+from ppage.registry.observation_registry import _OBSERVATION_REGISTRY
+from ppage.registry.reward_registry import _REWARD_REGISTRY
+from ppage.rewards.base import RewardFunction
 
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _CONFIG_DIRS = sorted(
@@ -122,7 +122,7 @@ class TestPluginsDoNotMutateEnvState:
 class TestConfigPipelineEndToEnd:
     @pytest.mark.parametrize("config_dir", _CONFIG_DIRS)
     def test_pipeline_runs_end_to_end(self, config_dir):
-        from multi_agent_package.scripts.run_from_config import (
+        from ppage.scripts.run_from_config import (
             build_environment,
             load_all_configs,
         )

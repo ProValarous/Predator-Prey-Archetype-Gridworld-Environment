@@ -7,7 +7,7 @@ Full working example — from file to config-driven.
 ## Step 1 — Create the file
 
 ```
-src/multi_agent_package/actions/my_actions.py
+src/ppage/actions/my_actions.py
 ```
 
 Example: an 8-directional action space adding diagonal moves.
@@ -15,7 +15,7 @@ Example: an 8-directional action space adding diagonal moves.
 ```python
 import numpy as np
 from gymnasium import spaces
-from multi_agent_package.actions.base import ActionSpace
+from ppage.actions.base import ActionSpace
 
 
 class EightDirectionalActionSpace(ActionSpace):
@@ -72,10 +72,10 @@ class EightDirectionalActionSpace(ActionSpace):
 
 ## Step 2 — Register it
 
-Open `src/multi_agent_package/registry/action_registry.py`:
+Open `src/ppage/registry/action_registry.py`:
 
 ```python
-from multi_agent_package.actions.my_actions import EightDirectionalActionSpace
+from ppage.actions.my_actions import EightDirectionalActionSpace
 
 _ACTION_REGISTRY = {
     "discrete_5":   DiscreteActionSpace,
@@ -87,7 +87,7 @@ _ACTION_REGISTRY = {
 
 ## Step 3 — Export it
 
-Open `src/multi_agent_package/actions/__init__.py`:
+Open `src/ppage/actions/__init__.py`:
 
 ```python
 from .my_actions import EightDirectionalActionSpace
@@ -134,7 +134,7 @@ action_dim = env.action_space_plugin.n_actions if env.action_space_plugin else 5
 ## Step 6 — Test it
 
 ```python
-from multi_agent_package.actions.my_actions import EightDirectionalActionSpace
+from ppage.actions.my_actions import EightDirectionalActionSpace
 import numpy as np
 
 space = EightDirectionalActionSpace()
@@ -154,8 +154,8 @@ except ValueError:
     pass
 
 # Wire to environment
-from multi_agent_package.core.gridworld import GridWorldEnv
-from multi_agent_package.core.agent import Agent
+from ppage.core.gridworld import GridWorldEnv
+from ppage.core.agent import Agent
 
 agents = [
     Agent(agent_type="predator", agent_team="predator_1", agent_name="predator_1"),

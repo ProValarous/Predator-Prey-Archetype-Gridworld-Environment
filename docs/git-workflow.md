@@ -54,7 +54,7 @@ source .venv/bin/activate        # Windows: .venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
 ```
 
-> `pip install -e .` makes `multi_agent_package` and `baselines` importable
+> `pip install -e .` makes `ppage` (including `ppage.baselines`) importable
 > without setting `PYTHONPATH` (see the [Quickstart](guides/quickstart.md)), so the
 > commands below can be run as-is from the repository root.
 
@@ -75,7 +75,7 @@ branch scoped to one change — small, reviewable PRs merge faster.
 
 ### 2. The Golden Rule: `core/` is off-limits
 
-> **You may not modify `src/multi_agent_package/core/` (`gridworld.py`,
+> **You may not modify `src/ppage/core/` (`gridworld.py`,
 > `agent.py`).** Extend the system through `observations/`, `rewards/`,
 > `actions/`, `wrappers/`, and `registry/` instead.
 
@@ -140,7 +140,7 @@ triggered on every push and PR to `main`, `master`, or `STRP`:
 | --- | --- | --- |
 | `lint` | push + PR | `black --check .`, `flake8 .`, `pylint src`. Fails on any formatting or lint violation. `core/`, `miscellenous/`, and `slides/` are excluded from linting by design (see comments in `.flake8` / `.pylintrc`). |
 | `test` | push + PR | `pytest tests/ -q` — the full test suite (registries, plugin contracts, end-to-end training, architecture rules). |
-| `core-guard` | **PR only** | Diffs the PR's base and head SHAs; fails if any file under `src/multi_agent_package/core/` was touched. Never runs on plain pushes (there's no "PR diff" to check). |
+| `core-guard` | **PR only** | Diffs the PR's base and head SHAs; fails if any file under `src/ppage/core/` was touched. Never runs on plain pushes (there's no "PR diff" to check). |
 
 All three must pass before merging. There is currently no branch protection
 rule enforcing this at the GitHub level — reviewers should confirm the

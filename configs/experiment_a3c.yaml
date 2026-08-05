@@ -22,7 +22,7 @@ experiment:
       # prior value; see docs/algorithms/a3c.md
       normalize_returns: true  # the real fix for the entropy collapse -- ONE shared,
       # lock-protected estimate across all workers (not per-worker-local), so the
-      # PopArt weight-rescale (see baselines/AC/return_normalizer.py) applies
+      # PopArt weight-rescale (see ppage/baselines/AC/return_normalizer.py) applies
       # consistently instead of workers fighting each other
       return_norm_decay: 0.999
       grad_clip: 5.0

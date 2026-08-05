@@ -30,7 +30,7 @@ immutable and never imports upward.
 
 ```
 src/
-├── multi_agent_package/          # Environment package
+├── ppage/          # Environment package
 │   ├── core/
 │   │   ├── gridworld.py          # GridWorldEnv — central simulation
 │   │   └── agent.py              # Agent — identity + movement
@@ -58,24 +58,23 @@ src/
 │   │   ├── observation_registry.py
 │   │   ├── reward_registry.py
 │   │   └── action_registry.py
-│   └── scripts/
-│       ├── run_from_config.py    # Generic entrypoint (algorithm chosen via YAML)
-│       ├── run_iql.py  run_cql.py  run_mixed.py  run_dqn.py   # per-algorithm train/eval CLIs
-│       ├── evaluate.py           # Metrics (episode length + per-agent return); loads a checkpoint
-│       ├── render.py             # Single-episode visualization (random or a loaded policy)
-│       └── sweep.py              # CLI-driven sweep over an observation config param
-│
-├── baselines/
-│   ├── base.py                   # BaseAlgorithm (abstract) + evaluate()
-│   ├── __init__.py               # Auto-registers IQL, CQL, MixedTrainer, DQN
-│   ├── IQL/  CQL/  MIXED/        # tabular algorithms + standalone CLIs
-│   ├── DQN/
-│   │   ├── dqn.py                # DQN class (Double DQN, Dueling DQN flags)
-│   │   ├── q_network.py          # QNetwork / DuelingQNetwork (PyTorch)
-│   │   ├── replay_buffer.py      # Fixed-capacity numpy ring buffer
-│   │   └── curve_recorder.py     # Per-episode training-curve CSV writer
-│   └── registry/
-│       └── algorithm_registry.py
+│   ├── scripts/
+│   │   ├── run_from_config.py    # Generic entrypoint (algorithm chosen via YAML)
+│   │   ├── run_iql.py  run_cql.py  run_mixed.py  run_dqn.py   # per-algorithm train/eval CLIs
+│   │   ├── evaluate.py           # Metrics (episode length + per-agent return); loads a checkpoint
+│   │   ├── render.py             # Single-episode visualization (random or a loaded policy)
+│   │   └── sweep.py              # CLI-driven sweep over an observation config param
+│   └── baselines/
+│       ├── base.py               # BaseAlgorithm (abstract) + evaluate()
+│       ├── __init__.py           # Auto-registers IQL, CQL, MixedTrainer, DQN
+│       ├── IQL/  CQL/  MIXED/    # tabular algorithms + standalone CLIs
+│       ├── DQN/
+│       │   ├── dqn.py            # DQN class (Double DQN, Dueling DQN flags)
+│       │   ├── q_network.py      # QNetwork / DuelingQNetwork (PyTorch)
+│       │   ├── replay_buffer.py  # Fixed-capacity numpy ring buffer
+│       │   └── curve_recorder.py # Per-episode training-curve CSV writer
+│       └── registry/
+│           └── algorithm_registry.py
 │
 configs/                          # YAML experiment definitions (env/agents/obs/rewards/actions/experiment*)
 tests/                            # pytest suite: registries, plugin contracts, architecture rules, e2e
@@ -150,7 +149,7 @@ The architecture has four plugin extension points, plus wrappers as a less commo
 | Custom observation | `observations/` | Subclass `ObservationBuilder`, implement `build(env)` + `encode(obs, env)`, register in `observation_registry.py` |
 | Custom reward | `rewards/` | Subclass `RewardFunction`, implement `compute(env)`, register in `reward_registry.py` |
 | Custom action space | `actions/` | Subclass `ActionSpace`, implement `to_direction()` + properties, register in `action_registry.py` (all three registries validate the class is a proper subclass) |
-| Custom algorithm | `baselines/` | Subclass `BaseAlgorithm`, implement `select_actions()` + `train()`, register in `algorithm_registry.py` |
+| Custom algorithm | `ppage/baselines/` | Subclass `BaseAlgorithm`, implement `select_actions()` + `train()`, register in `algorithm_registry.py` |
 | Custom wrapper | `wrappers/` | Follow `SpeedWrapper`: wrap an env, proxy unmodified attributes via `__getattr__`, override only `step()`/`reset()`. No registry — applied explicitly in `build_environment()` |
 
 ---

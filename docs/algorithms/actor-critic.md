@@ -57,7 +57,7 @@ flowchart LR
     UPD -->|"critic loss: Huber(v(s), td_target)"| OPT
 ```
 
-**Implementation:** `src/baselines/AC/`.
+**Implementation:** `src/ppage/baselines/AC/`.
 
 - `actor_critic.py` — the `ActorCritic` algorithm: per-agent `networks`,
   `optimizers`; `select_actions` samples from `Categorical(logits=...)` (the
@@ -97,7 +97,7 @@ experiment:
 ```
 
 ```bash
-python -m multi_agent_package.scripts.run_actor_critic
+python -m ppage.scripts.run_actor_critic
 ```
 
 ## Fixes found through verification runs
@@ -268,7 +268,7 @@ bootstrapped return with `gamma=0.99`, which is still large enough to force
 the same growth.
 
 **The fix: normalize the actual return target, not just the reward
-(`normalize_returns`, `src/baselines/AC/return_normalizer.py`).** A
+(`normalize_returns`, `src/ppage/baselines/AC/return_normalizer.py`).** A
 PopArt-style (van Hasselt et al., 2016) running mean/std normalizer tracks
 the *bootstrapped return's own* scale and trains the critic to predict that
 normalized (properly O(1)) quantity instead of the raw, unbounded one.

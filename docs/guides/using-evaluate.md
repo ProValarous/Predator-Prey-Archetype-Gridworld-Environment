@@ -1,6 +1,6 @@
 # Guide: Collecting Metrics with evaluate.py
 
-`src/multi_agent_package/scripts/evaluate.py` runs an algorithm against the environment for a number of episodes and returns simple aggregate metrics.
+`src/ppage/scripts/evaluate.py` runs an algorithm against the environment for a number of episodes and returns simple aggregate metrics.
 
 > **Pass `--load-path` to evaluate a trained model.** With a checkpoint,
 > `evaluate()` loads it via the algorithm's `.load(...)`; without one it evaluates a
@@ -25,7 +25,7 @@ metrics.
 ## Usage
 
 ```python
-from multi_agent_package.scripts.evaluate import evaluate
+from ppage.scripts.evaluate import evaluate
 
 results = evaluate(config_dir="configs", episodes=20)
 print(results)
@@ -48,10 +48,10 @@ There is **no** `episode_lengths` list and **no** `capture_rate` key — only th
 
 ```bash
 # evaluate a trained checkpoint
-python -m multi_agent_package.scripts.evaluate --load-path my_iql.pkl --episodes 20
+python -m ppage.scripts.evaluate --load-path my_iql.pkl --episodes 20
 
 # or a different config dir
-python -m multi_agent_package.scripts.evaluate --config-dir configs/dqn_1v1 --load-path my_dqn.pkl
+python -m ppage.scripts.evaluate --config-dir configs/dqn_1v1 --load-path my_dqn.pkl
 ```
 
 The CLI accepts `--config-dir`, `--episodes`, and `--load-path`. Omitting
@@ -68,9 +68,9 @@ The CLI accepts `--config-dir`, `--episodes`, and `--load-path`. Omitting
 To evaluate an actual saved checkpoint, or collect metrics `evaluate()` doesn't (per-step Q-value norms, capture positions, capture rate):
 
 ```python
-from multi_agent_package.scripts.run_from_config import load_all_configs, build_environment
-from baselines.IQL.iql import IQL
-import baselines  # noqa: F401 — triggers auto-registration
+from ppage.scripts.run_from_config import load_all_configs, build_environment
+from ppage.baselines.IQL.iql import IQL
+import ppage.baselines  # noqa: F401 — triggers auto-registration
 
 configs = load_all_configs(experiment_file="experiment_iql.yaml")
 configs["env"]["env"]["render_mode"] = None

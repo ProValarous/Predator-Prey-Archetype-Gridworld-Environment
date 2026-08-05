@@ -36,9 +36,9 @@ PRESENTATION_SCRIPT.txt
 training_curves_*.csv
 
 # Training run output directories
-src/baselines/IQL/*_run/
-src/baselines/CQL/*_run/
-src/baselines/MIXED/*_run/
+src/ppage/baselines/IQL/*_run/
+src/ppage/baselines/CQL/*_run/
+src/ppage/baselines/MIXED/*_run/
 
 # Ignore pytest cache
 .pytest_cache/
@@ -58,25 +58,25 @@ __pycache__/
 
 
 # npz tables
-src/baselines/CQL/*.npz
+src/ppage/baselines/CQL/*.npz
 
-src/baselines/IQL/predator_1/
-src/baselines/IQL/predator_2/
-src/baselines/IQL/prey_1/
-src/baselines/IQL/prey_2/
-src/baselines/IQL/prey/
-src/baselines/IQL/prey/
+src/ppage/baselines/IQL/predator_1/
+src/ppage/baselines/IQL/predator_2/
+src/ppage/baselines/IQL/prey_1/
+src/ppage/baselines/IQL/prey_2/
+src/ppage/baselines/IQL/prey/
+src/ppage/baselines/IQL/prey/
 
-src/baselines/MIXED/*.npz
-src/baselines/MIXED/predator_1/
-src/baselines/MIXED/predator_2/
-src/baselines/MIXED/prey_1/
-src/baselines/MIXED/prey_2/
+src/ppage/baselines/MIXED/*.npz
+src/ppage/baselines/MIXED/predator_1/
+src/ppage/baselines/MIXED/predator_2/
+src/ppage/baselines/MIXED/prey_1/
+src/ppage/baselines/MIXED/prey_2/
 
 # IQL trained artifacts (checkpoints and per-agent Q-tables)
-src/baselines/IQL/*.npz
-src/baselines/IQL/predator/
-src/baselines/IQL/prey/
+src/ppage/baselines/IQL/*.npz
+src/ppage/baselines/IQL/predator/
+src/ppage/baselines/IQL/prey/
 
 # Generated slide decks (regenerated from slides/*.py and miscellenous/*.py)
 slides/*.pdf
@@ -85,9 +85,9 @@ slides/*.pptx
 
 
 # logs
-src/baselines/CQL/logs/
-src/baselines/IQL/logs/
-src/baselines/MIXED/logs/
+src/ppage/baselines/CQL/logs/
+src/ppage/baselines/IQL/logs/
+src/ppage/baselines/MIXED/logs/
 
 # Coverage artifacts
 .coverage

@@ -1,7 +1,7 @@
 # Algorithms Overview
 
 This project ships seven learning **baselines**, all living under
-`src/baselines/` and all talking to the environment only through
+`src/ppage/baselines/` and all talking to the environment only through
 `env.reset()` / `env.step()`. Three are tabular (they store a Q-table), one is a
 value-based neural network (DQN), and three are policy-gradient actor-critic
 methods that differ in *how* they update (online, batched, or asynchronous).
@@ -83,7 +83,7 @@ metric) alongside raw reward, not in place of it, when comparing baselines here.
 
 ## The shared training contract
 
-Every baseline subclasses `BaseAlgorithm` (`src/baselines/base.py`) and implements:
+Every baseline subclasses `BaseAlgorithm` (`src/ppage/baselines/base.py`) and implements:
 
 - `select_actions(observations) -> {agent: action}` — usually ε-greedy over Q.
 - `train()` — the episode loop (see [Training Loop](../flows/training-loop.md)).

@@ -101,7 +101,7 @@ $$
 $$
 
 In the code, each IQL agent stores exactly this: a table mapping an encoded state
-to a vector of Q-values, one per action (`src/baselines/IQL/iql.py`,
+to a vector of Q-values, one per action (`src/ppage/baselines/IQL/iql.py`,
 `self.q_tables`).
 
 ---
@@ -141,7 +141,7 @@ $$
 
 Each update shrinks that gap a little. Q-learning is **off-policy**: the
 $\max_{a'}$ means it learns the value of acting *optimally* next, even while the
-agent is still exploring. This is exactly the update in `src/baselines/IQL/iql.py`:
+agent is still exploring. This is exactly the update in `src/ppage/baselines/IQL/iql.py`:
 
 ```python
 q_current  = self.q_tables[agent_id][s][a]
