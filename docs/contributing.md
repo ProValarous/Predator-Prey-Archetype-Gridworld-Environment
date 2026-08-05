@@ -35,7 +35,7 @@ cd Predator-Prey-Gridworld-Environment
 
 ### 3. Add Upstream Remote
 ```bash
-git remote add upstream https://github.com/ProValarous/Predator-Prey-Gridworld-Environment.git
+git remote add upstream https://github.com/UHUMALAB/PPAGE.git
 ```
 
 ### 4. Set Up Development Environment

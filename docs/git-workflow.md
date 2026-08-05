@@ -44,8 +44,8 @@ None of these are meant to be branched from or merged into. They're archival.
 ## Setup
 
 ```bash
-git clone https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment.git
-cd Predator-Prey-Archetype-Gridworld-Environment
+git clone https://github.com/UHUMALAB/PPAGE.git
+cd PPAGE
 git checkout STRP
 
 python -m venv .venv
@@ -198,8 +198,8 @@ or the "Delete branch" button on the merged PR page).
 
 ```bash
 # One-time setup
-git clone https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment.git
-cd Predator-Prey-Archetype-Gridworld-Environment
+git clone https://github.com/UHUMALAB/PPAGE.git
+cd PPAGE
 pip install -r requirements-dev.txt
 
 # Start work

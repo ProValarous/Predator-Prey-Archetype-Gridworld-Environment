@@ -59,10 +59,10 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment"
-Documentation = "https://provalarous.github.io/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/"
-Repository = "https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment"
-Issues = "https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/issues"
+Homepage = "https://github.com/UHUMALAB/PPAGE"
+Documentation = "https://uhumalab.github.io/PPAGE/"
+Repository = "https://github.com/UHUMALAB/PPAGE"
+Issues = "https://github.com/UHUMALAB/PPAGE/issues"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

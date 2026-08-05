@@ -2,8 +2,8 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue" alt="Python versions">
-  <a href="https://provalarous.github.io/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/"><img src="https://img.shields.io/badge/docs-mkdocs-teal.svg" alt="Docs"></a>
-  <a href="https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/actions/workflows/ci.yaml"><img src="https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/actions/workflows/ci.yaml/badge.svg?branch=STRP" alt="CI"></a>
+  <a href="https://uhumalab.github.io/PPAGE/"><img src="https://img.shields.io/badge/docs-mkdocs-teal.svg" alt="Docs"></a>
+  <a href="https://github.com/UHUMALAB/PPAGE/actions/workflows/ci.yaml"><img src="https://github.com/UHUMALAB/PPAGE/actions/workflows/ci.yaml/badge.svg?branch=STRP" alt="CI"></a>
   <a href="https://github.com/pre-commit/pre-commit"><img src="https://img.shields.io/badge/pre--commit-enabled-brightgreen" alt="pre-commit"></a>
   <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code style: black"></a>
   <img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License">
@@ -206,8 +206,8 @@ so an editable install makes `multi_agent_package` and `baselines` importable
 without setting `PYTHONPATH`.
 
 ```bash
-git clone https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment.git
-cd Predator-Prey-Archetype-Gridworld-Environment
+git clone https://github.com/UHUMALAB/PPAGE.git
+cd PPAGE
 
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\Activate.ps1

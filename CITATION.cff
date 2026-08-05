@@ -5,8 +5,8 @@ type: software
 version: 0.9.0b1
 date-released: "2026-07-28"
 license: Apache-2.0
-repository-code: "https://github.com/ProValarous/PPAGE-Predator-Prey-Archetype-Gridworld-Environment"
-url: "https://provalarous.github.io/PPAGE-Predator-Prey-Archetype-Gridworld-Environment/"
+repository-code: "https://github.com/UHUMALAB/PPAGE"
+url: "https://uhumalab.github.io/PPAGE/"
 abstract: >-
   A deterministic, modular multi-agent predator-prey gridworld testbed for
   controlled MARL experiments. Pluggable observation, reward, and action-space
