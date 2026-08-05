@@ -4,13 +4,14 @@ name: Release
 # package once, publishes it to PyPI via trusted publishing, and creates a
 # GitHub Release with notes pulled from CHANGELOG.md.
 #
-# One-time setup required before this can succeed:
-#   1. A first manual `python -m build` + `twine upload` to create the
-#      "predator-prey-gridworld" project on PyPI (trusted publishing can
-#      only be linked to a project that already exists).
-#   2. On PyPI: project Settings -> Publishing -> add a GitHub trusted
-#      publisher pointing at this repo, workflow file "release.yml", and
-#      environment "pypi" (matching the job below).
+# One-time setup required before this can succeed (no manual upload
+# needed; PyPI "pending publishers" can pre-register a project name):
+#   1. On PyPI: Account -> Publishing -> Add a pending publisher with
+#      project name "predator-prey-gridworld", owner "UHUMALAB", repo
+#      "PPAGE", workflow "release.yml", environment "pypi". The first
+#      successful run of this workflow then creates the project.
+#   2. On GitHub: repo Settings -> Environments -> create "pypi"
+#      (matching the publish job below).
 on:
   push:
     tags:

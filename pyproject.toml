@@ -14,6 +14,8 @@ authors = [
     { name = "Nehal Naeem Haji" },
     { name = "Muhammad Affan" },
     { name = "Areesha Kashif" },
+    { name = "Musab Kasbati" },
+    { name = "Afshad Yazdi Sidhwa" },
 ]
 keywords = [
     "reinforcement-learning",

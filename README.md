@@ -254,7 +254,7 @@ This mirrors how research infrastructure is structured in practice.
 
 ```bibtex
 @misc{predatorpreygridworld,
-  author       = {Ahmed Atif and Nehal Naeem Haji and Muhammad Affan and Areesha Kashif and Musab1Blaser and afshadGit},
+  author       = {Muhammad Ahmed Atif and Nehal Naeem Haji and Muhammad Affan and Areesha Kashif and Musab Kasbati and Afshad Yazdi Sidhwa},
   title        = {Predator–Prey Gridworld Environment},
   year         = {2025},
   note         = {A deterministic modular testbed for Multi-Agent Reinforcement Learning}
