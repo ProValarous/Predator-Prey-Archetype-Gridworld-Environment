@@ -78,8 +78,10 @@ Open `src/ppage/registry/action_registry.py`:
 from ppage.actions.my_actions import EightDirectionalActionSpace
 
 _ACTION_REGISTRY = {
-    "discrete_5":   DiscreteActionSpace,
-    "discrete_9":   EightDirectionalActionSpace,   # ← add this line
+    "discrete_5":       DiscreteActionSpace,
+    "cross":            CrossActionSpace,
+    "speed_discrete_5": SpeedDiscreteActionSpace,
+    "discrete_9":       EightDirectionalActionSpace,   # ← add this line
 }
 ```
 

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Documentation consistency pass across the README, QUICKSTART, CONTRIBUTING,
+  and the entire docs site, fixing every discrepancy a three-way audit found:
+  broken or stale commands (`PYTHONPATH=src`, `requirements*.txt` install
+  flows, a corrupted venv-activate line, a nonexistent `--cql-alpha` flag),
+  leftover pre-rename paths, claims contradicting the code (base-reward
+  gating, action-registry validation, the abstract `encode()` method,
+  four-of-seven baseline listings, a disabled CI lint job described as
+  active, wrong branch-workflow guidance), and three mutually inconsistent
+  citation blocks (now one canonical block matching `CITATION.cff`). The
+  student guide was rewritten to describe the actual docs tree instead of a
+  nonexistent `wiki/`, and the two historical DQN notes pages joined the site
+  nav under Historical Notes (#69). `requirements*.txt` are now thin shims
+  delegating to pyproject extras, the docs deploy workflow installs
+  `.[docs]`, and the docs site defaults to dark mode.
+
 ### Changed
 - **Breaking:** the experiment runners moved out of the installed package into
   a new top-level `plug-and-play/` folder, next to the configs they consume

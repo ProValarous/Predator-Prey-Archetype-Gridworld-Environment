@@ -1,11 +1,3 @@
-gymnasium
-numpy
-pygame
-setuptools
-pytest
-torch
-tensorboard
-black
-flake8
-pylint
-pyyaml
+# Legacy shim - the canonical dependency source is pyproject.toml.
+# Core environment + PyTorch baselines:
+-e .[baselines]

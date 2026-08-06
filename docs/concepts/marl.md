@@ -97,7 +97,7 @@ Each agent uses independent epsilon-greedy exploration. This means:
 - In cooperative tasks, uncoordinated exploration can be inefficient (two predators may explore in opposite directions)
 - In adversarial tasks, prey exploring randomly may accidentally walk into a predator — providing misleading signal
 
-No joint exploration strategy is implemented. Reducing epsilon faster for prey (they should exploit evasion quickly) or slower for predators (they need to explore the full grid) is possible via per-agent config but not currently supported.
+No joint exploration strategy is implemented. Reducing epsilon faster for prey (they should exploit evasion quickly) or slower for predators (they need to explore the full grid) would require per-agent epsilon, which is not currently supported.
 
 ---
 

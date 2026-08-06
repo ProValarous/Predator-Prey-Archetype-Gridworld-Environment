@@ -19,7 +19,7 @@ Everything below runs from the repository root.
 
 ```bash
 # Windows
-.venv\Scriptsctivate
+.venv\Scripts\Activate.ps1
 
 # macOS / Linux
 source .venv/bin/activate
@@ -35,19 +35,19 @@ All experiments are driven by the YAML files in `plug-and-play/configs/`.
 python plug-and-play/scripts/run_from_config.py
 ```
 
-This runs IQL for 500 episodes on a 10×10 grid with 3 predators and 3 prey.  
+This runs IQL for 500 episodes on a 10×10 grid with 3 predators and 3 prey (from `plug-and-play/configs/experiment.yaml`).  
 Progress is logged every 100 episodes.
 
 ## 4. Render an Episode
 
-Set `render_mode: human` in `plug-and-play/configs/env.yaml` (it is the default), then:
+No YAML edit needed; the script forces a window:
 
 ```bash
 python plug-and-play/scripts/render.py
 ```
 
-A pygame window opens and plays one training run visually.  
-Set `render_mode: null` to disable the window and run headless.
+A pygame window opens and plays one episode with random actions.  
+Pass `--load-path <ckpt>` to watch a trained policy instead.
 
 ## 5. Train via CLI (standalone)
 
@@ -58,7 +58,7 @@ For quick experiments without editing YAML files:
 python -m ppage.baselines.IQL.iql --episodes 1000 --size 8 --predators 1 --preys 1
 
 # CQL
-python -m ppage.baselines.CQL.cql --episodes 1000 --cql-alpha 0.1
+python -m ppage.baselines.CQL.cql --episodes 1000 --alpha 0.1
 
 # Mixed (predators CQL, prey IQL)
 python -m ppage.baselines.MIXED.mix_train --predator-algo cql --prey-algo iql --episodes 1000
@@ -99,11 +99,19 @@ python -m ppage.baselines.MIXED.mix_train --mode eval --load-path trained_mixed.
 src/
   ppage/                      # Environment core (the installable library)
     core/                     # GridWorldEnv, Agent
+    actions/                  # Pluggable action handlers
     observations/             # Pluggable observation builders
     rewards/                  # Pluggable reward functions
+    wrappers/                 # Environment wrappers
+    registry/                 # Component registries
     baselines/
       IQL/                    # Independent Q-Learning
       CQL/                    # Centralized Q-Learning
+      MIXED/                  # Mixed predator/prey algorithms
+      DQN/                    # Deep Q-Network
+      AC/                     # Actor-Critic
+      A2C/                    # Advantage Actor-Critic
+      A3C/                    # Asynchronous Advantage Actor-Critic
 plug-and-play/                # Start here: runnable entry points
   scripts/                    # run_from_config.py, render.py, evaluate.py ...
   configs/                    # All experiment YAML files

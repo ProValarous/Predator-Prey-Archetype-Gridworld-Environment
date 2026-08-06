@@ -1,7 +1,7 @@
 # Comparative Review: PR #22 vs #23 vs #24 (DQN implementations)
 
 > **Historical maintainer note.** A three-way review of early DQN PRs (now merged),
-> kept for provenance and intentionally not in the site navigation. For current DQN
+> kept for provenance under the site's Historical Notes section. For current DQN
 > docs see [DQN](algorithms/dqn.md) and [DQN Variants](concepts/dqn-variants.md).
 
 

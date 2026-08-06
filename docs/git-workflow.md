@@ -20,7 +20,7 @@ main    ──────●───────────────●   
 
 | Branch | Role | Who commits here |
 | --- | --- | --- |
-| **`STRP`** | The active trunk. All feature/fix branches are cut from `STRP`, and all PRs target `STRP`. CI (lint + tests + `core-guard`) runs on every push and PR here. | Everyone, via PR |
+| **`STRP`** | The active trunk. All feature/fix branches are cut from `STRP`, and all PRs target `STRP`. CI (tests + `core-guard`) runs on every push and PR to `main`, `master`, or `STRP`. | Everyone, via PR |
 | **`main`** | A periodic release snapshot, updated by merging `STRP` in when a maintainer decides a checkpoint is ready. It lags `STRP` between releases — that's expected, not a bug. | Maintainers only, via merge from `STRP` |
 
 **Practical takeaway: branch from `STRP`, and open your PR against `STRP`.**
@@ -33,9 +33,8 @@ against stale code.
 If you run `git branch -a` you'll see a few branches that aren't part of the
 active workflow:
 
-- `legacy-ppage` — a frozen snapshot of an old branch, kept for history.
-- `pr21-head`, `pr22-head`, `pr23-head`, `pr24-head` — per-PR reference
-  snapshots from already-merged, already-closed PRs.
+- `legacy-ppage` — a pre-rewrite history snapshot, kept for history.
+- `revert-55-feat/a2c-integration` — a revert branch left on the remote.
 
 None of these are meant to be branched from or merged into. They're archival.
 
@@ -51,7 +50,7 @@ git checkout STRP
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\Activate.ps1
 
-pip install -e ".[dev]"
+pip install -e ".[dev,baselines]"
 ```
 
 > `pip install -e .` makes `ppage` (including `ppage.baselines`) importable
@@ -80,7 +79,7 @@ branch scoped to one change — small, reviewable PRs merge faster.
 > `actions/`, `wrappers/`, and `registry/` instead.
 
 This isn't just a guideline — it's enforced automatically. The `core-guard`
-CI job diffs your PR against `STRP` and **fails the check if any file under
+CI job diffs the PR's base against its head (whatever the base is) and **fails the check if any file under
 `core/` changed**, regardless of how small the change looks. See
 [contributing guide](contributing.md) for the full rationale and the layered
 architecture this protects.
@@ -125,9 +124,9 @@ over one giant one, but don't over-fragment either.
 git push -u origin fix/short-desc
 ```
 
-Open the PR **against `STRP`** (GitHub usually defaults to this correctly
-since you branched from `STRP`, but double-check the base branch before
-submitting — it's easy to accidentally target `main`).
+Open the PR **against `STRP`**. GitHub defaults the PR base to the
+repository default branch, which is `main`, so you must change the base
+to `STRP` on every PR before submitting.
 
 ---
 
@@ -138,11 +137,11 @@ triggered on every push and PR to `main`, `master`, or `STRP`:
 
 | Job | Runs on | What it does |
 | --- | --- | --- |
-| `lint` | push + PR | `black --check .`, `flake8 .`, `pylint src`. Fails on any formatting or lint violation. `core/`, `miscellenous/`, and `slides/` are excluded from linting by design (see comments in `.flake8` / `.pylintrc`). |
-| `test` | push + PR | `pytest tests/ -q` — the full test suite (registries, plugin contracts, end-to-end training, architecture rules). |
+| `lint` | currently disabled (commented out in `ci.yaml`) | `black --check .`, `flake8 .`, `pylint src`. Fails on any formatting or lint violation. `core/` and `miscellenous/` are excluded from linting by design (see comments in `.flake8` / `.pylintrc`). |
+| `test` | push + PR (Python 3.10/3.11/3.12) | `pytest tests/ -q` — the full test suite (registries, plugin contracts, end-to-end training, architecture rules). |
 | `core-guard` | **PR only** | Diffs the PR's base and head SHAs; fails if any file under `src/ppage/core/` was touched. Never runs on plain pushes (there's no "PR diff" to check). |
 
-All three must pass before merging. There is currently no branch protection
+Both `test` and `core-guard` must pass before merging. There is currently no branch protection
 rule enforcing this at the GitHub level — reviewers should confirm the
 checks are green before approving.
 
@@ -200,7 +199,7 @@ or the "Delete branch" button on the merged PR page).
 # One-time setup
 git clone https://github.com/UHUMALAB/PPAGE.git
 cd PPAGE
-pip install -r requirements-dev.txt
+pip install -e ".[dev,baselines]"
 
 # Start work
 git checkout STRP && git pull origin STRP

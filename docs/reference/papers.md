@@ -54,6 +54,12 @@ implement, listed for context in [MARL Theory](../concepts/marl.md#centralized-t
 | --- | --- |
 | Atif, M. A., Haji, N. N., Shaikh, M. S. & Atif, M. E. (2026). *Embodiment-Induced Coordination Regimes in Tabular Multi-Agent Q-Learning*. arXiv:2601.17454. | A controlled study that **uses this environment**: it compares IQL and CQL under speed/stamina embodiment constraints and finds centralized learning is not universally better. Motivates the [MixedTrainer](../algorithms/cql-mixed.md) asymmetry experiments. |
 
+## Actor-critic methods
+
+| Reference | What it gives you | Used in |
+| --- | --- | --- |
+| Mnih, V. et al. (2016). *Asynchronous Methods for Deep Reinforcement Learning*. ICML. | A3C / A2C — both implemented here. | [A2C](../algorithms/a2c.md), [A3C](../algorithms/a3c.md) |
+
 ## Roadmap methods (not implemented)
 
 Documented in the [Algorithms overview](../algorithms/index.md#roadmap) as future
@@ -61,5 +67,4 @@ directions; this repository does not implement them.
 
 | Reference | Method |
 | --- | --- |
-| Mnih, V. et al. (2016). *Asynchronous Methods for Deep Reinforcement Learning*. ICML. | A3C / A2C |
 | Haarnoja, T. et al. (2018). *Soft Actor-Critic*. ICML. | SAC (a discrete-action variant would be needed here) |

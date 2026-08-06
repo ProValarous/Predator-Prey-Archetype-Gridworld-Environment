@@ -122,8 +122,8 @@ Each builder's exact return shape (per agent). These differ across builders — 
     "agent_name": {
         "local": np.ndarray,        # own position [x, y]
         "global": {
-            "dist_agents": {"other_agent_name": float, ...},      # Euclidean
-            "dist_obstacles": {"obstacle_0": float, ...},          # Euclidean
+            "dist_agents": {"other_agent_name": int, ...},      # Euclidean, truncated via int(...)
+            "dist_obstacles": {"obstacle_0": int, ...},          # Euclidean, truncated via int(...)
         }
     }
 }

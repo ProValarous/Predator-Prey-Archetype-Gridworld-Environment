@@ -8,7 +8,7 @@ layer below it and communicates through a well-defined interface.
 ```mermaid
 flowchart TB
     L4["<b>Layer 4 · Scripts / Orchestration</b><br/>run_from_config · evaluate · sweep · render<br/><i>load config, wire components, drive training</i>"]
-    L3["<b>Layer 3 · Baselines (learning algorithms)</b><br/>IQL · CQL · MixedTrainer · DQN<br/><i>select_actions(obs) → actions · train()</i>"]
+    L3["<b>Layer 3 · Baselines (learning algorithms)</b><br/>IQL · CQL · MixedTrainer · DQN · AC · A2C · A3C<br/><i>select_actions(obs) → actions · train()</i>"]
     L2b["<b>Layer 2b · Wrapper</b><br/>SpeedWrapper<br/><i>replay one logical step as N sub-steps (speed/stamina); applied last</i>"]
     L2["<b>Layer 2 · Plugins</b><br/>observations · rewards · actions<br/><i>build(env) · compute(env) · to_direction(int)</i>"]
     L1["<b>Layer 1 · Core Environment (immutable)</b><br/>gridworld.py · agent.py<br/><i>grid physics, movement, capture detection</i>"]
@@ -60,13 +60,14 @@ src/
 │   │   └── action_registry.py
 │   └── baselines/
 │       ├── base.py               # BaseAlgorithm (abstract) + evaluate()
-│       ├── __init__.py           # Auto-registers IQL, CQL, MixedTrainer, DQN
+│       ├── __init__.py           # Auto-registers IQL, CQL, MixedTrainer, DQN, ActorCritic, A2C, A3C (torch ones only when installed)
 │       ├── IQL/  CQL/  MIXED/    # tabular algorithms + standalone CLIs
 │       ├── DQN/
 │       │   ├── dqn.py            # DQN class (Double DQN, Dueling DQN flags)
 │       │   ├── q_network.py      # QNetwork / DuelingQNetwork (PyTorch)
 │       │   ├── replay_buffer.py  # Fixed-capacity numpy ring buffer
 │       │   └── curve_recorder.py # Per-episode training-curve CSV writer
+│       ├── AC/  A2C/  A3C/       # on-policy actor-critic algorithms (PyTorch)
 │       └── registry/
 │           └── algorithm_registry.py
 │
@@ -74,8 +75,10 @@ plug-and-play/                    # Runnable entry points (not part of the insta
 ├── scripts/
 │   ├── run_from_config.py        # Generic entrypoint (algorithm chosen via YAML)
 │   ├── run_iql.py  run_cql.py  run_mixed.py  run_dqn.py   # per-algorithm train/eval CLIs
+│   ├── run_actor_critic.py  run_a2c.py  run_a3c.py        # actor-critic train/eval CLIs
 │   ├── evaluate.py               # Metrics (episode length + per-agent return); loads a checkpoint
 │   ├── render.py                 # Single-episode visualization (random or a loaded policy)
+│   ├── demo_movement.py  sanity_check_baselines.py        # movement demo + baseline smoke test
 │   └── sweep.py                  # CLI-driven sweep over an observation config param
 └── configs/                      # YAML experiment definitions (env/agents/obs/rewards/actions/experiment*)
 tests/                            # pytest suite: registries, plugin contracts, architecture rules, e2e
@@ -170,7 +173,7 @@ graph LR
     RR --> REW["BaseReward · PredatorDistance · Survival"]
     AR --> ACT["Discrete · Cross · SpeedDiscrete"]
     SW -->|"env.action_space_plugin.is_noop()"| ACT
-    ALR --> ALG["IQL · CQL · MixedTrainer · DQN"]
+    ALR --> ALG["IQL · CQL · MixedTrainer · DQN · ActorCritic · A2C · A3C"]
     ALG -->|"black-box: reset() / step() only"| SW
 ```
 

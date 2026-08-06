@@ -28,12 +28,12 @@ The Predator-Prey Archetype Gridworld is a **discrete, deterministic multi-agent
 - Configurable predator and prey teams
 - Pluggable observation, reward, and action-space systems
 - Per-agent speed/stamina mechanics via wrappers
-- Tabular Q-learning baselines (IQL, CQL, MixedTrainer) and a PyTorch DQN baseline (including Double DQN and Dueling DQN)
+- Tabular Q-learning baselines (IQL, CQL, MixedTrainer) and PyTorch baselines: DQN (including Double DQN and Dueling DQN), ActorCritic, A2C, and A3C
 - Pygame-based visualization
 
 **Out of scope:**
 - Continuous state/action spaces
-- Policy-gradient or actor-critic methods (PPO, SAC, MADDPG)
+- Advanced policy-gradient methods (PPO, SAC, MADDPG) — though on-policy actor-critic baselines (ActorCritic, A2C, A3C) do ship
 - Networked or distributed training
 - Photorealistic rendering
 
@@ -45,7 +45,7 @@ The Predator-Prey Archetype Gridworld is a **discrete, deterministic multi-agent
 ┌─────────────────────────────────────────────────────────┐
 │                    YAML Configuration                   │
 │     env.yaml  agents.yaml  observations.yaml            │
-│     rewards.yaml  experiment.yaml                       │
+│     rewards.yaml  actions.yaml  experiment.yaml         │
 └────────────────────────┬────────────────────────────────┘
                          │ parsed by run_from_config.py
                          ▼
@@ -66,6 +66,7 @@ The Predator-Prey Archetype Gridworld is a **discrete, deterministic multi-agent
 │                  Baselines Layer                        │
 │  IQL (tabular)  CQL (tabular, centralized)              │
 │  MixedTrainer (per-team)  DQN (PyTorch, +Double/Dueling)│
+│  ActorCritic  A2C  A3C (PyTorch, on-policy)             │
 │   (ppage/baselines/ — extensible)                             │
 └─────────────────────────────────────────────────────────┘
 ```

@@ -65,7 +65,7 @@ cd PPAGE
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\Activate.ps1
 
-pip install -e .
+pip install -e ".[baselines]"
 
 # Train the default experiment (3 predators vs 3 prey, IQL)
 python plug-and-play/scripts/run_from_config.py
@@ -101,15 +101,19 @@ watch agents learn.
 
 ## Citation
 
-If you use this environment in your research, teaching, or projects, please cite it:
+If you use this environment in your research, teaching, or projects, please
+cite it. The repository ships a machine-readable
+[`CITATION.cff`](https://github.com/UHUMALAB/PPAGE/blob/main/CITATION.cff);
+BibTeX equivalent:
 
 ```bibtex
-@misc{predatorpreygridworld,
-  author       = {Ahmed Atif and Nehal Naeem Haji and Muhammad Affan and Areesha Kashif and Musab1Blaser and afshadGit},
-  title        = {Predator-Prey Gridworld Environment},
-  year         = {2025},
-  howpublished = {\url{https://github.com/UHUMALAB/PPAGE}},
-  note         = {A discrete testbed for studying Multi-Agent Reinforcement Learning dynamics.}
+@software{ppage,
+  author       = {Muhammad Ahmed Atif and Nehal Naeem Haji and Muhammad Affan and Areesha Kashif and Musab Kasbati and Afshad Yazdi Sidhwa},
+  title        = {Predator-Prey Archetype Gridworld Environment},
+  year         = {2026},
+  version      = {0.9.0b2},
+  url          = {https://github.com/UHUMALAB/PPAGE},
+  note         = {A deterministic modular testbed for Multi-Agent Reinforcement Learning}
 }
 ```
 

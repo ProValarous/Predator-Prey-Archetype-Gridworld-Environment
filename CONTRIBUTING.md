@@ -1,17 +1,16 @@
 # Contributing
 
-## How to contribute
+## How to contribute (short version)
 
 1. Fork -> branch `fix/short-desc` or `feat/short-desc` off of `STRP` (not `main` — see [Git Workflow](docs/git-workflow.md))
-2. Run tests: `pip install -r requirements-dev.txt` && `PYTHONPATH=src python -m pytest tests/ -q`
+2. Run tests: `pip install -e ".[dev,baselines]"` && `python -m pytest tests/ -q`
 3. Follow the code style (Black) and add type hints where possible
 4. Open a PR against `STRP` and link an issue (if any)
 
 For the full branching model, commit conventions, what CI checks on your PR,
 and how to resolve merge conflicts, see **[docs/git-workflow.md](docs/git-workflow.md)**.
-
-
-# Contributing to Predator–Prey GridWorld
+The rest of this document covers the architectural rules your contribution
+must follow.
 
 Thank you for your interest in contributing 🎯
 This project is designed as a **research and teaching infrastructure** for undergraduate and early-stage researchers working on Multi-Agent Reinforcement Learning (MARL).
@@ -37,12 +36,14 @@ This repository follows a **layered architecture**:
 
 | Layer           | Purpose                        | Who edits it       |
 | --------------- | ------------------------------ | ------------------ |
-| `core/`         | Environment & agent primitives | ❌ Maintainers only |
-| `observations/` | Observation logic              | ✅ Students         |
-| `rewards/`      | Reward logic                   | ✅ Students         |
-| `plug-and-play/configs/`      | Experiment definitions (YAML)  | ✅ Students         |
-| `scripts/`      | Experiment runners             | ⚠️ Limited         |
-| `registry/`     | Plugin wiring                  | ⚠️ With care       |
+| `src/ppage/core/`         | Environment & agent primitives | ❌ Maintainers only |
+| `src/ppage/observations/` | Observation logic              | ✅ Students         |
+| `src/ppage/rewards/`      | Reward logic                   | ✅ Students         |
+| `src/ppage/actions/`      | Action-space logic             | ✅ Students         |
+| `src/ppage/wrappers/`     | Cross-cutting mechanics        | ⚠️ With care       |
+| `plug-and-play/configs/`  | Experiment definitions (YAML)  | ✅ Students         |
+| `plug-and-play/scripts/`  | Experiment runners             | ⚠️ Limited         |
+| `src/ppage/registry/`     | Plugin wiring                  | ⚠️ With care       |
 
 This separation is **intentional** and **non-negotiable**.
 
@@ -77,12 +78,12 @@ These patterns break reproducibility and invalidate experiments.
 Location:
 
 ```
-rewards/
+src/ppage/rewards/
 ```
 
 Steps:
 
-1. Subclass `BaseReward`
+1. Subclass `RewardFunction` (from `ppage.rewards.base`)
 2. Use **only**:
 
    * observations
@@ -102,12 +103,12 @@ Steps:
 Location:
 
 ```
-observations/
+src/ppage/observations/
 ```
 
 Steps:
 
-1. Subclass `BaseObservation`
+1. Subclass `ObservationBuilder` (from `ppage.observations.base`)
 2. Assume **partial observability**
 3. Never access environment internals directly
 4. Register in `observation_registry.py`
@@ -171,8 +172,8 @@ If your contribution cannot be reproduced from a YAML file, it will not be accep
 
 If you add:
 
-* a reward → update `rewards/README.md`
-* an observation → update `observations/README.md`
+* a reward → update `src/ppage/rewards/README.md`
+* an observation → update `src/ppage/observations/README.md`
 * a script → add docstring + usage example
 
 Code without documentation is considered incomplete.

@@ -44,7 +44,8 @@ env.step(
 
 ```python
 env.base_reward() -> Dict[str, float]
-# Called internally by step(). Safe to call in reward functions and eval scripts.
+# NOT called by step() — invoked only by the BaseReward plugin when rewards.base.enabled is true.
+# Safe to call in reward functions and eval scripts.
 # Returns the hardcoded reward signals (capture, step cost, obstacle penalty).
 ```
 
@@ -56,7 +57,7 @@ env.close() -> None
 **Extension hooks (set before training):**
 ```python
 env.observation_builder  = callable(env) -> Dict[str, dict]
-env.observation_encoder  = callable(obs, env) -> array-like   # required by DQN only
+env.observation_encoder  = callable(obs, env) -> array-like   # required by DQN, ActorCritic, A2C, and A3C
 env.reward_fn            = callable(env) -> Dict[str, float]
 env.action_space_plugin  = ActionSpace   # object with .to_direction(int) -> np.ndarray
 ```
@@ -116,7 +117,7 @@ class MyAlgorithm(BaseAlgorithm):
     def __init__(self, env, config: dict): ...
     def select_actions(self, observations: Dict[str, dict]) -> Dict[str, int]: ...
     def train(self) -> None: ...
-    def evaluate(self, episodes: int = 5, max_steps: int = 500) -> None: ...  # inherited
+    def evaluate(self, episodes: int = 5, max_steps: int = 500) -> dict: ...  # inherited; returns a summary dict
     def save(self, path: str) -> None: ...
     @classmethod
     def load(cls, env, config: dict, path: str) -> "MyAlgorithm": ...
@@ -272,8 +273,9 @@ build_agents(agent_cfg: dict) -> List[Agent]
 
 build_environment(configs: dict) -> SpeedWrapper   # NOT a raw GridWorldEnv
 # Wires, in order: GridWorldEnv construction, observation_builder +
-# observation_encoder, reward_fn (base_reward() is NOT re-added — it's
-# already unconditional inside step()), action_space_plugin, then wraps
+# observation_encoder, reward_fn (step() adds no reward itself — the base
+# reward enters only via the BaseReward plugin, added here when
+# rewards.base.enabled is true), action_space_plugin, then wraps
 # the result in SpeedWrapper (must be last, since it proxies the above
 # via __getattr__).
 
@@ -281,7 +283,7 @@ main(config_dir: str = "plug-and-play/configs") -> None
 # load_all_configs -> build_environment -> get_algorithm(name) -> algo.train() -> env.close()
 ```
 
-Each algorithm also has a thin per-algorithm entry point under `scripts/` (`run_iql.py`, `run_cql.py`, `run_mixed.py`, `run_dqn.py`), all sharing the same CLI shape:
+Each algorithm also has a thin per-algorithm entry point under `plug-and-play/scripts/` (`run_iql.py`, `run_cql.py`, `run_mixed.py`, `run_dqn.py`, `run_actor_critic.py`, `run_a2c.py`, `run_a3c.py`), all sharing the same CLI shape:
 
 ```
 --mode {train,eval}   (default: train)

@@ -117,7 +117,10 @@ Implements:
 * **IQL**: Independent Q-Learning (tabular)
 * **CQL**: Centralized Q-Learning (tabular)
 * **MixedTrainer**: per-team algorithm assignment (e.g. CQL predators vs IQL prey)
-* **DQN**: Deep Q-Network (PyTorch, generic observation encoder, replay buffer)
+* **DQN**: Deep Q-Network (PyTorch, generic observation encoder, replay buffer, Double/Dueling variants)
+* **ActorCritic**: one-step online actor-critic (PyTorch, policy-gradient)
+* **A2C**: n-step advantage actor-critic (PyTorch)
+* **A3C**: asynchronous A2C across worker processes (PyTorch, Hogwild)
 
 See [`src/ppage/baselines/README.md`](src/ppage/baselines/README.md) for the algorithm contract and when to use each one.
 
@@ -161,15 +164,16 @@ src/
     ├── wrappers/             # Cross-cutting mechanics (e.g. SpeedWrapper)
     ├── registry/             # Safe plug-in selection
     └── baselines/            # Learning algorithms
-        ├── IQL/  CQL/  MIXED/  DQN/
+        ├── IQL/  CQL/  MIXED/  DQN/  AC/  A2C/  A3C/
         └── registry/         # Algorithm name -> class
 
 plug-and-play/                # Start here: runnable entry points
 ├── scripts/                  # Experiment runners (run_from_config, run_dqn, ...)
 └── configs/                  # YAML experiment definitions
     ├── env.yaml, agents.yaml, observations.yaml, rewards.yaml, actions.yaml
-    ├── experiment_{iql,cql,mixed,dqn}.yaml
-    └── dqn_1v1/, dqn_speed1/, dqn_speed2/, dqn_speed3/   # ready-made DQN experiment sets
+    ├── experiment_{iql,cql,mixed,dqn,actor_critic,a2c,a3c}.yaml
+    ├── dqn_1v1/, dqn_speed{1,2,3}/, d3qn/    # ready-made experiment sets
+    └── demo_plus/, demo_diagonal/, demo_speed/   # movement demos
 
 tests/                        # pytest suite: registries, plugin contracts,
                                # end-to-end training, architecture rules
@@ -250,7 +254,9 @@ python plug-and-play/scripts/run_from_config.py
 python plug-and-play/scripts/run_dqn.py --config-dir plug-and-play/configs/dqn_1v1
 ```
 
-All experiments are launched from the repository root.
+All experiments are launched from the repository root. For a five-minute
+walkthrough, see [`QUICKSTART.md`](QUICKSTART.md); for the full guided version,
+the [docs quickstart](https://uhumalab.github.io/PPAGE/guides/quickstart/).
 
 ### Running the tests
 
@@ -259,7 +265,7 @@ pip install -e ".[dev,baselines]"
 python -m pytest tests/ -q
 ```
 
-CI (`.github/workflows/ci.yaml`) runs this same suite plus Black/flake8/pylint on every push and PR to `main`/`STRP`, and blocks any PR that touches `core/` (see below).
+CI (`.github/workflows/ci.yaml`) runs this suite on Python 3.10/3.11/3.12 for every push and PR to `main`/`master`/`STRP`, and a `core-guard` job fails any PR that touches `core/` (see below). The Black/flake8/pylint lint job is currently disabled in CI; run them locally via pre-commit.
 
 ---
 
@@ -281,11 +287,16 @@ This mirrors how research infrastructure is structured in practice.
 
 ## 📜 Citation
 
+This repository ships a machine-readable [`CITATION.cff`](CITATION.cff); GitHub's
+"Cite this repository" button uses it. BibTeX equivalent:
+
 ```bibtex
-@misc{predatorpreygridworld,
+@software{ppage,
   author       = {Muhammad Ahmed Atif and Nehal Naeem Haji and Muhammad Affan and Areesha Kashif and Musab Kasbati and Afshad Yazdi Sidhwa},
-  title        = {Predator–Prey Gridworld Environment},
-  year         = {2025},
+  title        = {Predator-Prey Archetype Gridworld Environment},
+  year         = {2026},
+  version      = {0.9.0b2},
+  url          = {https://github.com/UHUMALAB/PPAGE},
   note         = {A deterministic modular testbed for Multi-Agent Reinforcement Learning}
 }
 ```

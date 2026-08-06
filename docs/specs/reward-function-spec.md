@@ -107,14 +107,14 @@ from ppage.registry.reward_registry import register_reward
 register_reward("my_reward", MyReward)
 ```
 
-Config usage:
+Config usage (`run_from_config` reads a `base` block plus a `shaping` list; `params` are **not** forwarded — bake constants into the class or register a pre-configured subclass):
 ```yaml
 rewards:
-  functions:
-    - type: my_reward
+  base:
+    enabled: true        # adds the BaseReward plugin when true
+  shaping:
+    - name: my_reward    # registry key
       weight: 0.5
-      params:
-        my_custom_param: 10
 ```
 
 ---

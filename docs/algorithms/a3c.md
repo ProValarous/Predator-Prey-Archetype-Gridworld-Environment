@@ -82,7 +82,7 @@ normal way (inferring `state_dim`/`action_dim`/`agent_ids`, and for
 **`env_fn` must be picklable.** Worker processes are spawned via
 `torch.multiprocessing`, which on Windows (and anywhere using the `'spawn'` start
 method) pickles everything passed to `Process(args=...)`. A lambda closing over a
-config dict will **not** survive that. `scripts/run_a3c.py` defines a small
+config dict will **not** survive that. `plug-and-play/scripts/run_a3c.py` defines a small
 `EnvFactory` class instead — a class instance holding only the plain, picklable
 `configs` dict pickles correctly, where an equivalent lambda would raise
 `AttributeError: Can't pickle local object`.

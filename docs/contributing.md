@@ -29,8 +29,8 @@ Click the **"Fork"** button on the top right of the repository page to create yo
 ### 2. Clone Your Fork
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/Predator-Prey-Gridworld-Environment.git
-cd Predator-Prey-Gridworld-Environment
+git clone https://github.com/YOUR_USERNAME/PPAGE.git
+cd PPAGE
 ```
 
 ### 3. Add Upstream Remote
@@ -39,18 +39,21 @@ git remote add upstream https://github.com/UHUMALAB/PPAGE.git
 ```
 
 ### 4. Set Up Development Environment
+
+Prerequisite: Python 3.10-3.12.
+
 ```bash 
 # Create virtual environment
-python -m venv venv
+python -m venv .venv
 
 # Activate it (Windows)
-.\venv\Scripts\Activate.ps1
+.\.venv\Scripts\Activate.ps1
 
 # Activate it (macOS/Linux)
-source venv/bin/activate
+source .venv/bin/activate
 
 # Install the package + development dependencies (editable)
-pip install -e ".[dev]"
+pip install -e ".[dev,baselines]"
 ```
 
 `pip install -e .` makes `ppage` (including `ppage.baselines`) importable without

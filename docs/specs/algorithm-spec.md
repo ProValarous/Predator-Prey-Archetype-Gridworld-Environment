@@ -207,7 +207,8 @@ config, roughly a 3000x reduction. Same root cause DQN's own choice of Huber
 guards against: reward magnitudes in the thousands make squared error's
 gradients large enough to destabilize the shared trunk both heads depend on.
 
-**`entropy_coef` default is `0.01`, not `0.0` — also found via a verification
+**`entropy_coef`: the code default is `0.0`, but the shipped
+`experiment_actor_critic.yaml` sets `0.01` — a value found via a verification
 run.** With no entropy bonus, capture rate on `plug-and-play/configs/dqn_1v1` (2000 episodes,
 matching DQN's own horizon there) declined from 6.4% (Q1) to 0.6% (Q4) even
 though critic loss dropped smoothly over the same run — the signature of the
@@ -220,7 +221,7 @@ collapsing) — see `docs/algorithms/actor-critic.md` for the full tables. See
 also [MARL Constraints and Limitations](#marl-constraints-and-limitations) for
 the related reward-vs-capture-rate disconnect this surfaced.
 
-**`actor_weight_decay` (default `0.001`) — a workaround, not a fix.** Scoped to
+**`actor_weight_decay` (code default `0.0`; the shipped YAML sets `0.001`) — a workaround, not a fix.** Scoped to
 a dedicated Adam param group over just `policy_head`'s parameters
 (`trunk`/`value_head` left at `weight_decay=0`, since they're shared with the
 critic). Raises capture rate on `plug-and-play/configs/dqn_1v1` from 25.1% to 35.0% overall,
@@ -228,7 +229,7 @@ but entropy tracking (previously untracked) showed it never actually restores
 entropy — predator entropy collapses to ~0 within the first couple of episodes
 regardless of this setting.
 
-**Root cause found and fixed: `normalize_returns` (default `true`).** Two
+**Root cause found and fixed: `normalize_returns` (code default `False`; the shipped YAML sets `true`).** Two
 dead ends preceded the real fix: `grad_clip` turned out to be nearly powerless
 against Adam (its own per-parameter normalization rescales every step to
 roughly `lr` regardless of the raw gradient's clipped magnitude — the same
@@ -330,7 +331,7 @@ Missing or non-callable `env_fn` raises `ValueError` at construction time. A
 lambda closing over a config dict will not survive pickling under the `'spawn'`
 start method (the default on Windows, and used everywhere here via
 `torch.multiprocessing`) — use a module-level function or a callable class
-instance instead (see `scripts/run_a3c.py`'s `EnvFactory`).
+instance instead (see `plug-and-play/scripts/run_a3c.py`'s `EnvFactory`).
 
 **Workers always run on CPU** — not configurable. A3C's premise is parallelism
 from CPU cores, not GPU batching; safely sharing one CUDA context across
@@ -516,6 +517,6 @@ value-based vs. policy-gradient baselines on this environment.
 - [ ] Hyperparameters accepted as `config: dict` in `__init__`
 - [ ] Self-registers at module load via `register()` — guarded with `if __name__ != "__main__":`
 - [ ] Import added to `ppage/baselines/__init__.py`
-- [ ] Standalone CLI (`--mode train|eval`) built into the algorithm file itself, building its own env directly — this is in addition to, not instead of, a thin `run_<algo>.py` wrapper under `scripts/` that reads the matching `experiment_<algo>.yaml` via `run_from_config`'s `load_all_configs`/`build_environment`
+- [ ] Standalone CLI (`--mode train|eval`) built into the algorithm file itself, building its own env directly — this is in addition to, not instead of, a thin `run_<algo>.py` wrapper under `plug-and-play/scripts/` that reads the matching `experiment_<algo>.yaml` via `run_from_config`'s `load_all_configs`/`build_environment`
 - [ ] `train()` calls `algo.save(path)` to persist; `load(cls, env, config, path)` classmethod restores it
 - [ ] Evaluation uses `algo.evaluate()` from `BaseAlgorithm` (or overrides it)

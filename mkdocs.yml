@@ -61,6 +61,9 @@ nav:
     - How to Contribute: contributing.md
     - Git Workflow: git-workflow.md
     - Code of Conduct: CODE_OF_CONDUCT.md
+  - Historical Notes:
+    - DQN Integration Notes: dqn-integration-notes.md
+    - DQN PR Comparison (22-24): pr-comparison-22-23-24.md
 
 theme:
   name: material

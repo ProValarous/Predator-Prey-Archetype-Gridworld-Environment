@@ -58,6 +58,16 @@ class MyObservation(ObservationBuilder):
             }
 
         return obs
+
+    def encode(self, obs, env) -> np.ndarray:
+        # Required: encode() is an @abstractmethod on ObservationBuilder, so the
+        # class cannot be instantiated without it. Used by the neural baselines
+        # (DQN, ActorCritic, A2C, A3C) via env.observation_encoder.
+        return np.concatenate([
+            np.asarray(obs["local"], dtype=np.float32).ravel(),
+            np.asarray(obs["pred_dists"], dtype=np.float32).ravel(),
+            np.asarray(obs["prey_dists"], dtype=np.float32).ravel(),
+        ])
 ```
 
 **Rules:**
@@ -65,6 +75,7 @@ class MyObservation(ObservationBuilder):
 - Never write to `env` or any `agent._agent_location`
 - Return exactly one key per agent in `env.agents`
 - All values must be hashable by `IQL._encode_state()` — use lists/ints/tuples, not sets or custom objects
+- Implement `encode(obs, env)` too — it is abstract, so omitting it makes the class uninstantiable; it must flatten one agent's observation dict into a fixed-length numeric array
 
 ---
 
@@ -164,6 +175,7 @@ If `hash(s)` raises `TypeError: unhashable type`, your builder returned a non-ha
 ## Checklist
 
 - [ ] Inherits from `ObservationBuilder`
+- [ ] Implements both `build(env)` and `encode(obs, env)` (both abstract)
 - [ ] Returns one entry per agent in `env.agents`
 - [ ] No writes to `env` or agent state
 - [ ] All values serializable to hashable tuple

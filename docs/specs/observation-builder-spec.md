@@ -26,6 +26,11 @@ class MyObservation(ObservationBuilder):
     def build(self, env) -> Dict[str, dict]:
         # must return one entry per agent in env.agents
         ...
+
+    def encode(self, obs, env) -> np.ndarray:
+        # required (abstract) — encodes one agent's observation dict into a
+        # flat numpy array for the function-approximation baselines
+        ...
 ```
 
 ---
@@ -114,6 +119,7 @@ Before submitting a new observation builder:
 
 - [ ] Inherits from `ObservationBuilder`
 - [ ] `build(env)` covers all agents in `env.agents`
+- [ ] `encode(obs, env)` implemented (abstract — the class cannot be instantiated without it); returns a flat numpy array
 - [ ] No writes to env or agent state inside `build()`
 - [ ] `__init__` uses only kwargs (no positional args beyond `self`)
 - [ ] Registered in `observation_registry.py` with correct key (no typos)

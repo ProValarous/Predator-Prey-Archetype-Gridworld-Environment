@@ -54,7 +54,7 @@ zeros, so Q-values start at zero and move negative (step cost) or positive
 true terminal state (`terminated`, i.e. a capture reaching the threshold). On a
 timeout (`truncated`), the target keeps the `gamma * max(Q[next_state])` bootstrap
 — cutting it there would wrongly teach the agent that states near the time limit
-have zero future value. All four baselines follow this rule.
+have zero future value. All seven baselines follow this rule.
 
 ---
 
@@ -126,8 +126,8 @@ for episode in range(episodes):
 
 ## Checkpoint Save/Load
 
-`IQL`, `CQL`, `MixedTrainer`, and `DQN` all implement `save(path)` and
-`load(env, config, path)`:
+`IQL`, `CQL`, `MixedTrainer`, `DQN`, `ActorCritic`, `A2C`, and `A3C` all implement
+`save(path)` and `load(env, config, path)`:
 
 ```python
 algo.save("checkpoints/run_1.pkl")
@@ -145,7 +145,9 @@ their run scripts call `save()` explicitly after `train()` returns.
 ## What Is Not Logged
 
 The tabular loops (IQL/CQL/MixedTrainer) do not log per-episode rewards, capture
-rates, epsilon, or Q-table size. DQN is the exception: with `curves_path` set it
-writes a per-episode CSV (`episode`, `epsilon`, per-agent reward/loss), opened and
-closed via a `finally` block so partial data survives an exception. For learning
-curves on the tabular baselines, add logging around `algorithm.train()`.
+rates, epsilon, or Q-table size. The neural baselines (DQN, ActorCritic, A2C, A3C)
+are the exception: with `curves_path` set they write a per-episode CSV (`episode`,
+`epsilon`, per-agent reward/loss for DQN; analogous columns for the actor-critic
+trainers), opened and closed via a `finally` block so partial data survives an
+exception. For learning curves on the tabular baselines, add logging around
+`algorithm.train()`.

@@ -40,7 +40,7 @@ Performance (wall-clock speed, sample efficiency, scale) is explicitly *not* a p
 
 - A high-performance RL library (use RLlib, SB3, or CleanRL for that)
 - A continuous-space environment (all state/action spaces are discrete)
-- A policy-gradient/actor-critic testbed (tabular IQL/CQL/MixedTrainer plus a PyTorch DQN baseline — including Double DQN and Dueling DQN — ship out of the box; PPO/SAC/MADDPG are not implemented)
+- An advanced policy-gradient library (tabular IQL/CQL/MixedTrainer, a PyTorch DQN baseline — including Double DQN and Dueling DQN — and on-policy actor-critic baselines ActorCritic/A2C/A3C ship out of the box; PPO/SAC/MADDPG are not implemented)
 - A photorealistic simulator
 
 ---

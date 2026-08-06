@@ -17,21 +17,21 @@ git clone https://github.com/UHUMALAB/PPAGE.git
 cd PPAGE
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\Activate.ps1
-pip install -e .
+pip install -e ".[baselines]"
 ```
 
 Confirm it worked:
 
 ```bash
-python -c "import ppage, baselines; print('ok')"
+python -c "import ppage, ppage.baselines; print('ok')"
 ```
 
 ---
 
 ## 2. Train the default experiment
 
-The default config (`plug-and-play/configs/experiment.yaml`) is 3 predators vs 3 prey learning
-with [IQL](../algorithms/iql.md). Train it:
+The IQL config (`plug-and-play/configs/experiment_iql.yaml`) is 3 predators vs 3 prey learning
+with [IQL](../algorithms/iql.md) for 1000 episodes. Train it:
 
 ```bash
 python plug-and-play/scripts/run_iql.py

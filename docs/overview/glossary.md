@@ -13,7 +13,7 @@ An entity in the grid that can observe, decide, and act. Every agent has a type 
 An agent type whose objective is to capture prey by occupying the same cell. Moves at speed 1 (one cell per timestep). Rendered in red.
 
 **Prey**
-An agent type whose objective is to survive (avoid capture). Moves at speed 3 (up to three cells per timestep — though in the current implementation speed is an attribute, not a loop multiplier). Rendered in green.
+An agent type whose objective is to survive (avoid capture). Moves at speed 3 (up to three cells per timestep — `SpeedWrapper` implements this as a loop multiplier, granting the agent that many sub-steps per logical step). Rendered in green.
 
 **Capture**
 The event that occurs when a predator and prey occupy the same cell at the end of a timestep. The prey is added to `_captured_agents` and can no longer move.
@@ -56,7 +56,7 @@ An `ActionSpace` subclass that maps discrete integer actions to `[dx, dy]` direc
 Additional reward signal layered on top of base rewards to guide learning. Implemented as separate `RewardFunction` subclasses combined via a closure. Does not replace base rewards.
 
 **Base Rewards**
-The hardcoded reward structure in `GridWorldEnv.base_reward()`: capture (+100), obstacle penalty (-200), step cost (-5). These are always active and cannot be disabled by config.
+The hardcoded reward structure in `GridWorldEnv.base_reward()`: capture (+100), obstacle penalty (-200), step cost (-5). Applied via the `BaseReward` plugin and disabled entirely by setting `rewards.base.enabled: false` in config.
 
 ---
 
@@ -114,7 +114,7 @@ A DQN variant (`dueling: true` config flag) using `DuelingQNetwork`, which split
 A fixed-capacity ring buffer of `(state, action, reward, next_state, done)` transitions, sampled without replacement in random batches for DQN's gradient updates. Implemented in `ppage/baselines/DQN/replay_buffer.py` as preallocated numpy arrays (not a `deque`), for O(1) vectorized batch sampling.
 
 **Epsilon-Greedy**
-Exploration strategy: with probability `epsilon`, select a random action; otherwise select the greedy (highest Q-value) action. `epsilon` decays over episodes. Used by all four baselines (IQL, CQL, MixedTrainer, DQN).
+Exploration strategy: with probability `epsilon`, select a random action; otherwise select the greedy (highest Q-value) action. `epsilon` decays over episodes. Used by the value-based baselines (IQL, CQL, MixedTrainer, DQN); the actor-critic baselines (ActorCritic, A2C, A3C) instead sample actions from the learned policy distribution.
 
 **State Encoding**
 The process of converting an observation dict (which may contain numpy arrays and nested dicts) into a hashable tuple usable as a Q-table key. Implemented in `IQL._encode_state()` (and identically in `CQL`/`MixedTrainer`). DQN instead flattens observations to a numeric vector via `env.observation_encoder`, not a hashable tuple.
@@ -124,7 +124,7 @@ The process of converting an observation dict (which may contain numpy arrays an
 ## Configuration Terms
 
 **Config Directory**
-The `plug-and-play/configs/` directory containing six YAML files per experiment set: `env.yaml`, `agents.yaml`, `observations.yaml`, `rewards.yaml`, `actions.yaml`, and an experiment file (`experiment.yaml` or `experiment_{iql,cql,mixed,dqn}.yaml`). Ready-made DQN experiment sets also exist as subdirectories: `plug-and-play/configs/dqn_1v1/`, `plug-and-play/configs/dqn_speed1/`, `plug-and-play/configs/dqn_speed2/`, `plug-and-play/configs/dqn_speed3/`.
+The `plug-and-play/configs/` directory containing six YAML files per experiment set: `env.yaml`, `agents.yaml`, `observations.yaml`, `rewards.yaml`, `actions.yaml`, and an experiment file (`experiment.yaml` or `experiment_{iql,cql,mixed,dqn,actor_critic,a2c,a3c}.yaml`). Ready-made experiment sets also exist as subdirectories: `plug-and-play/configs/dqn_1v1/`, `plug-and-play/configs/dqn_speed1/`, `plug-and-play/configs/dqn_speed2/`, `plug-and-play/configs/dqn_speed3/`, `plug-and-play/configs/d3qn/`, and the demo sets `demo_plus/`, `demo_diagonal/`, `demo_speed/`.
 
 **Seed**
 An integer passed to `np.random.default_rng(seed)` that initializes the environment's random number generator. The same seed produces the same obstacle layout, agent start positions, and (if the algorithm is deterministic) training trajectory.

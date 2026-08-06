@@ -177,8 +177,9 @@ discover a better one it has not tried. If it always tries random actions
 (**explores**), it never uses what it has learned. Balancing the two is the
 **exploration–exploitation trade-off**.
 
-The baselines use **ε-greedy**: with probability $\varepsilon$ take a random
-action, otherwise take the greedy (best-Q) action.
+The value-based baselines use **ε-greedy**: with probability $\varepsilon$ take a random
+action, otherwise take the greedy (best-Q) action. (The actor-critic baselines
+instead sample actions from the learned policy distribution.)
 
 $$
 a =

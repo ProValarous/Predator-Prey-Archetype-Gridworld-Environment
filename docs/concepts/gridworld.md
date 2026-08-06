@@ -54,9 +54,9 @@ The grid itself has no explicit array representation — positions are stored on
 
 These properties hold throughout any well-formed episode:
 
-1. **No agent at an obstacle cell** — obstacle placement skips agent start positions; moves into obstacle cells are rejected
+1. **No agent at an obstacle cell** — obstacle placement skips agent start positions; moves into obstacle cells are rejected — but only while `block_agents_by_obstacles` is `true` (the default); set it `false` in `env.yaml` and agents may enter obstacle cells
 2. **Captured agents do not move** — once in `_captured_agents`, an agent's position is frozen
-3. **All positions are in-bounds** — the step loop clips any out-of-bounds move back to the current position
+3. **All positions are in-bounds** — the step loop `np.clip`s each axis independently, so an out-of-bounds component is clamped to the edge while the in-bounds component still applies (a diagonal move at a wall slides along it rather than being fully rejected)
 4. **Randomness flows through `self.rng` only** — no global random state
 
 > **`allow_cell_sharing` controls same-role stacking.** With the default `true`,
@@ -96,7 +96,7 @@ close()
 ### Movement
 - Each agent picks one action integer; the active `ActionSpace` plugin maps it to a `[dx, dy]` vector (default `discrete_5`: Right, Up, Left, Down, Noop — see [concepts/actions.md](actions.md) for the other two shipped action spaces)
 - All moves are processed **simultaneously** (no ordering)
-- Out-of-bounds → agent stays in place
+- Out-of-bounds → each axis is clipped independently (`np.clip`), so only the offending component is cancelled; a diagonal move at an edge partially applies, sliding the agent along the wall
 - Obstacle cell → agent stays in place
 - Captured agent → action ignored, position frozen
 
@@ -113,14 +113,15 @@ close()
 
 ## Extension Contract
 
-The GridWorld is **immutable**. It exposes three injection points for plugins:
+The GridWorld is **immutable**. It exposes four injection points for plugins:
 
 ```python
 env.reward_fn             # callable(env) → Dict[str, float]
 env.observation_builder    # callable(env) → Dict[str, dict]
+env.observation_encoder    # callable(obs, env) → array-like — required by the neural baselines
 env.action_space_plugin    # ActionSpace instance — .to_direction(int) → np.ndarray
 ```
 
-All three are `None` at construction and must be set before calling `step()` (`run_from_config.build_environment()` wires them). They are read-only with respect to the environment — plugins may not modify `env` state through these calls.
+All four are `None` at construction and must be set before calling `step()` (`run_from_config.build_environment()` wires them). They are read-only with respect to the environment — plugins may not modify `env` state through these calls.
 
 `run_from_config.build_environment()` additionally wraps the fully-wired env in `SpeedWrapper` before returning it, so in practice most code interacts with a `SpeedWrapper`-wrapped `GridWorldEnv`, not the raw class. See [concepts/wrappers.md](wrappers.md), [specs/observation-builder-spec.md](../specs/observation-builder-spec.md), [specs/reward-function-spec.md](../specs/reward-function-spec.md), and [specs/action-space-spec.md](../specs/action-space-spec.md) for the per-plugin behavioral contracts.

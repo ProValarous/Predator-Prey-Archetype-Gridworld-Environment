@@ -52,7 +52,7 @@ the results interpretable and reproducible, which is the project's stated priori
 
 Through configuration plus plugin classes alone, without touching the immutable
 core, you already have a wide surface. The single assembly point is
-`build_environment()` in `scripts/run_from_config.py`, which wires the plugins the
+`build_environment()` in `plug-and-play/scripts/run_from_config.py`, which wires the plugins the
 core exposes.
 
 | Dimension | What you can vary today |
@@ -62,7 +62,7 @@ core exposes.
 | **Incentives** | Stacked, weighted reward terms summed per agent; because a reward reads full state, you can express general-sum, zero-sum, or social-welfare payoffs **as long as they depend on spatial state** |
 | **Actions** | Multiple movement sets (cardinal, diagonal, speed micro-stepping); a new set can define any number of movement directions |
 | **Identity** | Free-form teams and sub-teams for grouping and rendering |
-| **Learning** | Choice of algorithm (IQL, CQL, MixedTrainer, DQN with Double and Dueling variants) and all hyperparameters |
+| **Learning** | Choice of algorithm (IQL, CQL, MixedTrainer, DQN with Double and Dueling variants, ActorCritic, A2C, A3C) and all hyperparameters |
 
 The reward layer is the sweet spot. Mixed cooperation and competition is genuinely
 first-class here: a shared team reward is cooperation, a negated opponent reward is
@@ -88,7 +88,7 @@ plugin or a config change alone.
 |---|---|---|
 | Non-movement actions (trade, communicate, build) | `step()` interprets an action *only* as a `[dx, dy]` position delta. Any other action becomes a move or a no-op. | `core/gridworld.py:250-276` |
 | Inter-agent messaging | There is no writable per-agent channel; observations can only read positional and identity state. | no message state in core |
-| Persistent economic / world state (resources, inventory, prices) | Agents carry position only. `stamina` is set to 10 and never read; `agent_speed` is set by role and never consulted by core movement. | `core/agent.py:63-72` |
+| Persistent economic / world state (resources, inventory, prices) | Agents carry position only. `stamina` and `agent_speed` are never read by core movement (both are overwritten from `agents.yaml` by `build_agents()`, and consumed only by `SpeedWrapper`, which reads speed for sub-step budgets and depletes stamina per sub-step). | `core/agent.py:63-72` |
 | Action-conditioned payoffs (cost of trading, cost of a message) | A reward's `compute(env)` receives only the environment, never the actions taken. The base class states rewards are functions of state, not actions. | `rewards/base.py:7-10` |
 | Turn-based play (chess, strategy games) | `step()` consumes a dict of all agents' actions at once and moves everyone simultaneously. Nothing tracks whose turn it is. | `core/gridworld.py:238-250` |
 | More than two genuine archetypes | The dynamics collapse every agent into predator-vs-else. Capture is detected by `startswith("predator")` / `startswith("prey")`, and `_same_role` treats any non-predator as prey. | `core/gridworld.py:285-293, 334-341` |
@@ -137,7 +137,7 @@ rewrites the returned reward dict. It is proof that a wrapper can add evolving s
 and alter observed dynamics without editing the core.
 
 What holds it back today is only the plumbing: there is exactly one wrapper, applied
-unconditionally and imported by name in `scripts/run_from_config.py:28,186`, with no
+unconditionally and imported by name in `plug-and-play/scripts/run_from_config.py:28,186`, with no
 registry and no way to select, order, or stack wrappers from config.
 
 A wrapper registry plus a documented state side-channel would unlock, without

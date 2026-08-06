@@ -83,7 +83,7 @@ observations:
 | `default` | `DefaultObservation` | none |
 | `local_only` | `LocalOnlyObservation` | none |
 | `local_radius` | `LocalRadiusObservation` | `radius: int`, `include_agents: bool`, `include_obstacles: bool` |
-| `absolute` | `AbsoluteObservation` | none |
+| `absolute` | `AbsoluteObservation` | `include_agents: bool`, `include_obstacles: bool`, `distance_type: "manhattan"\|"euclidean"` |
 | `relative` | `RelativeObservation` | `include_agents: bool`, `include_obstacles: bool`, `include_walls: bool`, `distance_type: "manhattan"\|"euclidean"` |
 
 **Notes:**
@@ -97,7 +97,7 @@ observations:
 ```yaml
 rewards:
   base:
-    enabled: true      # bool — IGNORED (see note below); base_reward() always runs regardless
+    enabled: true      # bool — functional (see note below); false omits the base reward entirely
 
   shaping:             # list — zero or more shaping functions
     - name: predator_distance   # str — registry key
@@ -171,7 +171,7 @@ actions:
 ```yaml
 experiment:
   algorithm:
-    name: iql          # str — must match a registered algorithm key: iql | cql | mixed | dqn
+    name: iql          # str — must match a registered algorithm key: iql | cql | mixed | dqn | actor_critic | a2c | a3c
     params:
       # IQL / CQL / MixedTrainer shared params:
       alpha: 0.1           # float — learning rate
@@ -199,7 +199,7 @@ experiment:
       min_replay_size: 32          # int — defaults to batch_size; buffer must reach this before training starts
       target_update_interval: 100  # int — optimizer steps between hard target-network syncs
       learning_rate: 0.001         # float — Adam learning rate
-      hidden_layers: [64, 64]      # list[int] — QNetwork/DuelingQNetwork hidden layer sizes
+      hidden_layers: [128, 128]    # list[int] — QNetwork/DuelingQNetwork hidden layer sizes; code default and top-level experiment_dqn.yaml use [128, 128], the dqn_1v1/d3qn presets use [64, 64]
       grad_clip: 5.0               # float — gradient norm clip
       device: "cpu"                # str — torch.device string
       double_dqn: false            # bool — decouple action selection (online net) from evaluation (target net)
@@ -209,6 +209,11 @@ experiment:
       #             and raises ValueError if you set it explicitly and it disagrees
 ```
 
+`experiment_actor_critic.yaml`, `experiment_a2c.yaml`, and `experiment_a3c.yaml` also ship. Their
+main extra keys (`n_steps`, `entropy_coef`, `value_coef`, per-network learning rates,
+`normalize_returns`, `num_workers`) are documented in the per-algorithm pages under
+[docs/algorithms/](../algorithms/).
+
 **Accessing in code:**
 ```python
 configs["experiment"]["experiment"]["algorithm"]["name"]     # "iql"
@@ -216,9 +221,9 @@ configs["experiment"]["experiment"]["algorithm"]["params"]   # {...}
 ```
 `load_all_configs()` stores the parsed YAML under the key `"experiment"`, and the YAML file's own content is itself `experiment:\n  algorithm: ...` — so the outer `"experiment"` (from `load_all_configs`) wraps the inner `"experiment"` (the YAML's own top-level key), giving the double-nested path above. Verified directly against `run_from_config.py`'s `main()`.
 
-**Available algorithm keys:** `iql`, `cql`, `mixed`, `dqn`
+**Available algorithm keys:** `iql`, `cql`, `mixed`, `dqn`, `actor_critic`, `a2c`, `a3c`
 
-**Ready-made DQN experiment sets** (full `env`/`agents`/`observations`/`rewards`/`actions`/`experiment_dqn` YAML each) live as subdirectories rather than root-level files:
+**Ready-made experiment sets** (full `env`/`agents`/`observations`/`rewards`/`actions`/`experiment_*` YAML each) live as subdirectories rather than root-level files:
 
 | Directory | Setup |
 |-----------|-------|
@@ -226,5 +231,9 @@ configs["experiment"]["experiment"]["algorithm"]["params"]   # {...}
 | `plug-and-play/configs/dqn_speed1/` | 1v1, both agents speed 1 (baseline, no speed advantage) |
 | `plug-and-play/configs/dqn_speed2/` | 1v1, predator speed 2 |
 | `plug-and-play/configs/dqn_speed3/` | 1v1, predator speed 3 |
+| `plug-and-play/configs/d3qn/` | Double+Dueling DQN preset |
+| `plug-and-play/configs/demo_plus/` | Demo set — cardinal (`discrete_5`) movement |
+| `plug-and-play/configs/demo_diagonal/` | Demo set — diagonal (`cross`) movement |
+| `plug-and-play/configs/demo_speed/` | Demo set — speed/stamina sub-stepping |
 
 Run any of them with `python plug-and-play/scripts/run_dqn.py --config-dir plug-and-play/configs/dqn_1v1`.

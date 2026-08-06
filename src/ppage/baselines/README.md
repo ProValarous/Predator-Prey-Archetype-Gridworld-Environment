@@ -235,7 +235,7 @@ Algorithms must:
 * Studying an on-policy, directly-learned stochastic policy against DQN's
   greedy-over-Q behavior
 * As the stepping stone toward the batched (A2C, below) and asynchronous (A3C,
-  below) variants — see the [algorithm spec](../../docs/specs/algorithm-spec.md)
+  below) variants — see the [algorithm spec](../../../docs/specs/algorithm-spec.md)
   for the full contract writeups
 
 ---
@@ -379,18 +379,18 @@ It is optimized for understanding.
 
 # ▶ Running Training
 
-From `src/`:
+From the repository root:
 
 ```bash
 # Config-driven (each reads its own plug-and-play/configs/experiment_<algo>.yaml)
-PYTHONPATH=src python plug-and-play/scripts/run_iql.py
-PYTHONPATH=src python plug-and-play/scripts/run_cql.py
-PYTHONPATH=src python plug-and-play/scripts/run_mixed.py
-PYTHONPATH=src python plug-and-play/scripts/run_dqn.py
-PYTHONPATH=src python plug-and-play/scripts/run_dqn.py --config-dir plug-and-play/configs/dqn_1v1   # double+dueling example
-PYTHONPATH=src python plug-and-play/scripts/run_actor_critic.py
-PYTHONPATH=src python plug-and-play/scripts/run_a2c.py
-PYTHONPATH=src python plug-and-play/scripts/run_a3c.py
+python plug-and-play/scripts/run_iql.py
+python plug-and-play/scripts/run_cql.py
+python plug-and-play/scripts/run_mixed.py
+python plug-and-play/scripts/run_dqn.py
+python plug-and-play/scripts/run_dqn.py --config-dir plug-and-play/configs/dqn_1v1   # double+dueling example
+python plug-and-play/scripts/run_actor_critic.py
+python plug-and-play/scripts/run_a2c.py
+python plug-and-play/scripts/run_a3c.py
 
 # Direct CLI (all hyperparams as flags; builds its own GridWorldEnv, bypassing run_from_config)
 python -m ppage.baselines.IQL.iql --episodes 1000 --alpha 0.1 --save-path trained_iql.pkl

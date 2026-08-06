@@ -118,19 +118,29 @@ ppage/
 │   ├── predator_distance.py
 │   ├── survival_reward.py
 │
+├── actions/              🟩 ACTION-SPACE PLUG-INS
+│   ├── base.py
+│   ├── discrete_actions.py
+│   ├── cross_actions.py
+│   ├── speed_discrete.py
+│
+├── wrappers/             🔁 CROSS-CUTTING MECHANICS
+│   ├── speed.py
+│
 ├── registry/             🔌 SAFE LOOKUP
 │   ├── reward_registry.py
 │   ├── observation_registry.py
+│   ├── action_registry.py
 │
-├── scripts/              ▶ ENTRY POINTS
-│   ├── run_from_config.py
-│   ├── run_iql.py
-│   ├── run_cql.py
-│   ├── run_mixed.py
-│   ├── render.py
-│   ├── evaluate.py
-│   ├── sweep.py
+├── baselines/            🧠 LEARNING ALGORITHMS
+│   ├── IQL/  CQL/  MIXED/  DQN/  AC/  A2C/  A3C/
+│   ├── registry/
 ```
+
+The runnable entry points (`run_from_config.py`, `run_iql.py`, `render.py`,
+`evaluate.py`, ...) live outside the package in
+[`plug-and-play/scripts/`](../../plug-and-play/scripts/), next to the YAML
+configs they consume.
 
 ---
 

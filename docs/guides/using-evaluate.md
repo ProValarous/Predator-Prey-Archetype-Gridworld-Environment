@@ -25,6 +25,9 @@ metrics.
 ## Usage
 
 ```python
+import sys
+sys.path.insert(0, "plug-and-play/scripts")  # run from the repository root
+
 from evaluate import evaluate
 
 results = evaluate(config_dir="plug-and-play/configs", episodes=20)
@@ -68,6 +71,9 @@ The CLI accepts `--config-dir`, `--episodes`, and `--load-path`. Omitting
 To evaluate an actual saved checkpoint, or collect metrics `evaluate()` doesn't (per-step Q-value norms, capture positions, capture rate):
 
 ```python
+import sys
+sys.path.insert(0, "plug-and-play/scripts")  # run from the repository root
+
 from run_from_config import load_all_configs, build_environment
 from ppage.baselines.IQL.iql import IQL
 import ppage.baselines  # noqa: F401 — triggers auto-registration

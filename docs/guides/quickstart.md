@@ -6,6 +6,8 @@ Five steps from a fresh clone to a trained agent.
 
 ## 1. Install
 
+Prerequisite: Python 3.10-3.12.
+
 The package uses a standard `src/` layout with a `pyproject.toml` build backend,
 so an editable install makes `ppage` (including `ppage.baselines`) importable
 without setting `PYTHONPATH`. Run commands from the repository root.
@@ -50,6 +52,15 @@ python plug-and-play/scripts/run_mixed.py
 # DQN — reads plug-and-play/configs/experiment_dqn.yaml
 python plug-and-play/scripts/run_dqn.py
 
+# Actor-Critic — reads plug-and-play/configs/experiment_actor_critic.yaml
+python plug-and-play/scripts/run_actor_critic.py
+
+# A2C — reads plug-and-play/configs/experiment_a2c.yaml
+python plug-and-play/scripts/run_a2c.py
+
+# A3C — reads plug-and-play/configs/experiment_a3c.yaml
+python plug-and-play/scripts/run_a3c.py
+
 # Or a ready-made DQN experiment set (1 predator vs 1 prey, double+dueling enabled)
 python plug-and-play/scripts/run_dqn.py --config-dir plug-and-play/configs/dqn_1v1
 
@@ -64,7 +75,7 @@ python plug-and-play/scripts/run_from_config.py
 Each `run_<algo>.py` script trains and saves a checkpoint by default:
 
 ```bash
-# IQL, 1000 episodes (override via experiment_iql.yaml, not a CLI flag)
+# IQL, 1000 episodes from experiment_iql.yaml (override via that file, not a CLI flag)
 python plug-and-play/scripts/run_iql.py --save-path my_iql.pkl
 
 # CQL
@@ -96,11 +107,16 @@ python -m ppage.baselines.IQL.iql --mode eval --load-path my_iql.pkl --episodes 
 Or use `evaluate.py`, which builds its own env + algorithm from a config directory (it does **not** take an existing `algo`/`env` — see [guides/using-evaluate.md](using-evaluate.md) for the exact signature and output shape):
 
 ```python
+import sys
+sys.path.insert(0, "plug-and-play/scripts")  # run from the repository root
+
 from evaluate import evaluate
-results = evaluate(config_dir="plug-and-play/configs", episodes=20)
+results = evaluate(config_dir="plug-and-play/configs", episodes=20, load_path="my_iql.pkl")
 print(results)
 # {"mean_episode_length": 47.2, "std_episode_length": 8.1, "mean_return_pred_1": -12.4, ...}
 ```
+
+Omitting `load_path` evaluates a fresh (untrained) policy.
 
 ---
 

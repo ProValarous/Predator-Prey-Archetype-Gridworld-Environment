@@ -96,7 +96,7 @@ from ppage.registry.action_registry import register_action_space
 register_action_space("my_action_space", MyActionSpace)
 ```
 
-> ⚠️ Unlike `register_reward()` and `register_observation()`, `register_action_space()` does **not** check `issubclass(cls, ActionSpace)` — registering an incompatible class succeeds silently and only fails later, when `get_action_space()`'s result is actually used inside `env.step()`.
+> Like `register_reward()` and `register_observation()`, `register_action_space()` validates `issubclass(cls, ActionSpace)` — registering an incompatible class raises `TypeError("Action space must inherit from ActionSpace")` immediately.
 
 The registry key must match what is in `actions.yaml`:
 ```yaml
