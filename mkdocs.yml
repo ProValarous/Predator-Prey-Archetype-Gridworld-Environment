@@ -81,18 +81,19 @@ theme:
     - content.code.annotate
     - content.tabs.link
   palette:
-    - scheme: default
-      primary: teal
-      accent: amber
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
+    # First entry is the default: dark
     - scheme: slate
       primary: teal
       accent: amber
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
+    - scheme: default
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
   icon:
     repo: fontawesome/brands/github
 

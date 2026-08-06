@@ -1,9 +1,10 @@
 # 🐾 Predator–Prey Gridworld Environment
 
 <p align="center">
+  <a href="https://pypi.org/project/ppage/"><img src="https://img.shields.io/pypi/v/ppage.svg?color=blue&label=PyPI" alt="PyPI"></a>
   <img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue" alt="Python versions">
   <a href="https://uhumalab.github.io/PPAGE/"><img src="https://img.shields.io/badge/docs-mkdocs-teal.svg" alt="Docs"></a>
-  <a href="https://github.com/UHUMALAB/PPAGE/actions/workflows/ci.yaml"><img src="https://github.com/UHUMALAB/PPAGE/actions/workflows/ci.yaml/badge.svg?branch=STRP" alt="CI"></a>
+  <a href="https://github.com/UHUMALAB/PPAGE/actions/workflows/ci.yaml"><img src="https://github.com/UHUMALAB/PPAGE/actions/workflows/ci.yaml/badge.svg?branch=main" alt="CI"></a>
   <a href="https://github.com/pre-commit/pre-commit"><img src="https://img.shields.io/badge/pre--commit-enabled-brightgreen" alt="pre-commit"></a>
   <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code style: black"></a>
   <img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License">
@@ -202,8 +203,35 @@ This environment is meant for:
 
 ## ⚡ Quickstart
 
-The package uses a standard `src/` layout with a `pyproject.toml` build backend,
-so an editable install makes `ppage` (including `ppage.baselines`) importable
+### Option 1: install from PyPI (library use)
+
+Use the environment and baseline algorithms from your own code:
+
+```bash
+pip install ppage               # environment + tabular baselines (IQL, CQL, Mixed)
+pip install "ppage[baselines]"  # adds PyTorch for DQN, ActorCritic, A2C, A3C
+```
+
+```python
+from ppage.core.agent import Agent
+from ppage.core.gridworld import GridWorldEnv
+
+env = GridWorldEnv(
+    agents=[
+        Agent(agent_type="predator", agent_team="predator_1", agent_name="pred_1"),
+        Agent(agent_type="prey", agent_team="prey_1", agent_name="prey_1"),
+    ],
+    size=8,
+    seed=42,
+)
+result = env.reset()
+```
+
+### Option 2: clone the repository (ready-made experiments)
+
+The YAML-driven experiment runners live in [`plug-and-play/`](plug-and-play/),
+which ships with the repository, not the pip package. The package uses a
+standard `src/` layout, so an editable install makes `ppage` importable
 without setting `PYTHONPATH`.
 
 ```bash
