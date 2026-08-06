@@ -1,4 +1,4 @@
-# 🐾 Predator–Prey Gridworld Environment
+# 🐾 PPAGE: Predator–Prey Archetype Gridworld Environment
 
 <p align="center">
   <a href="https://pypi.org/project/ppage/"><img src="https://img.shields.io/pypi/v/ppage.svg?color=blue&label=PyPI" alt="PyPI"></a>
@@ -17,244 +17,37 @@
 <p align="center"><sub>A speed-2 predator pursuing a speed-1 prey around obstacles (<code>plug-and-play/configs/dqn_1v1</code>) until capture.</sub></p>
 
 <p align="center">
-A <b>deterministic, modular, research-grade multi-agent predator–prey environment</b> for studying coordination, pursuit–evasion, and emergent behavior in Multi-Agent Reinforcement Learning. It is not just a simulation, it is a controlled experimental laboratory for understanding how multi-agent learning systems behave, with fully inspectable dynamics, pluggable perception and incentives, and reproducibility enforced by construction rather than assumed.
+A <b>deterministic, modular, research-grade multi-agent predator–prey environment</b> for studying coordination, pursuit–evasion, and emergent behavior in Multi-Agent Reinforcement Learning. It is not just a simulation, it is a controlled experimental laboratory: fully inspectable dynamics, pluggable perception and incentives, and reproducibility enforced by construction rather than assumed.
 </p>
 
 ---
 
-## 🎯 What This Repository Is About
+## ❓ Why PPAGE
 
-This project provides:
-
-* A discrete 2D gridworld with predators and prey
-* Explicit, fully inspectable transition dynamics
-* Pluggable observation models
-* Pluggable reward functions
-* Pluggable action spaces (including per-agent speed/stamina mechanics)
-* Strict separation between environment and learning
-* Deterministic, reproducible experiments
-
-It is designed to make MARL **mechanistically understandable**, not opaque.
-
----
-
-## ❓ Why This Exists
-
-Most MARL environments:
-
-* Mix environment logic and learning code
-* Are difficult to modify safely
-* Hide important transition mechanics
-* Make reproducibility fragile
-* Encourage experimentation by hacking internals
-
-This project exists to enforce something stricter:
+Most MARL environments mix environment logic with learning code, hide
+important transition mechanics, and make reproducibility fragile, so
+experimentation happens by hacking internals. PPAGE enforces something
+stricter:
 
 ```text
 Environment dynamics → Perception → Incentives → Learning
 ```
 
-Each layer is isolated by construction.
+Each layer is isolated by construction:
 
-* **Environment dynamics** defines what can happen
-* **Perception** defines what agents know
-* **Incentives** define what agents optimize
-* **Learning** defines how they adapt
+* **Environment dynamics** defines what can happen (immutable core)
+* **Perception** defines what agents know (observation plug-ins)
+* **Incentives** define what agents optimize (reward plug-ins)
+* **Learning** defines how they adapt (algorithm baselines)
 
-By separating these layers, we can study each one independently.
+Because the layers only meet through narrow interfaces, each one can be
+studied, and swapped, independently. An experiment is fully determined by its
+YAML configuration and a random seed: identical configuration yields an
+identical trajectory, and this is verified by a dedicated determinism test
+rather than merely documented.
 
-That separation is the core idea of this repository.
-
----
-
-## 🧠 What It Tries to Achieve
-
-This environment aims to:
-
-* Enable controlled MARL experimentation
-* Support clean ablation studies
-* Enforce reproducibility by design
-* Prevent accidental coupling between components
-* Provide a safe research codebase for students
-* Make emergent behavior inspectable and analyzable
-
-The goal is not realism.
-
-The goal is **clarity, modularity, and scientific control**.
-
----
-
-## 🧭 Design Philosophy: Accessible by Default, Versatile by Design
-
-PPAGE deliberately balances two properties that usually trade off against
-each other:
-
-* **Accessibility** — a first experiment should cost minutes, not days.
-  `pip install ppage`, one [`plug-and-play/`](plug-and-play/) folder where
-  runnable scripts sit next to the YAML configs they consume, and experiment
-  changes that never require touching Python.
-* **Versatility** — every scientific axis of the experiment is swappable.
-  What agents perceive (observations), what they optimize (rewards), what
-  their actions mean (action spaces), and how they learn (algorithms) are
-  each an independent plugin behind a registry.
-
-The bridge between the two pillars is the **registry pattern**: a plugin
-registered once becomes a one-line YAML option forever. Extending the system
-is exactly as accessible as using it.
-
-```mermaid
-flowchart TB
-    P["<b>PPAGE</b><br/>accessible by default · versatile by design"]
-    P --> A["🚪 <b>Accessibility</b><br/><i>running in minutes</i>"]
-    P --> V["🔧 <b>Versatility</b><br/><i>swap any axis of the experiment</i>"]
-    A --> A1["pip install ppage"]
-    A --> A2["plug-and-play/<br/>scripts + configs, side by side"]
-    A --> A3["YAML-only experiment changes<br/>no Python required"]
-    V --> V1["👁 observations<br/>5 shipped"]
-    V --> V2["🎯 rewards<br/>composable stack"]
-    V --> V3["🕹 actions + wrappers<br/>3 shipped"]
-    V --> V4["🧠 algorithms<br/>7 baselines"]
-    V1 --> R
-    V2 --> R
-    V3 --> R
-    V4 --> R["🔌 <b>registries</b><br/>register a plugin once →<br/>it is a one-line YAML option forever"]
-    R -.->|"which is why extending<br/>stays this easy"| A3
-```
-
-Concretely, each axis ships with reference implementations and stays open
-for yours:
-
-| Axis | Shipped | Examples of what you could add |
-| --- | --- | --- |
-| Observations | `default`, `local_only`, `local_radius`, `absolute`, `relative` | noisy sensors, field-of-view cones, line-of-sight occlusion, frame-stacking memory, CNN-ready grid patches |
-| Rewards | `base`, `predator_distance`, `survival` (composable) | shared-credit capture splits, encirclement shaping, energy costs tied to stamina, time-decayed bonuses |
-| Actions | `discrete_5`, `cross`, `speed_discrete_5` (+ `SpeedWrapper`) | king moves, momentum actions, wait-and-observe, macro-actions |
-| Algorithms | IQL, CQL, MixedTrainer, DQN, ActorCritic, A2C, A3C | game-theoretic learners (JAL-GT/minimax-Q, WoLF-PHC, fictitious play), CTDE methods (VDN, QMIX) |
-
-Each row has a written contract (`docs/specs/`) and a step-by-step guide
-(`docs/guides/`); see [Design Philosophy](https://uhumalab.github.io/PPAGE/overview/design-philosophy/)
-in the docs for the full extension menu with difficulty ratings.
-
----
-
-## 🏗 Architectural Philosophy
-
-The repository is divided into two major components:
-
-### 1️⃣ `ppage`: The Environment
-
-Implements:
-
-* Grid environment dynamics, agent movement, capture logic, episode termination (`core/`, immutable)
-* Observation plug-ins: perception (`observations/`)
-* Reward plug-ins: incentives (`rewards/`)
-* Action-space plug-ins: what an agent's action integers mean (`actions/`)
-* Wrappers: cross-cutting mechanics layered on top of the base env, e.g. per-agent speed/stamina (`wrappers/`)
-* Registries: the only sanctioned way to wire a plug-in into an experiment (`registry/`)
-
-This layer defines the world.
-
-Currently registered plug-ins:
-
-| Category     | Registered options                                                    |
-| ------------ | ----------------------------------------------------------------------- |
-| Observations | `default`, `local_only`, `local_radius`, `absolute`, `relative`          |
-| Rewards      | `base`, `predator_distance`, `survival`                                  |
-| Actions      | `discrete_5`, `cross`, `speed_discrete_5`                               |
-| Wrappers     | `SpeedWrapper` (per-agent speed/stamina, applied last in the build chain) |
-
-### 2️⃣ `ppage.baselines`: The Learning Algorithms
-
-Implements:
-
-* **IQL**: Independent Q-Learning (tabular)
-* **CQL**: Centralized Q-Learning (tabular)
-* **MixedTrainer**: per-team algorithm assignment (e.g. CQL predators vs IQL prey)
-* **DQN**: Deep Q-Network (PyTorch, generic observation encoder, replay buffer, Double/Dueling variants)
-* **ActorCritic**: one-step online actor-critic (PyTorch, policy-gradient)
-* **A2C**: n-step advantage actor-critic (PyTorch)
-* **A3C**: asynchronous A2C across worker processes (PyTorch, Hogwild)
-
-See [`src/ppage/baselines/README.md`](src/ppage/baselines/README.md) for the algorithm contract and when to use each one.
-
-Algorithms interact with the environment only through:
-
-```python
-env.reset()
-env.step(actions)
-```
-
-They never access internal state directly.
-
-This guarantees structural integrity.
-
----
-
-## 🔁 Reproducibility as a First-Class Constraint
-
-An experiment is fully determined by:
-
-* YAML configuration files
-* Explicit random seeds
-* Registered observation modules
-* Registered reward modules
-
-Identical configuration → identical trajectories.
-
-This is enforced, not assumed.
-
----
-
-## 📂 Repository Structure
-
-```
-src/
-└── ppage/                    # Environment (the installable library)
-    ├── core/                 # Immutable environment dynamics (maintainers only)
-    ├── observations/         # Perception plug-ins
-    ├── rewards/              # Incentive plug-ins
-    ├── actions/              # Action-space plug-ins
-    ├── wrappers/             # Cross-cutting mechanics (e.g. SpeedWrapper)
-    ├── registry/             # Safe plug-in selection
-    └── baselines/            # Learning algorithms
-        ├── IQL/  CQL/  MIXED/  DQN/  AC/  A2C/  A3C/
-        └── registry/         # Algorithm name -> class
-
-plug-and-play/                # Start here: runnable entry points
-├── scripts/                  # Experiment runners (run_from_config, run_dqn, ...)
-└── configs/                  # YAML experiment definitions
-    ├── env.yaml, agents.yaml, observations.yaml, rewards.yaml, actions.yaml
-    ├── experiment_{iql,cql,mixed,dqn,actor_critic,a2c,a3c}.yaml
-    ├── dqn_1v1/, dqn_speed{1,2,3}/, d3qn/    # ready-made experiment sets
-    └── demo_plus/, demo_diagonal/, demo_speed/   # movement demos
-
-tests/                        # pytest suite: registries, plugin contracts,
-                               # end-to-end training, architecture rules
-```
-
-Core environment dynamics is stable infrastructure.
-
-Observations, rewards, and actions are the intended extension points.
-
----
-
-## 🧪 What You Can Study With This
-
-* Emergent cooperation between predators
-* Coordination failures
-* Reward shaping effects
-* Partial observability impact
-* Centralized vs decentralized learning
-* Constraint-induced coupling (speed, stamina)
-* Credit assignment challenges
-
-This environment is meant for:
-
-* MARL research
-* Undergraduate research labs
-* Algorithm benchmarking
-* Teaching reinforcement learning
-* Controlled ablation experiments
+The goal is not realism. The goal is **clarity, modularity, and scientific
+control**, making MARL mechanistically understandable rather than opaque.
 
 ---
 
@@ -318,7 +111,155 @@ pip install -e ".[dev,baselines]"
 python -m pytest tests/ -q
 ```
 
-CI (`.github/workflows/ci.yaml`) runs this suite on Python 3.10/3.11/3.12 for every push and PR to `main`/`master`/`STRP`, and a `core-guard` job fails any PR that touches `core/` (see below). The Black/flake8/pylint lint job is currently disabled in CI; run them locally via pre-commit.
+CI (`.github/workflows/ci.yaml`) runs this suite on Python 3.10/3.11/3.12 for
+every push and PR to `main`/`master`/`STRP`, and a `core-guard` job fails any
+PR that touches `core/` (see [For Contributors and Students](#-for-contributors-and-students)).
+The Black/flake8/pylint lint job is currently disabled in CI; run them locally
+via pre-commit.
+
+---
+
+## 🧭 Design Philosophy: Accessible by Default, Versatile by Design
+
+PPAGE deliberately balances two properties that usually trade off against
+each other:
+
+* **Accessibility** — a first experiment should cost minutes, not days.
+  `pip install ppage`, one [`plug-and-play/`](plug-and-play/) folder where
+  runnable scripts sit next to the YAML configs they consume, and experiment
+  changes that never require touching Python.
+* **Versatility** — every scientific axis of the experiment is swappable.
+  What agents perceive (observations), what they optimize (rewards), what
+  their actions mean (action spaces), and how they learn (algorithms) are
+  each an independent plugin behind a registry.
+
+The bridge between the two pillars is the **registry pattern**: a plugin
+registered once becomes a one-line YAML option forever. Extending the system
+is exactly as accessible as using it.
+
+```mermaid
+flowchart TB
+    P["<b>PPAGE</b><br/>accessible by default · versatile by design"]
+    P --> A["🚪 <b>Accessibility</b><br/><i>running in minutes</i>"]
+    P --> V["🔧 <b>Versatility</b><br/><i>swap any axis of the experiment</i>"]
+    A --> A1["pip install ppage"]
+    A --> A2["plug-and-play/<br/>scripts + configs, side by side"]
+    A --> A3["YAML-only experiment changes<br/>no Python required"]
+    V --> V1["👁 observations<br/>5 shipped"]
+    V --> V2["🎯 rewards<br/>composable stack"]
+    V --> V3["🕹 actions + wrappers<br/>3 shipped"]
+    V --> V4["🧠 algorithms<br/>7 baselines"]
+    V1 --> R
+    V2 --> R
+    V3 --> R
+    V4 --> R["🔌 <b>registries</b><br/>register a plugin once →<br/>it is a one-line YAML option forever"]
+    R -.->|"which is why extending<br/>stays this easy"| A3
+```
+
+Concretely, each axis ships with reference implementations and stays open
+for yours:
+
+| Axis | Shipped | Examples of what you could add |
+| --- | --- | --- |
+| Observations | `default`, `local_only`, `local_radius`, `absolute`, `relative` | noisy sensors, field-of-view cones, line-of-sight occlusion, frame-stacking memory, CNN-ready grid patches |
+| Rewards | `base`, `predator_distance`, `survival` (composable) | shared-credit capture splits, encirclement shaping, energy costs tied to stamina, time-decayed bonuses |
+| Actions | `discrete_5`, `cross`, `speed_discrete_5` (+ `SpeedWrapper`) | king moves, momentum actions, wait-and-observe, macro-actions |
+| Algorithms | IQL, CQL, MixedTrainer, DQN, ActorCritic, A2C, A3C | game-theoretic learners (JAL-GT/minimax-Q, WoLF-PHC, fictitious play), CTDE methods (VDN, QMIX) |
+
+Each row has a written contract (`docs/specs/`) and a step-by-step guide
+(`docs/guides/`); see [Design Philosophy](https://uhumalab.github.io/PPAGE/overview/design-philosophy/)
+in the docs for the full extension menu with difficulty ratings.
+
+---
+
+## 🏗 Architecture: Two Components
+
+### 1️⃣ `ppage`: The Environment
+
+Defines the world:
+
+* Grid dynamics, agent movement, capture logic, episode termination (`core/`, immutable)
+* Observation plug-ins: perception (`observations/`)
+* Reward plug-ins: incentives (`rewards/`)
+* Action-space plug-ins: what an agent's action integers mean (`actions/`)
+* Wrappers: cross-cutting mechanics layered on top of the base env, e.g. per-agent speed/stamina (`wrappers/`, applied last in the build chain)
+* Registries: the only sanctioned way to wire a plug-in into an experiment (`registry/`)
+
+The shipped implementations for each plug-in category are listed in the
+[Design Philosophy](#-design-philosophy-accessible-by-default-versatile-by-design)
+table above.
+
+### 2️⃣ `ppage.baselines`: The Learning Algorithms
+
+* **IQL**: Independent Q-Learning (tabular)
+* **CQL**: Centralized Q-Learning (tabular)
+* **MixedTrainer**: per-team algorithm assignment (e.g. CQL predators vs IQL prey)
+* **DQN**: Deep Q-Network (PyTorch, generic observation encoder, replay buffer, Double/Dueling variants)
+* **ActorCritic**: one-step online actor-critic (PyTorch, policy-gradient)
+* **A2C**: n-step advantage actor-critic (PyTorch)
+* **A3C**: asynchronous A2C across worker processes (PyTorch, Hogwild)
+
+See [`src/ppage/baselines/README.md`](src/ppage/baselines/README.md) for the
+algorithm contract and when to use each one.
+
+Algorithms interact with the environment only through:
+
+```python
+env.reset()
+env.step(actions)
+```
+
+They never access internal state directly. This guarantees structural
+integrity: swapping what an agent perceives, optimizes, or does never
+requires touching how it learns, and vice versa.
+
+---
+
+## 📂 Repository Structure
+
+```
+src/
+└── ppage/                    # Environment (the installable library)
+    ├── core/                 # Immutable environment dynamics (maintainers only)
+    ├── observations/         # Perception plug-ins
+    ├── rewards/              # Incentive plug-ins
+    ├── actions/              # Action-space plug-ins
+    ├── wrappers/             # Cross-cutting mechanics (e.g. SpeedWrapper)
+    ├── registry/             # Safe plug-in selection
+    └── baselines/            # Learning algorithms
+        ├── IQL/  CQL/  MIXED/  DQN/  AC/  A2C/  A3C/
+        └── registry/         # Algorithm name -> class
+
+plug-and-play/                # Start here: runnable entry points
+├── scripts/                  # Experiment runners (run_from_config, run_dqn, ...)
+└── configs/                  # YAML experiment definitions
+    ├── env.yaml, agents.yaml, observations.yaml, rewards.yaml, actions.yaml
+    ├── experiment_{iql,cql,mixed,dqn,actor_critic,a2c,a3c}.yaml
+    ├── dqn_1v1/, dqn_speed{1,2,3}/, d3qn/    # ready-made experiment sets
+    └── demo_plus/, demo_diagonal/, demo_speed/   # movement demos
+
+tests/                        # pytest suite: registries, plugin contracts,
+                               # end-to-end training, architecture rules
+```
+
+Core environment dynamics is stable infrastructure. Observations, rewards,
+actions, and algorithms are the intended extension points.
+
+---
+
+## 🧪 What You Can Study With This
+
+* Emergent cooperation between predators
+* Coordination failures
+* Reward shaping effects
+* Partial observability impact
+* Centralized vs decentralized learning
+* Constraint-induced coupling (speed, stamina)
+* Credit assignment challenges
+
+This environment is meant for MARL research, undergraduate research labs,
+algorithm benchmarking, teaching reinforcement learning, and controlled
+ablation experiments.
 
 ---
 
@@ -329,10 +270,14 @@ You are encouraged to:
 * Implement new reward functions
 * Design new observation schemes
 * Design new action spaces or wrappers
-* Run structured experiments
-* Perform reproducible ablations
+* Add new learning baselines
+* Run structured experiments and reproducible ablations
 
-You are not expected to modify core environment dynamics; this is enforced automatically: a CI check fails any pull request that touches `src/ppage/core/`. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full contribution rules, and [`docs/git-workflow.md`](docs/git-workflow.md) for branching, commits, and how to open a PR.
+You are not expected to modify core environment dynamics; this is enforced
+automatically: a CI check fails any pull request that touches
+`src/ppage/core/`. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full
+contribution rules, and [`docs/git-workflow.md`](docs/git-workflow.md) for
+branching, commits, and how to open a PR.
 
 This mirrors how research infrastructure is structured in practice.
 
@@ -356,6 +301,6 @@ This repository ships a machine-readable [`CITATION.cff`](CITATION.cff); GitHub'
 
 ---
 
-## 📜 License
+## ⚖️ License
 
-Apache License 2.0
+[Apache License 2.0](LICENSE)
