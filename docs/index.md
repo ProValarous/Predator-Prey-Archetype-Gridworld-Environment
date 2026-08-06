@@ -10,9 +10,9 @@ pursuit–evasion, and emergent behavior in **Multi-Agent Reinforcement Learning
 (MARL)**.
 
 <p align="center">
-  <img src="assets/images/demo.gif" alt="A speed-2 predator pursuing a speed-1 prey around obstacles on a 10x10 grid until capture" width="440"/>
+  <img src="assets/images/demo.gif" alt="A trained DQN predator running down a prey around obstacles on a 10x10 grid until capture" width="440"/>
 </p>
-<p align="center"><em>A speed-2 predator chasing a speed-1 prey around obstacles until capture (<code>plug-and-play/configs/dqn_1v1</code>).</em></p>
+<p align="center"><em>A <strong>trained</strong> DQN predator (speed 2) running down a speed-1 prey around obstacles until capture (<code>plug-and-play/configs/dqn_1v1</code>).</em></p>
 
 ---
 
