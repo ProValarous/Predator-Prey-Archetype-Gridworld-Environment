@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="miscellenous/imgs/title-dark.png">
-    <img src="miscellenous/imgs/title-light.png" alt="PPAGE: Predator–Prey Archetype Gridworld Environment" width="540">
+    <source media="(prefers-color-scheme: dark)" srcset="miscellenous/imgs/title-dark.png?v=2">
+    <img src="miscellenous/imgs/title-light.png?v=2" alt="PPAGE: Predator–Prey Archetype Gridworld Environment" width="540">
   </picture>
 </p>
 
