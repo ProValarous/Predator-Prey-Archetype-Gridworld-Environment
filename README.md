@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="miscellenous/imgs/demo.gif" alt="A predator (red) chasing down a prey (green) across a 10x10 obstacle grid until capture" width="480">
+  <img src="miscellenous/gifs/demo.gif" alt="A predator (red) chasing down a prey (green) across a 10x10 obstacle grid until capture" width="480">
 </p>
 
 <p align="center"><sub>A speed-2 predator pursuing a speed-1 prey around obstacles (<code>configs/dqn_1v1</code>) until capture.</sub></p>
