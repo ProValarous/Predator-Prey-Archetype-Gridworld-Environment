@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0-beta] - 2026-08-06
+
+### Added
+- First PyPI release: the package is published as
+  [`ppage`](https://pypi.org/project/ppage/) (`pip install ppage`), matching
+  the repository and import names. A tag-triggered release workflow
+  (`release.yml`) builds the sdist and wheel, publishes to PyPI via trusted
+  publishing (OIDC, no stored tokens), and creates a GitHub Release with
+  notes extracted from this changelog. A companion `version-check.yml`
+  suggests the next version on pull requests.
+
 ### Changed
 - **Breaking:** the import surface is now a single top-level package, `ppage`,
   in preparation for the first PyPI release. `multi_agent_package` became
@@ -20,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Repository moved to the `UHUMALAB` GitHub org as `UHUMALAB/PPAGE`; repo,
   docs-site, and issue URLs across README, docs, packaging metadata, and
   `CITATION.cff` now point there.
+
+### Fixed
+- `pyproject.toml` authors now credit all six contributors, matching the
+  README citation and `CITATION.cff` (#65). The README BibTeX entry uses
+  real names instead of GitHub handles.
 
 ## [0.8.0-beta] - 2026-07-27
 
