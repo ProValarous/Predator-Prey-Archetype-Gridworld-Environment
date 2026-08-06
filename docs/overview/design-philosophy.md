@@ -67,6 +67,51 @@ is immediately selectable from YAML through the exact pipeline every shipped
 implementation uses. Extending the system is as accessible as using it, and
 the architecture-contract tests hold your plugin to the same rules.
 
+## Four scenarios, one unchanged core
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="../assets/images/showcase/showcase_1v1_10x10.gif" alt="One predator and one prey moving on a 10x10 grid with obstacles" width="100%">
+      <br><sub><b>1 predator vs 1 prey</b> · 10&times;10</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="../assets/images/showcase/showcase_2v2_10x10.gif" alt="Two predators and two double-speed prey on a 10x10 grid" width="100%">
+      <br><sub><b>2 predators vs 2 prey at double speed</b> · 10&times;10<br>speed/stamina via <code>SpeedWrapper</code></sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="../assets/images/showcase/showcase_3v3v10_50x50.gif" alt="Two predator teams, one moving cardinally and one diagonally, hunting ten prey on a 50x50 grid" width="100%">
+      <br><sub><b>Two predator teams vs 10 prey</b> · 50&times;50<br>cardinal movement (red) vs diagonal movement (pink)</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="../assets/images/showcase/showcase_5v20_100x100.gif" alt="Five predators and twenty prey scattered across a 100x100 grid with a thousand obstacles" width="100%">
+      <br><sub><b>5 predators vs 20 prey</b> · 100&times;100<br>1,000 obstacles</sub>
+    </td>
+  </tr>
+</table>
+
+Every clip runs at 10% obstacle density with **untrained, uniformly random
+actions**: they show what the environment can be configured to express, not
+learned behaviour. Colours and marker shapes are the environment's own, from
+[`Agent.get_agent_color()`](../reference/api-reference.md) (predators on the red
+hue, prey on green, with shade and shape separating subteams), and the two
+movement geometries in the third clip are the shipped `discrete_5` and `cross`
+action spaces.
+
+!!! note "What is config and what is not"
+    Grid size, populations, obstacle density, and per-agent speed/stamina are
+    all YAML keys, so the first, second, and fourth clips are pure
+    configuration. Assigning a *different* action space per team is not: the
+    core holds one global `action_space_plugin`, and the third clip composes
+    per-team geometry in the generator script through the core's per-agent
+    direction-map fallback. Making that YAML-selectable is Tier 1 work on the
+    [roadmap](scope-and-roadmap.md).
+
+Regenerate the clips with `python .github/scripts/make_showcase_gifs.py`
+(needs `pip install -e ".[docs]"`).
+
 ## The extension menu
 
 Everything below is buildable **today, with zero core changes**. Difficulty

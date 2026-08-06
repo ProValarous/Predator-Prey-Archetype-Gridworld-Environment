@@ -59,7 +59,9 @@ awaiting your own observation builders, reward terms, action spaces, and
 algorithms (versatility). The registry pattern bridges the two: a plugin
 registered once is a one-line YAML option forever. See
 [Design Philosophy](overview/design-philosophy.md) for the full extension menu
-with difficulty ratings.
+with difficulty ratings, plus a
+[four-scenario showcase](overview/design-philosophy.md#four-scenarios-one-unchanged-core)
+ranging from a 1v1 chase to 5 predators and 20 prey on a 100&times;100 grid.
 
 It is a *controlled laboratory* for understanding MARL, not a high-performance
 training platform. See the [Mission](mission.md) for the full rationale.
