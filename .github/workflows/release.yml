@@ -7,7 +7,7 @@ name: Release
 # One-time setup required before this can succeed (no manual upload
 # needed; PyPI "pending publishers" can pre-register a project name):
 #   1. On PyPI: Account -> Publishing -> Add a pending publisher with
-#      project name "predator-prey-gridworld", owner "UHUMALAB", repo
+#      project name "ppage", owner "UHUMALAB", repo
 #      "PPAGE", workflow "release.yml", environment "pypi". The first
 #      successful run of this workflow then creates the project.
 #   2. On GitHub: repo Settings -> Environments -> create "pypi"
