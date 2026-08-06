@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0-beta.2] - 2026-08-06
+
+### Fixed
+- A core-only install (`pip install ppage`, without the `[baselines]` extra)
+  crashed with `ModuleNotFoundError: torch` on `import ppage.baselines`,
+  making even the tabular algorithms unusable. The torch-dependent baselines
+  (DQN, ActorCritic, A2C, A3C) now register only when PyTorch is installed;
+  the tabular ones (IQL, CQL, MixedTrainer) always work, and requesting a
+  neural algorithm without torch raises the registry's "not registered"
+  error instead of an import crash.
+
 ## [0.9.0-beta] - 2026-08-06
 
 ### Added
