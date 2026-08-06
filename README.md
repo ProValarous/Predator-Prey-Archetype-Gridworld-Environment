@@ -27,6 +27,47 @@ A <b>deterministic, modular, research-grade multi-agent predator–prey environm
 
 ---
 
+## 🎬 Showcase: four scenarios, one unchanged core
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="miscellenous/gifs/showcase/showcase_1v1_10x10.gif" alt="One predator and one prey moving on a 10x10 grid with obstacles" width="100%">
+      <br><sub><b>1 predator vs 1 prey</b> · 10&times;10</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="miscellenous/gifs/showcase/showcase_2v2_10x10.gif" alt="Two predators and two double-speed prey on a 10x10 grid" width="100%">
+      <br><sub><b>2 predators vs 2 prey at double speed</b> · 10&times;10<br>speed/stamina via <code>SpeedWrapper</code></sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="miscellenous/gifs/showcase/showcase_3v3v10_50x50.gif" alt="Two predator teams, one moving cardinally and one diagonally, hunting ten prey on a 50x50 grid" width="100%">
+      <br><sub><b>Two predator teams vs 10 prey</b> · 50&times;50<br>cardinal movement (red) vs diagonal movement (pink)</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="miscellenous/gifs/showcase/showcase_5v20_100x100.gif" alt="Five predators and twenty prey scattered across a 100x100 grid with a thousand obstacles" width="100%">
+      <br><sub><b>5 predators vs 20 prey</b> · 100&times;100<br>1,000 obstacles</sub>
+    </td>
+  </tr>
+</table>
+
+Grid size, populations, obstacle density, and per-agent speed are all YAML
+keys, so the same unmodified core produces every one of these. All four clips
+run at 10% obstacle density with **untrained, uniformly random actions**: they
+show what the environment can be configured to express, not learned behaviour.
+Colours and shapes are the environment's own (predators on the red hue, prey on
+green, shade and shape separating subteams). Regenerate them with
+`python .github/scripts/make_showcase_gifs.py`.
+
+> One caveat on the third clip: the two movement geometries are the shipped
+> `discrete_5` and `cross` action spaces, but assigning a *different* one per
+> team is composed in the generator script rather than selected from YAML. The
+> core holds a single global action space, and per-team assignment is Tier 1
+> roadmap work.
+
+---
+
 ## ❓ Why PPAGE
 
 Most MARL environments mix environment logic with learning code, hide
@@ -175,43 +216,9 @@ Each row has a written contract (`docs/specs/`) and a step-by-step guide
 (`docs/guides/`); see [Design Philosophy](https://uhumalab.github.io/PPAGE/overview/design-philosophy/)
 in the docs for the full extension menu with difficulty ratings.
 
-### Four scenarios, one unchanged core
-
-<table>
-  <tr>
-    <td width="50%" align="center">
-      <img src="miscellenous/gifs/showcase/showcase_1v1_10x10.gif" alt="One predator and one prey moving on a 10x10 grid with obstacles" width="100%">
-      <br><sub><b>1 predator vs 1 prey</b> · 10&times;10</sub>
-    </td>
-    <td width="50%" align="center">
-      <img src="miscellenous/gifs/showcase/showcase_2v2_10x10.gif" alt="Two predators and two double-speed prey on a 10x10 grid" width="100%">
-      <br><sub><b>2 predators vs 2 prey at double speed</b> · 10&times;10<br>speed/stamina via <code>SpeedWrapper</code></sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" align="center">
-      <img src="miscellenous/gifs/showcase/showcase_3v3v10_50x50.gif" alt="Two predator teams, one moving cardinally and one diagonally, hunting ten prey on a 50x50 grid" width="100%">
-      <br><sub><b>Two predator teams vs 10 prey</b> · 50&times;50<br>cardinal movement (red) vs diagonal movement (pink)</sub>
-    </td>
-    <td width="50%" align="center">
-      <img src="miscellenous/gifs/showcase/showcase_5v20_100x100.gif" alt="Five predators and twenty prey scattered across a 100x100 grid with a thousand obstacles" width="100%">
-      <br><sub><b>5 predators vs 20 prey</b> · 100&times;100<br>1,000 obstacles</sub>
-    </td>
-  </tr>
-</table>
-
-Every clip runs at 10% obstacle density with **untrained, uniformly random
-actions**: they show what the environment can be configured to express, not
-learned behaviour. Colours and shapes are the environment's own
-(predators on the red hue, prey on green, shade and shape separating subteams).
-Regenerate them with `python .github/scripts/make_showcase_gifs.py`.
-
-> Grid size, populations, obstacle density, and per-agent speed are all YAML
-> keys. The two movement geometries in the third clip come from the shipped
-> `discrete_5` and `cross` action spaces, but assigning a *different* one per
-> team is composed in the generator script rather than selected from YAML:
-> the core holds a single global action space, and per-team assignment is
-> Tier 1 roadmap work.
+For four of these axes side by side, see the
+[Showcase](#-showcase-four-scenarios-one-unchanged-core) at the top of this
+README.
 
 ---
 
