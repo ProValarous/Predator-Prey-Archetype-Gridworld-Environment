@@ -1,4 +1,9 @@
-# 🐾 PPAGE: Predator–Prey Archetype Gridworld Environment
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="miscellenous/imgs/title-dark.png">
+    <img src="miscellenous/imgs/title-light.png" alt="PPAGE: Predator–Prey Archetype Gridworld Environment" width="540">
+  </picture>
+</p>
 
 <p align="center">
   <a href="https://pypi.org/project/ppage/"><img src="https://img.shields.io/pypi/v/ppage.svg?color=blue&label=PyPI" alt="PyPI"></a>
