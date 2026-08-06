@@ -51,6 +51,16 @@ week-by-week path.
 * **Reproducibility** — an experiment is fully determined by a YAML config plus a
   seed: identical configuration yields identical trajectories.
 
+These fold into one governing balance — **accessible by default, versatile by
+design**: `plug-and-play/` scripts and YAML configs get you running in minutes
+(accessibility), while every axis of the experiment — what agents see, what
+they optimize, how they act, and how they learn — is an open plugin surface
+awaiting your own observation builders, reward terms, action spaces, and
+algorithms (versatility). The registry pattern bridges the two: a plugin
+registered once is a one-line YAML option forever. See
+[Design Philosophy](overview/design-philosophy.md) for the full extension menu
+with difficulty ratings.
+
 It is a *controlled laboratory* for understanding MARL, not a high-performance
 training platform. See the [Mission](mission.md) for the full rationale.
 

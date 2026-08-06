@@ -4,6 +4,13 @@ This folder is the front door of the repository: everything runnable lives
 here, next to the configs it consumes. The library itself (`src/ppage`) stays
 untouched; you plug experiments together from here.
 
+It is also one half of PPAGE's design philosophy — **accessible by default,
+versatile by design**. This folder is the accessibility half: run and vary
+experiments through YAML alone. The versatility half is the plugin surface
+(custom observations, rewards, action spaces, algorithms); see
+[Design Philosophy](https://uhumalab.github.io/PPAGE/overview/design-philosophy/)
+for what you can build.
+
 - **`configs/`** - YAML experiment definitions. `env.yaml`, `agents.yaml`,
   `observations.yaml`, `rewards.yaml`, `actions.yaml`, and one
   `experiment_*.yaml` per algorithm, plus ready-made experiment sets like

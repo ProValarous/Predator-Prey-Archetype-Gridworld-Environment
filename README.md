@@ -84,6 +84,59 @@ The goal is **clarity, modularity, and scientific control**.
 
 ---
 
+## 🧭 Design Philosophy: Accessible by Default, Versatile by Design
+
+PPAGE deliberately balances two properties that usually trade off against
+each other:
+
+* **Accessibility** — a first experiment should cost minutes, not days.
+  `pip install ppage`, one [`plug-and-play/`](plug-and-play/) folder where
+  runnable scripts sit next to the YAML configs they consume, and experiment
+  changes that never require touching Python.
+* **Versatility** — every scientific axis of the experiment is swappable.
+  What agents perceive (observations), what they optimize (rewards), what
+  their actions mean (action spaces), and how they learn (algorithms) are
+  each an independent plugin behind a registry.
+
+The bridge between the two pillars is the **registry pattern**: a plugin
+registered once becomes a one-line YAML option forever. Extending the system
+is exactly as accessible as using it.
+
+```mermaid
+flowchart TB
+    P["<b>PPAGE</b><br/>accessible by default · versatile by design"]
+    P --> A["🚪 <b>Accessibility</b><br/><i>running in minutes</i>"]
+    P --> V["🔧 <b>Versatility</b><br/><i>swap any axis of the experiment</i>"]
+    A --> A1["pip install ppage"]
+    A --> A2["plug-and-play/<br/>scripts + configs, side by side"]
+    A --> A3["YAML-only experiment changes<br/>no Python required"]
+    V --> V1["👁 observations<br/>5 shipped"]
+    V --> V2["🎯 rewards<br/>composable stack"]
+    V --> V3["🕹 actions + wrappers<br/>3 shipped"]
+    V --> V4["🧠 algorithms<br/>7 baselines"]
+    V1 --> R
+    V2 --> R
+    V3 --> R
+    V4 --> R["🔌 <b>registries</b><br/>register a plugin once →<br/>it is a one-line YAML option forever"]
+    R -.->|"which is why extending<br/>stays this easy"| A3
+```
+
+Concretely, each axis ships with reference implementations and stays open
+for yours:
+
+| Axis | Shipped | Examples of what you could add |
+| --- | --- | --- |
+| Observations | `default`, `local_only`, `local_radius`, `absolute`, `relative` | noisy sensors, field-of-view cones, line-of-sight occlusion, frame-stacking memory, CNN-ready grid patches |
+| Rewards | `base`, `predator_distance`, `survival` (composable) | shared-credit capture splits, encirclement shaping, energy costs tied to stamina, time-decayed bonuses |
+| Actions | `discrete_5`, `cross`, `speed_discrete_5` (+ `SpeedWrapper`) | king moves, momentum actions, wait-and-observe, macro-actions |
+| Algorithms | IQL, CQL, MixedTrainer, DQN, ActorCritic, A2C, A3C | game-theoretic learners (JAL-GT/minimax-Q, WoLF-PHC, fictitious play), CTDE methods (VDN, QMIX) |
+
+Each row has a written contract (`docs/specs/`) and a step-by-step guide
+(`docs/guides/`); see [Design Philosophy](https://uhumalab.github.io/PPAGE/overview/design-philosophy/)
+in the docs for the full extension menu with difficulty ratings.
+
+---
+
 ## 🏗 Architectural Philosophy
 
 The repository is divided into two major components:
