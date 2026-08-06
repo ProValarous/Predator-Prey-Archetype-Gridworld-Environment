@@ -42,7 +42,11 @@ Run from the repository root (needs ``pip install -e ".[docs]"``)::
 
     python .github/scripts/make_showcase_gifs.py
 
-The generated files are committed so the README and docs render without
+Each clip is written twice, mirroring how ``demo.gif`` is already handled:
+``miscellenous/gifs/showcase/`` for the README (GitHub resolves README paths
+from the repository root) and ``docs/assets/images/showcase/`` for the docs
+site (MkDocs can only publish files under ``docs/``). Both copies are
+byte-identical and committed, so the README and docs render without
 regenerating them; re-run this script whenever rendering conventions change.
 """
 
@@ -69,7 +73,16 @@ from ppage.core.agent import Agent  # noqa: E402
 from ppage.core.gridworld import GridWorldEnv  # noqa: E402
 from ppage.wrappers.speed import SpeedWrapper  # noqa: E402
 
-ASSETS = Path(__file__).resolve().parents[2] / "docs" / "assets" / "images" / "showcase"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# Each clip is written to both locations, following the convention demo.gif
+# already uses: the README (served from the repository root on GitHub) reads
+# the miscellenous/ copy, while the docs site can only publish files that live
+# under docs/. Writing both from one script keeps them from drifting apart.
+OUTPUT_DIRS = [
+    REPO_ROOT / "miscellenous" / "gifs" / "showcase",
+    REPO_ROOT / "docs" / "assets" / "images" / "showcase",
+]
 
 OBSTACLE_PERCENT = 10.0
 BACKGROUND = (255, 255, 255)
@@ -390,7 +403,14 @@ def main() -> None:
     total = 0
     for scn in SCENARIOS:
         frames = build_clip(scn)
-        size = save_gif(frames, ASSETS / f"{scn.slug}.gif")
+        primary, *mirrors = OUTPUT_DIRS
+        size = save_gif(frames, primary / f"{scn.slug}.gif")
+        for mirror in mirrors:
+            # Copy the encoded bytes rather than re-encoding, so every
+            # destination holds a byte-identical file.
+            target = mirror / f"{scn.slug}.gif"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes((primary / f"{scn.slug}.gif").read_bytes())
         total += size
         print(
             f"wrote {scn.slug}.gif  "
@@ -400,7 +420,9 @@ def main() -> None:
             f"{scn.stats['captured']} captured  "
             f"{size / 1024:.0f} KB"
         )
-    print(f"total {total / 1024:.0f} KB")
+    print(f"total {total / 1024:.0f} KB in {len(OUTPUT_DIRS)} locations")
+    for d in OUTPUT_DIRS:
+        print(f"  -> {d.relative_to(REPO_ROOT)}")
 
 
 if __name__ == "__main__":
