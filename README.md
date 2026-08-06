@@ -19,7 +19,7 @@
   <img src="miscellenous/gifs/demo.gif" alt="A predator (red) chasing down a prey (green) across a 10x10 obstacle grid until capture" width="480">
 </p>
 
-<p align="center"><sub>A speed-2 predator pursuing a speed-1 prey around obstacles (<code>plug-and-play/configs/dqn_1v1</code>) until capture.</sub></p>
+<p align="center"><sub>One episode from the ready-made <code>plug-and-play/configs/dqn_1v1</code> experiment: a speed-2 predator pursuing a speed-1 prey around obstacles until capture.</sub></p>
 
 <p align="center">
 A <b>deterministic, modular, research-grade multi-agent predator–prey environment</b> for studying coordination, pursuit–evasion, and emergent behavior in Multi-Agent Reinforcement Learning. It is not just a simulation, it is a controlled experimental laboratory: fully inspectable dynamics, pluggable perception and incentives, and reproducibility enforced by construction rather than assumed.
@@ -33,7 +33,7 @@ A <b>deterministic, modular, research-grade multi-agent predator–prey environm
   <tr>
     <td width="50%" align="center">
       <img src="miscellenous/gifs/showcase/showcase_1v1_10x10.gif" alt="One predator and one prey moving on a 10x10 grid with obstacles" width="100%">
-      <br><sub><b>1 predator vs 1 prey</b> · 10&times;10</sub>
+      <br><sub><b>1 predator vs 1 prey</b> · 10&times;10<br>the baseline setup, acting at random</sub>
     </td>
     <td width="50%" align="center">
       <img src="miscellenous/gifs/showcase/showcase_2v2_10x10.gif" alt="Two predators and two double-speed prey on a 10x10 grid" width="100%">
@@ -52,10 +52,12 @@ A <b>deterministic, modular, research-grade multi-agent predator–prey environm
   </tr>
 </table>
 
-Grid size, populations, obstacle density, and per-agent speed are all YAML
-keys, so the same unmodified core produces every one of these. All four clips
-run at 10% obstacle density with **untrained, uniformly random actions**: they
-show what the environment can be configured to express, not learned behaviour.
+Where the clip above is a single episode of one ready-made experiment, these
+four vary the *configuration* instead: grid size, populations, obstacle
+density, and per-agent speed are all YAML keys, so the same unmodified core
+produces every one of them. All four run at 10% obstacle density with
+**untrained, uniformly random actions**, so they show what the environment can
+be configured to express, not learned behaviour.
 Colours and shapes are the environment's own (predators on the red hue, prey on
 green, shade and shape separating subteams). Regenerate them with
 `python .github/scripts/make_showcase_gifs.py`.
