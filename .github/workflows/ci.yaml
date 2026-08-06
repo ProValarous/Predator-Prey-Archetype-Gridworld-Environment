@@ -73,7 +73,7 @@ jobs:
 
   # Enforces CONTRIBUTING.md's "Golden Rule": core/gridworld.py and
   # core/agent.py are maintainers-only. Students/contributors extend the
-  # system via observations/, rewards/, actions/, wrappers/, or configs/.
+  # system via observations/, rewards/, actions/, wrappers/, or plug-and-play/configs/.
   core-guard:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -91,7 +91,7 @@ jobs:
             echo "$CHANGED"
             echo ""
             echo "core/gridworld.py and core/agent.py are maintainers-only (CONTRIBUTING.md 'Golden Rule')."
-            echo "Extend the system via observations/, rewards/, actions/, wrappers/, or configs/ instead."
+            echo "Extend the system via observations/, rewards/, actions/, wrappers/, or plug-and-play/configs/ instead."
             exit 1
           fi
           echo "OK: this PR does not touch src/ppage/core/."

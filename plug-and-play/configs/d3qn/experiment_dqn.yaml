@@ -10,7 +10,7 @@
 #                        A(s,a) streams, recombined as Q = V + (A - mean A))
 #
 # Same 10x10 / 3v3 scenario as the top-level configs, so results are directly
-# comparable to the vanilla `configs/experiment_dqn.yaml` run.
+# comparable to the vanilla `plug-and-play/configs/experiment_dqn.yaml` run.
 experiment:
   algorithm:
     name: dqn

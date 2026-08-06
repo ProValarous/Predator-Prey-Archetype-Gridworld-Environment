@@ -7,7 +7,7 @@ How the system goes from YAML files on disk to a wired, ready-to-train environme
 ## Trigger
 
 ```bash
-python -m ppage.scripts.run_from_config
+python plug-and-play/scripts/run_from_config.py
 ```
 
 ---
@@ -16,7 +16,7 @@ python -m ppage.scripts.run_from_config
 
 ```mermaid
 flowchart TB
-    Y["configs/*.yaml<br/>env · agents · observations · rewards · actions · experiment"] --> LC["load_all_configs(config_dir)<br/>→ merged configs dict"]
+    Y["plug-and-play/configs/*.yaml<br/>env · agents · observations · rewards · actions · experiment"] --> LC["load_all_configs(config_dir)<br/>→ merged configs dict"]
     LC --> BA["build_agents(agent_cfg)<br/>Agent(type, team, name); set agent_speed &amp; stamina"]
     BA --> GW["GridWorldEnv(agents, size, obstacle %, seed,<br/>allow_cell_sharing, block_agents_by_obstacles,<br/>capture_threshold, max_steps)"]
     GW --> WO["Wire observations<br/>builder = get_observation_builder(type, **params)<br/>env.observation_builder = builder.build<br/>env.observation_encoder = builder.encode (for DQN)"]

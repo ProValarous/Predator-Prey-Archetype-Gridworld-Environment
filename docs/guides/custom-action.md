@@ -104,7 +104,7 @@ __all__ = [
 ## Step 4 — Configure it
 
 ```yaml
-# configs/actions.yaml
+# plug-and-play/configs/actions.yaml
 actions:
   type: discrete_9   # ← matches your registry key
   params: {}
@@ -117,7 +117,7 @@ actions:
 IQL, CQL, and MixedTrainer all take a fixed `action_dim: 5` from their experiment YAML with no validation against the actual action space. If your action space has a different number of actions, update that param:
 
 ```yaml
-# configs/experiment.yaml
+# plug-and-play/configs/experiment.yaml
 experiment:
   algorithm:
     params:

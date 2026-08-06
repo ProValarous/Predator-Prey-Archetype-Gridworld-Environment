@@ -9,7 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-CONFIGS_DIR = REPO_ROOT / "configs"
+CONFIGS_DIR = REPO_ROOT / "plug-and-play/configs"
 
 
 # ------------------------------------------------------------------
@@ -19,7 +19,7 @@ CONFIGS_DIR = REPO_ROOT / "configs"
 
 class TestLoadAllConfigs:
     def test_loads_five_sections(self):
-        from ppage.scripts.run_from_config import load_all_configs
+        from run_from_config import load_all_configs
 
         configs = load_all_configs()
         assert set(configs.keys()) == {
@@ -32,62 +32,62 @@ class TestLoadAllConfigs:
         }
 
     def test_env_section_has_size(self):
-        from ppage.scripts.run_from_config import load_all_configs
+        from run_from_config import load_all_configs
 
         configs = load_all_configs()
         assert "size" in configs["env"]["env"]
 
     def test_agents_section_has_predators_and_preys(self):
-        from ppage.scripts.run_from_config import load_all_configs
+        from run_from_config import load_all_configs
 
         configs = load_all_configs()
         assert "predators" in configs["agents"]["agents"]
         assert "preys" in configs["agents"]["agents"]
 
     def test_observations_has_type(self):
-        from ppage.scripts.run_from_config import load_all_configs
+        from run_from_config import load_all_configs
 
         configs = load_all_configs()
         assert "type" in configs["observations"]["observations"]
 
     def test_rewards_has_base(self):
-        from ppage.scripts.run_from_config import load_all_configs
+        from run_from_config import load_all_configs
 
         configs = load_all_configs()
         assert "base" in configs["rewards"]["rewards"]
 
     def test_experiment_has_algorithm(self):
-        from ppage.scripts.run_from_config import load_all_configs
+        from run_from_config import load_all_configs
 
         configs = load_all_configs()
         assert "algorithm" in configs["experiment"]["experiment"]
 
     def test_algorithm_has_name(self):
-        from ppage.scripts.run_from_config import load_all_configs
+        from run_from_config import load_all_configs
 
         configs = load_all_configs()
         assert "name" in configs["experiment"]["experiment"]["algorithm"]
 
     def test_iql_experiment_file(self):
-        from ppage.scripts.run_from_config import load_all_configs
+        from run_from_config import load_all_configs
 
         configs = load_all_configs(experiment_file="experiment_iql.yaml")
         assert configs["experiment"]["experiment"]["algorithm"]["name"] == "iql"
 
     def test_cql_experiment_file(self):
-        from ppage.scripts.run_from_config import load_all_configs
+        from run_from_config import load_all_configs
 
         configs = load_all_configs(experiment_file="experiment_cql.yaml")
         assert configs["experiment"]["experiment"]["algorithm"]["name"] == "cql"
 
     def test_mixed_experiment_file(self):
-        from ppage.scripts.run_from_config import load_all_configs
+        from run_from_config import load_all_configs
 
         configs = load_all_configs(experiment_file="experiment_mixed.yaml")
         assert configs["experiment"]["experiment"]["algorithm"]["name"] == "mixed"
 
     def test_dqn_experiment_file(self):
-        from ppage.scripts.run_from_config import load_all_configs
+        from run_from_config import load_all_configs
 
         configs = load_all_configs(experiment_file="experiment_dqn.yaml")
         assert configs["experiment"]["experiment"]["algorithm"]["name"] == "dqn"
@@ -100,7 +100,7 @@ class TestLoadAllConfigs:
 
 class TestBuildAgents:
     def test_correct_agent_count(self):
-        from ppage.scripts.run_from_config import (
+        from run_from_config import (
             build_agents,
             load_all_configs,
         )
@@ -112,7 +112,7 @@ class TestBuildAgents:
         assert len(agents) == pred_count + prey_count
 
     def test_agent_types_correct(self):
-        from ppage.scripts.run_from_config import (
+        from run_from_config import (
             build_agents,
             load_all_configs,
         )
@@ -124,7 +124,7 @@ class TestBuildAgents:
         assert types[:pred_count] == ["predator"] * pred_count
 
     def test_agent_names_unique(self):
-        from ppage.scripts.run_from_config import (
+        from run_from_config import (
             build_agents,
             load_all_configs,
         )
@@ -142,7 +142,7 @@ class TestBuildAgents:
 
 class TestBuildEnvironment:
     def _load_and_build(self, experiment_file="experiment_iql.yaml"):
-        from ppage.scripts.run_from_config import (
+        from run_from_config import (
             load_all_configs,
             build_environment,
         )
@@ -194,7 +194,7 @@ class TestBuildEnvironment:
 
 class TestBaseRewardIsPluginDriven:
     def _build(self, base_enabled):
-        from ppage.scripts.run_from_config import (
+        from run_from_config import (
             load_all_configs,
             build_environment,
         )
@@ -233,7 +233,7 @@ class TestBaseRewardIsPluginDriven:
 
 class TestEndToEndIQL:
     def test_iql_trains_without_error(self):
-        from ppage.scripts.run_from_config import (
+        from run_from_config import (
             load_all_configs,
             build_environment,
         )
@@ -261,7 +261,7 @@ class TestEndToEndIQL:
 
 class TestEndToEndCQL:
     def test_cql_trains_without_error(self):
-        from ppage.scripts.run_from_config import (
+        from run_from_config import (
             load_all_configs,
             build_environment,
         )
@@ -287,7 +287,7 @@ class TestEndToEndCQL:
 
 class TestEndToEndMixed:
     def test_mixed_trains_without_error(self):
-        from ppage.scripts.run_from_config import (
+        from run_from_config import (
             load_all_configs,
             build_environment,
         )
@@ -316,7 +316,7 @@ class TestEndToEndMixed:
 
 class TestEndToEndDQN:
     def test_dqn_trains_without_error(self):
-        from ppage.scripts.run_from_config import (
+        from run_from_config import (
             load_all_configs,
             build_environment,
         )
@@ -344,10 +344,10 @@ class TestEndToEndDQN:
 
 class TestEndToEndDQN1v1:
     def test_dqn_1v1_config_loads(self):
-        from ppage.scripts.run_from_config import load_all_configs
+        from run_from_config import load_all_configs
 
         configs = load_all_configs(
-            config_dir="configs/dqn_1v1",
+            config_dir="plug-and-play/configs/dqn_1v1",
             experiment_file="experiment_dqn.yaml",
         )
         assert configs["agents"]["agents"]["predators"]["count"] == 1
@@ -356,7 +356,7 @@ class TestEndToEndDQN1v1:
         assert configs["experiment"]["experiment"]["algorithm"]["name"] == "dqn"
 
     def test_dqn_1v1_trains_without_error(self):
-        from ppage.scripts.run_from_config import (
+        from run_from_config import (
             load_all_configs,
             build_environment,
         )
@@ -364,7 +364,7 @@ class TestEndToEndDQN1v1:
         from ppage.baselines.DQN.dqn import DQN
 
         configs = load_all_configs(
-            config_dir="configs/dqn_1v1",
+            config_dir="plug-and-play/configs/dqn_1v1",
             experiment_file="experiment_dqn.yaml",
         )
         configs["env"]["env"]["render_mode"] = None

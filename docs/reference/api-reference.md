@@ -262,7 +262,7 @@ from ppage.baselines.registry.algorithm_registry import (
 
 ```python
 load_all_configs(
-    config_dir:      str = "configs",
+    config_dir:      str = "plug-and-play/configs",
     experiment_file: str = "experiment.yaml",
 ) -> dict
 # Returns {"env": dict, "agents": dict, "observations": dict,
@@ -277,7 +277,7 @@ build_environment(configs: dict) -> SpeedWrapper   # NOT a raw GridWorldEnv
 # the result in SpeedWrapper (must be last, since it proxies the above
 # via __getattr__).
 
-main(config_dir: str = "configs") -> None
+main(config_dir: str = "plug-and-play/configs") -> None
 # load_all_configs -> build_environment -> get_algorithm(name) -> algo.train() -> env.close()
 ```
 
@@ -285,7 +285,7 @@ Each algorithm also has a thin per-algorithm entry point under `scripts/` (`run_
 
 ```
 --mode {train,eval}   (default: train)
---config-dir DIR      (default: "configs")
+--config-dir DIR      (default: "plug-and-play/configs")
 --save-path PATH      (default: "trained_<algo>.pkl")
 --load-path PATH      (required for --mode eval)
 --render              (store_true; only affects --mode eval)

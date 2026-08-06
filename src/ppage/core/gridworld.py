@@ -6,7 +6,7 @@ All environment dynamics, physics, and episode control live here.
 
 Students must NOT edit this file.
 All research variation must be implemented via:
-- configs/
+- plug-and-play/configs/
 - observations/
 - rewards/
 """

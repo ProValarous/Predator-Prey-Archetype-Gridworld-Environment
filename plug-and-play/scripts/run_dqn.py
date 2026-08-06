@@ -1,20 +1,19 @@
-# src/ppage/scripts/run_cql.py
+# plug-and-play/scripts/run_dqn.py
 """
-Train or evaluate CQL using configs/experiment_cql.yaml.
+Train or evaluate DQN using plug-and-play/configs/experiment_dqn.yaml.
 
 Usage:
-    cd src
-    python -m ppage.scripts.run_cql                      # train
-    python -m ppage.scripts.run_cql --mode eval \\
-        --load-path trained_cql.pkl
+    python plug-and-play/scripts/run_dqn.py                      # train
+    python plug-and-play/scripts/run_dqn.py --mode eval \\
+        --load-path trained_dqn.pkl
 """
 
 import argparse
 import logging
 
 import ppage.baselines  # noqa: F401 — triggers auto-registration
-from ppage.baselines.CQL.cql import CQL
-from ppage.scripts.run_from_config import (
+from ppage.baselines.DQN.dqn import DQN
+from run_from_config import (
     load_all_configs,
     build_environment,
 )
@@ -25,14 +24,14 @@ logging.basicConfig(
     datefmt="%d-%m-%Y %H:%M:%S",
 )
 
-EXPERIMENT_FILE = "experiment_cql.yaml"
+EXPERIMENT_FILE = "experiment_dqn.yaml"
 
 
 def main():
-    p = argparse.ArgumentParser("Run CQL experiment")
+    p = argparse.ArgumentParser("Run DQN experiment")
     p.add_argument("--mode", choices=["train", "eval"], default="train")
-    p.add_argument("--config-dir", default="configs")
-    p.add_argument("--save-path", default="trained_cql.pkl")
+    p.add_argument("--config-dir", default="plug-and-play/configs")
+    p.add_argument("--save-path", default="trained_dqn.pkl")
     p.add_argument("--load-path", default=None)
     p.add_argument(
         "--render",
@@ -50,13 +49,13 @@ def main():
     algo_params = configs["experiment"]["experiment"]["algorithm"].get("params", {})
 
     if args.mode == "train":
-        algo = CQL(env, algo_params)
+        algo = DQN(env, algo_params)
         algo.train()
         algo.save(args.save_path)
     else:
         if not args.load_path:
             raise SystemExit("--load-path is required for --mode eval")
-        algo = CQL.load(env, algo_params, args.load_path)
+        algo = DQN.load(env, algo_params, args.load_path)
         algo.epsilon = 0.0  # greedy evaluation
         summary = algo.evaluate()
         print("\n=== Evaluation Summary ===")

@@ -120,8 +120,8 @@ experiment:
 ```
 
 ```bash
-python -m ppage.scripts.run_cql
-python -m ppage.scripts.run_mixed
+python plug-and-play/scripts/run_cql.py
+python plug-and-play/scripts/run_mixed.py
 ```
 
 ## Papers

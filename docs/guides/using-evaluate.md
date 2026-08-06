@@ -1,6 +1,6 @@
 # Guide: Collecting Metrics with evaluate.py
 
-`src/ppage/scripts/evaluate.py` runs an algorithm against the environment for a number of episodes and returns simple aggregate metrics.
+`plug-and-play/scripts/evaluate.py` runs an algorithm against the environment for a number of episodes and returns simple aggregate metrics.
 
 > **Pass `--load-path` to evaluate a trained model.** With a checkpoint,
 > `evaluate()` loads it via the algorithm's `.load(...)`; without one it evaluates a
@@ -12,7 +12,7 @@
 ## Signature
 
 ```python
-def evaluate(config_dir: str = "configs", episodes: int = 10, load_path: str = None) -> dict:
+def evaluate(config_dir: str = "plug-and-play/configs", episodes: int = 10, load_path: str = None) -> dict:
 ```
 
 It calls `load_all_configs(config_dir)`, forces `render_mode = None` (headless),
@@ -25,9 +25,9 @@ metrics.
 ## Usage
 
 ```python
-from ppage.scripts.evaluate import evaluate
+from evaluate import evaluate
 
-results = evaluate(config_dir="configs", episodes=20)
+results = evaluate(config_dir="plug-and-play/configs", episodes=20)
 print(results)
 ```
 
@@ -48,10 +48,10 @@ There is **no** `episode_lengths` list and **no** `capture_rate` key — only th
 
 ```bash
 # evaluate a trained checkpoint
-python -m ppage.scripts.evaluate --load-path my_iql.pkl --episodes 20
+python plug-and-play/scripts/evaluate.py --load-path my_iql.pkl --episodes 20
 
 # or a different config dir
-python -m ppage.scripts.evaluate --config-dir configs/dqn_1v1 --load-path my_dqn.pkl
+python plug-and-play/scripts/evaluate.py --config-dir plug-and-play/configs/dqn_1v1 --load-path my_dqn.pkl
 ```
 
 The CLI accepts `--config-dir`, `--episodes`, and `--load-path`. Omitting
@@ -68,7 +68,7 @@ The CLI accepts `--config-dir`, `--episodes`, and `--load-path`. Omitting
 To evaluate an actual saved checkpoint, or collect metrics `evaluate()` doesn't (per-step Q-value norms, capture positions, capture rate):
 
 ```python
-from ppage.scripts.run_from_config import load_all_configs, build_environment
+from run_from_config import load_all_configs, build_environment
 from ppage.baselines.IQL.iql import IQL
 import ppage.baselines  # noqa: F401 — triggers auto-registration
 

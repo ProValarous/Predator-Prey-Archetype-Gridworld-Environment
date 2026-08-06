@@ -213,23 +213,23 @@ This enables:
 
 # 🎛 Configuration-Driven Design
 
-Experiments are defined in `configs/`.
+Experiments are defined in `plug-and-play/configs/`.
 
 Example:
 
 ```yaml
-# configs/env.yaml
+# plug-and-play/configs/env.yaml
 env:
   size: 10
   seed: 42
 
-# configs/observations.yaml
+# plug-and-play/configs/observations.yaml
 observations:
   type: local_radius
   params:
     radius: 3
 
-# configs/rewards.yaml
+# plug-and-play/configs/rewards.yaml
 rewards:
   base:
     enabled: true
@@ -314,7 +314,7 @@ This is a laboratory, not a game engine.
 From repository root:
 
 ```bash
-python -m ppage.scripts.run_from_config
+python plug-and-play/scripts/run_from_config.py
 ```
 
 Rendering controlled via:

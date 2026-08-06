@@ -58,12 +58,6 @@ src/
 │   │   ├── observation_registry.py
 │   │   ├── reward_registry.py
 │   │   └── action_registry.py
-│   ├── scripts/
-│   │   ├── run_from_config.py    # Generic entrypoint (algorithm chosen via YAML)
-│   │   ├── run_iql.py  run_cql.py  run_mixed.py  run_dqn.py   # per-algorithm train/eval CLIs
-│   │   ├── evaluate.py           # Metrics (episode length + per-agent return); loads a checkpoint
-│   │   ├── render.py             # Single-episode visualization (random or a loaded policy)
-│   │   └── sweep.py              # CLI-driven sweep over an observation config param
 │   └── baselines/
 │       ├── base.py               # BaseAlgorithm (abstract) + evaluate()
 │       ├── __init__.py           # Auto-registers IQL, CQL, MixedTrainer, DQN
@@ -76,7 +70,14 @@ src/
 │       └── registry/
 │           └── algorithm_registry.py
 │
-configs/                          # YAML experiment definitions (env/agents/obs/rewards/actions/experiment*)
+plug-and-play/                    # Runnable entry points (not part of the installed package)
+├── scripts/
+│   ├── run_from_config.py        # Generic entrypoint (algorithm chosen via YAML)
+│   ├── run_iql.py  run_cql.py  run_mixed.py  run_dqn.py   # per-algorithm train/eval CLIs
+│   ├── evaluate.py               # Metrics (episode length + per-agent return); loads a checkpoint
+│   ├── render.py                 # Single-episode visualization (random or a loaded policy)
+│   └── sweep.py                  # CLI-driven sweep over an observation config param
+└── configs/                      # YAML experiment definitions (env/agents/obs/rewards/actions/experiment*)
 tests/                            # pytest suite: registries, plugin contracts, architecture rules, e2e
 ```
 

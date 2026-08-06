@@ -63,7 +63,7 @@ action index for each sub-step. `to_moves()` remains available for custom code.
 Action spaces were originally hardcoded in `Agent._action_to_direction()`. Extracting them into a plugin follows the same pattern as observations and rewards:
 
 - A new action space (e.g. 8-directional movement) is a new file — no changes to core
-- The active action space is declared in `configs/actions.yaml`
+- The active action space is declared in `plug-and-play/configs/actions.yaml`
 - Baselines can inspect `env.action_space_plugin.gymnasium_space` and `n_actions` instead of hard-coding `Discrete(5)` (DQN does this via `_resolve_action_dim`; IQL/CQL/MixedTrainer still take a fixed `action_dim` from config instead)
 
 ---

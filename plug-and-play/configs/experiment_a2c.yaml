@@ -1,4 +1,4 @@
-# configs/experiment_a2c.yaml
+# plug-and-play/configs/experiment_a2c.yaml
 experiment:
   algorithm:
     name: a2c
@@ -11,7 +11,7 @@ experiment:
 
       n_steps: 5              # rollout length between actor/critic updates
       entropy_coef: 0.05      # exploration bonus -- 0.01 let the predator's policy entropy
-      # collapse to ~0 by mid-training on configs/dqn_1v1; 0.05 alone doesn't stop the
+      # collapse to ~0 by mid-training on plug-and-play/configs/dqn_1v1; 0.05 alone doesn't stop the
       # collapse (looks structural, not coefficient-magnitude), but measurably raised
       # capture rate (~22% -> ~30%) even before actor_weight_decay below
       actor_weight_decay: 0.001   # L2 penalty on the actor's weights -- confirmed via a

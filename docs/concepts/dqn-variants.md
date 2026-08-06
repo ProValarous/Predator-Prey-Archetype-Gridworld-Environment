@@ -82,7 +82,7 @@ network_cls = DuelingQNetwork if self.dueling else QNetwork
 ## D3QN (both together)
 
 Setting both flags gives Dueling Double DQN. A ready-made preset lives at
-`configs/d3qn/` so the combination is discoverable and reproducible. It is the
+`plug-and-play/configs/d3qn/` so the combination is discoverable and reproducible. It is the
 same `dqn` algorithm — D3QN is not a separate registry entry, just both flags on.
 
 ## Config example
@@ -107,7 +107,7 @@ experiment:
 Run it like any other config:
 
 ```bash
-python -m ppage.scripts.run_dqn --config-dir configs/d3qn
+python plug-and-play/scripts/run_dqn.py --config-dir plug-and-play/configs/d3qn
 ```
 
 ## Where everything is
@@ -119,7 +119,7 @@ python -m ppage.scripts.run_dqn --config-dir configs/d3qn
 | Network selection | `src/ppage/baselines/DQN/dqn.py` | `_build_learners` (`network_cls`) |
 | Dueling architecture | `src/ppage/baselines/DQN/q_network.py` | `DuelingQNetwork` |
 | Plain architecture | `src/ppage/baselines/DQN/q_network.py` | `QNetwork` |
-| D3QN preset | `configs/d3qn/` | `experiment_dqn.yaml` |
+| D3QN preset | `plug-and-play/configs/d3qn/` | `experiment_dqn.yaml` |
 | Tests | `tests/test_baselines_dqn.py` | `TestDuelingQNetwork`, dueling/double training tests |
 
 ## Notes

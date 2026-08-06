@@ -40,7 +40,7 @@ This repository follows a **layered architecture**:
 | `core/`         | Environment & agent primitives | ❌ Maintainers only |
 | `observations/` | Observation logic              | ✅ Students         |
 | `rewards/`      | Reward logic                   | ✅ Students         |
-| `configs/`      | Experiment definitions (YAML)  | ✅ Students         |
+| `plug-and-play/configs/`      | Experiment definitions (YAML)  | ✅ Students         |
 | `scripts/`      | Experiment runners             | ⚠️ Limited         |
 | `registry/`     | Plugin wiring                  | ⚠️ With care       |
 
@@ -123,7 +123,7 @@ Steps:
 Location:
 
 ```
-configs/
+plug-and-play/configs/
 ```
 
 You are encouraged to:
@@ -148,7 +148,7 @@ Allowed only if:
 All scripts must be runnable as:
 
 ```bash
-python -m ppage.scripts.<script_name>
+python plug-and-play/scripts/<script_name>.py
 ```
 
 ---

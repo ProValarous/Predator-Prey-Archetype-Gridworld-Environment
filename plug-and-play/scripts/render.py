@@ -12,14 +12,14 @@ import numpy as np
 
 import ppage.baselines  # noqa: F401 — triggers algorithm auto-registration
 from ppage.baselines.registry import get as get_algorithm
-from ppage.scripts.run_from_config import (
+from run_from_config import (
     load_all_configs,
     build_environment,
 )
 
 
 def render_episode(
-    config_dir: str = "configs",
+    config_dir: str = "plug-and-play/configs",
     experiment_file: str = "experiment.yaml",
     load_path: str = None,
     seed: int = None,
@@ -59,7 +59,7 @@ def render_episode(
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser("Render a single episode (requires a display)")
-    p.add_argument("--config-dir", default="configs")
+    p.add_argument("--config-dir", default="plug-and-play/configs")
     p.add_argument("--experiment-file", default="experiment.yaml")
     p.add_argument(
         "--load-path",

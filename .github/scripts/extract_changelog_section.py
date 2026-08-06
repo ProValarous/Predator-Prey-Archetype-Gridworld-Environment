@@ -3,7 +3,7 @@ Extract one version's section from CHANGELOG.md, for use as GitHub
 release notes.
 
 Usage:
-    python scripts/extract_changelog_section.py <version>
+    python .github/scripts/extract_changelog_section.py <version>
 
 <version> is matched against a "## [<version>]" heading (the brackets
 and leading "v" on the argument are optional, e.g. both "0.9.0-beta"
@@ -17,7 +17,7 @@ import re
 import sys
 from pathlib import Path
 
-CHANGELOG = Path(__file__).resolve().parent.parent / "CHANGELOG.md"
+CHANGELOG = Path(__file__).resolve().parents[2] / "CHANGELOG.md"
 
 
 def main() -> None:

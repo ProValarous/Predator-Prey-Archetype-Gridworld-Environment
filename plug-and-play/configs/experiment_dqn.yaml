@@ -9,7 +9,7 @@ experiment:
       episodes: 1000
       # action_dim is optional -- inferred from the env's action_space_plugin
       # if omitted; set it explicitly to fail fast on a stale value after
-      # changing configs/actions.yaml.
+      # changing plug-and-play/configs/actions.yaml.
       batch_size: 32
       buffer_size: 10000
       min_replay_size: 32

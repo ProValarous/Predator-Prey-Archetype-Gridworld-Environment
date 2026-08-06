@@ -312,7 +312,7 @@ Training configuration is external.
 Example:
 
 ```yaml
-# configs/experiment_iql.yaml
+# plug-and-play/configs/experiment_iql.yaml
 experiment:
   algorithm:
     name: iql
@@ -382,15 +382,15 @@ It is optimized for understanding.
 From `src/`:
 
 ```bash
-# Config-driven (each reads its own configs/experiment_<algo>.yaml)
-PYTHONPATH=src python -m ppage.scripts.run_iql
-PYTHONPATH=src python -m ppage.scripts.run_cql
-PYTHONPATH=src python -m ppage.scripts.run_mixed
-PYTHONPATH=src python -m ppage.scripts.run_dqn
-PYTHONPATH=src python -m ppage.scripts.run_dqn --config-dir configs/dqn_1v1   # double+dueling example
-PYTHONPATH=src python -m ppage.scripts.run_actor_critic
-PYTHONPATH=src python -m ppage.scripts.run_a2c
-PYTHONPATH=src python -m ppage.scripts.run_a3c
+# Config-driven (each reads its own plug-and-play/configs/experiment_<algo>.yaml)
+PYTHONPATH=src python plug-and-play/scripts/run_iql.py
+PYTHONPATH=src python plug-and-play/scripts/run_cql.py
+PYTHONPATH=src python plug-and-play/scripts/run_mixed.py
+PYTHONPATH=src python plug-and-play/scripts/run_dqn.py
+PYTHONPATH=src python plug-and-play/scripts/run_dqn.py --config-dir plug-and-play/configs/dqn_1v1   # double+dueling example
+PYTHONPATH=src python plug-and-play/scripts/run_actor_critic.py
+PYTHONPATH=src python plug-and-play/scripts/run_a2c.py
+PYTHONPATH=src python plug-and-play/scripts/run_a3c.py
 
 # Direct CLI (all hyperparams as flags; builds its own GridWorldEnv, bypassing run_from_config)
 python -m ppage.baselines.IQL.iql --episodes 1000 --alpha 0.1 --save-path trained_iql.pkl

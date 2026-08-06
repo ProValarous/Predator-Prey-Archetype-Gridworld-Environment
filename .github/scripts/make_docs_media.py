@@ -17,7 +17,7 @@ an equally-fast evading prey can avoid capture indefinitely.
 
 Run from the repository root (needs ``pip install -e ".[docs]"``)::
 
-    python scripts/make_docs_media.py
+    python .github/scripts/make_docs_media.py
 
 The generated files are committed so the docs build without regenerating them;
 re-run this script whenever the environment's dynamics change.
@@ -43,7 +43,7 @@ from ppage.rewards.predator_distance import (  # noqa: E402
     PredatorDistanceReward,
 )
 
-ASSETS = Path(__file__).resolve().parents[1] / "docs" / "assets" / "images"
+ASSETS = Path(__file__).resolve().parents[2] / "docs" / "assets" / "images"
 GRID_SIZE = 6
 MAX_STEPS = 60
 SEED = 7

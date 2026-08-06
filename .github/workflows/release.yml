@@ -79,7 +79,7 @@ jobs:
         id: notes
         run: |
           set +e
-          BODY=$(python scripts/extract_changelog_section.py "${{ github.ref_name }}" 2>/dev/null)
+          BODY=$(python .github/scripts/extract_changelog_section.py "${{ github.ref_name }}" 2>/dev/null)
           if [ -z "$BODY" ]; then
             BODY="No CHANGELOG.md section found for ${{ github.ref_name }}; see the commit history for this range."
           fi

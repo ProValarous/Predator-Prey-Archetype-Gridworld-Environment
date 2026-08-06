@@ -1,20 +1,23 @@
-# src/ppage/scripts/run_iql.py
+# plug-and-play/scripts/run_mixed.py
 """
-Train or evaluate IQL using configs/experiment_iql.yaml.
+Train or evaluate MixedTrainer using plug-and-play/configs/experiment_mixed.yaml.
+
+MixedTrainer lets predators and prey use different algorithms independently:
+    predator_algo: cql   # predators use Centralized Q-Learning
+    prey_algo:     iql   # prey use Independent Q-Learning
 
 Usage:
-    cd src
-    python -m ppage.scripts.run_iql                      # train
-    python -m ppage.scripts.run_iql --mode eval \\
-        --load-path trained_iql.pkl
+    python plug-and-play/scripts/run_mixed.py                    # train
+    python plug-and-play/scripts/run_mixed.py --mode eval \\
+        --load-path trained_mixed.pkl
 """
 
 import argparse
 import logging
 
 import ppage.baselines  # noqa: F401 — triggers auto-registration
-from ppage.baselines.IQL.iql import IQL
-from ppage.scripts.run_from_config import (
+from ppage.baselines.MIXED.mix_train import MixedTrainer
+from run_from_config import (
     load_all_configs,
     build_environment,
 )
@@ -25,14 +28,14 @@ logging.basicConfig(
     datefmt="%d-%m-%Y %H:%M:%S",
 )
 
-EXPERIMENT_FILE = "experiment_iql.yaml"
+EXPERIMENT_FILE = "experiment_mixed.yaml"
 
 
 def main():
-    p = argparse.ArgumentParser("Run IQL experiment")
+    p = argparse.ArgumentParser("Run MixedTrainer experiment")
     p.add_argument("--mode", choices=["train", "eval"], default="train")
-    p.add_argument("--config-dir", default="configs")
-    p.add_argument("--save-path", default="trained_iql.pkl")
+    p.add_argument("--config-dir", default="plug-and-play/configs")
+    p.add_argument("--save-path", default="trained_mixed.pkl")
     p.add_argument("--load-path", default=None)
     p.add_argument(
         "--render",
@@ -50,13 +53,13 @@ def main():
     algo_params = configs["experiment"]["experiment"]["algorithm"].get("params", {})
 
     if args.mode == "train":
-        algo = IQL(env, algo_params)
+        algo = MixedTrainer(env, algo_params)
         algo.train()
         algo.save(args.save_path)
     else:
         if not args.load_path:
             raise SystemExit("--load-path is required for --mode eval")
-        algo = IQL.load(env, algo_params, args.load_path)
+        algo = MixedTrainer.load(env, algo_params, args.load_path)
         algo.epsilon = 0.0  # greedy evaluation
         summary = algo.evaluate()
         print("\n=== Evaluation Summary ===")

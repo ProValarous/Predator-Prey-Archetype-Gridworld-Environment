@@ -16,7 +16,6 @@ Usage (config-driven via run_from_config):
     params: {predator_algo: cql, prey_algo: iql, ...}
 
 Usage (standalone CLI):
-    cd src
     python -m ppage.baselines.MIXED.mix_train \
         --predator-algo cql --prey-algo iql --episodes 1000
 """

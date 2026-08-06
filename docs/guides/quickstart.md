@@ -24,7 +24,7 @@ python -c "from ppage.core.gridworld import GridWorldEnv; print('OK')"
 
 ## 2. Configure your experiment
 
-Six YAML files in `configs/` control everything. For a first run, the defaults work:
+Six YAML files in `plug-and-play/configs/` control everything. For a first run, the defaults work:
 
 | File | Controls |
 |------|---------|
@@ -38,23 +38,23 @@ Six YAML files in `configs/` control everything. For a first run, the defaults w
 Each algorithm has its own dedicated runner script that reads the matching experiment file and supports `--mode train|eval`:
 
 ```bash
-# IQL — reads configs/experiment_iql.yaml
-python -m ppage.scripts.run_iql
+# IQL — reads plug-and-play/configs/experiment_iql.yaml
+python plug-and-play/scripts/run_iql.py
 
-# CQL — reads configs/experiment_cql.yaml
-python -m ppage.scripts.run_cql
+# CQL — reads plug-and-play/configs/experiment_cql.yaml
+python plug-and-play/scripts/run_cql.py
 
-# MixedTrainer — reads configs/experiment_mixed.yaml
-python -m ppage.scripts.run_mixed
+# MixedTrainer — reads plug-and-play/configs/experiment_mixed.yaml
+python plug-and-play/scripts/run_mixed.py
 
-# DQN — reads configs/experiment_dqn.yaml
-python -m ppage.scripts.run_dqn
+# DQN — reads plug-and-play/configs/experiment_dqn.yaml
+python plug-and-play/scripts/run_dqn.py
 
 # Or a ready-made DQN experiment set (1 predator vs 1 prey, double+dueling enabled)
-python -m ppage.scripts.run_dqn --config-dir configs/dqn_1v1
+python plug-and-play/scripts/run_dqn.py --config-dir plug-and-play/configs/dqn_1v1
 
-# Generic launcher — reads configs/experiment.yaml, whatever algorithm.name it specifies (default: iql)
-python -m ppage.scripts.run_from_config
+# Generic launcher — reads plug-and-play/configs/experiment.yaml, whatever algorithm.name it specifies (default: iql)
+python plug-and-play/scripts/run_from_config.py
 ```
 
 ---
@@ -65,16 +65,16 @@ Each `run_<algo>.py` script trains and saves a checkpoint by default:
 
 ```bash
 # IQL, 1000 episodes (override via experiment_iql.yaml, not a CLI flag)
-python -m ppage.scripts.run_iql --save-path my_iql.pkl
+python plug-and-play/scripts/run_iql.py --save-path my_iql.pkl
 
 # CQL
-python -m ppage.scripts.run_cql --save-path my_cql.pkl
+python plug-and-play/scripts/run_cql.py --save-path my_cql.pkl
 
 # MixedTrainer (predator/prey algorithm assignment comes from experiment_mixed.yaml)
-python -m ppage.scripts.run_mixed --save-path my_mixed.pkl
+python plug-and-play/scripts/run_mixed.py --save-path my_mixed.pkl
 
 # DQN
-python -m ppage.scripts.run_dqn --save-path my_dqn.pkl
+python plug-and-play/scripts/run_dqn.py --save-path my_dqn.pkl
 ```
 
 Each algorithm also has its own standalone CLI with hyperparameters as flags (e.g. `python -m ppage.baselines.IQL.iql --episodes 1000 --alpha 0.1 ...`), which builds its own `GridWorldEnv` directly rather than going through `run_from_config` — see [reference/api-reference.md](../reference/api-reference.md).
@@ -96,8 +96,8 @@ python -m ppage.baselines.IQL.iql --mode eval --load-path my_iql.pkl --episodes 
 Or use `evaluate.py`, which builds its own env + algorithm from a config directory (it does **not** take an existing `algo`/`env` — see [guides/using-evaluate.md](using-evaluate.md) for the exact signature and output shape):
 
 ```python
-from ppage.scripts.evaluate import evaluate
-results = evaluate(config_dir="configs", episodes=20)
+from evaluate import evaluate
+results = evaluate(config_dir="plug-and-play/configs", episodes=20)
 print(results)
 # {"mean_episode_length": 47.2, "std_episode_length": 8.1, "mean_return_pred_1": -12.4, ...}
 ```

@@ -1,4 +1,4 @@
-# configs/dqn_1v1/experiment_a2c.yaml
+# plug-and-play/configs/dqn_1v1/experiment_a2c.yaml
 # Diagnostic run on the 1v1 config (predator speed 2 / prey speed 1) that
 # already has real DQN and ActorCritic data to compare against on the
 # identical setup.

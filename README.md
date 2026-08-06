@@ -13,7 +13,7 @@
   <img src="miscellenous/gifs/demo.gif" alt="A predator (red) chasing down a prey (green) across a 10x10 obstacle grid until capture" width="480">
 </p>
 
-<p align="center"><sub>A speed-2 predator pursuing a speed-1 prey around obstacles (<code>configs/dqn_1v1</code>) until capture.</sub></p>
+<p align="center"><sub>A speed-2 predator pursuing a speed-1 prey around obstacles (<code>plug-and-play/configs/dqn_1v1</code>) until capture.</sub></p>
 
 <p align="center">
 A <b>deterministic, modular, research-grade multi-agent predator–prey environment</b> for studying coordination, pursuit–evasion, and emergent behavior in Multi-Agent Reinforcement Learning. It is not just a simulation, it is a controlled experimental laboratory for understanding how multi-agent learning systems behave, with fully inspectable dynamics, pluggable perception and incentives, and reproducibility enforced by construction rather than assumed.
@@ -152,22 +152,23 @@ This is enforced, not assumed.
 
 ```
 src/
-└── ppage/                    # Environment
+└── ppage/                    # Environment (the installable library)
     ├── core/                 # Immutable environment dynamics (maintainers only)
     ├── observations/         # Perception plug-ins
     ├── rewards/              # Incentive plug-ins
     ├── actions/              # Action-space plug-ins
     ├── wrappers/             # Cross-cutting mechanics (e.g. SpeedWrapper)
     ├── registry/             # Safe plug-in selection
-    ├── scripts/              # Experiment runners (run_from_config, run_dqn, ...)
     └── baselines/            # Learning algorithms
         ├── IQL/  CQL/  MIXED/  DQN/
         └── registry/         # Algorithm name -> class
 
-configs/                      # YAML experiment definitions
-├── env.yaml, agents.yaml, observations.yaml, rewards.yaml, actions.yaml
-├── experiment_{iql,cql,mixed,dqn}.yaml
-└── dqn_1v1/, dqn_speed1/, dqn_speed2/, dqn_speed3/   # ready-made DQN experiment sets
+plug-and-play/                # Start here: runnable entry points
+├── scripts/                  # Experiment runners (run_from_config, run_dqn, ...)
+└── configs/                  # YAML experiment definitions
+    ├── env.yaml, agents.yaml, observations.yaml, rewards.yaml, actions.yaml
+    ├── experiment_{iql,cql,mixed,dqn}.yaml
+    └── dqn_1v1/, dqn_speed1/, dqn_speed2/, dqn_speed3/   # ready-made DQN experiment sets
 
 tests/                        # pytest suite: registries, plugin contracts,
                                # end-to-end training, architecture rules
@@ -214,11 +215,11 @@ source .venv/bin/activate        # Windows: .venv\Scripts\Activate.ps1
 
 pip install -e ".[baselines]"   # plain `pip install -e .` skips the PyTorch baselines
 
-# Run the default experiment (3 predators vs 3 prey, IQL, configs/experiment.yaml)
-python -m ppage.scripts.run_from_config
+# Run the default experiment (3 predators vs 3 prey, IQL, plug-and-play/configs/experiment.yaml)
+python plug-and-play/scripts/run_from_config.py
 
 # Or one of the ready-made DQN experiments
-python -m ppage.scripts.run_dqn --config-dir configs/dqn_1v1
+python plug-and-play/scripts/run_dqn.py --config-dir plug-and-play/configs/dqn_1v1
 ```
 
 All experiments are launched from the repository root.

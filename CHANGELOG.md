@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Breaking:** the experiment runners moved out of the installed package into
+  a new top-level `plug-and-play/` folder, next to the configs they consume
+  (`plug-and-play/scripts/` and `plug-and-play/configs/`). They are the
+  repository's most accessible entry points and are now grouped as such.
+  Invocation changes from `python -m ppage.scripts.run_from_config` to
+  `python plug-and-play/scripts/run_from_config.py` (from the repository
+  root), and the pip-installed `ppage` package is now a pure library. The
+  scripts' default `--config-dir` is `plug-and-play/configs`.
+
 ## [0.9.0-beta.2] - 2026-08-06
 
 ### Fixed

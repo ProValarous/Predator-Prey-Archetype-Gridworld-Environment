@@ -6,8 +6,12 @@ import sys
 import os
 import pytest
 
-# Make src/ importable without installing the package
+# Make src/ importable without installing the package, and the
+# plug-and-play runner scripts importable for the end-to-end tests
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+sys.path.insert(
+    0, os.path.join(os.path.dirname(__file__), "..", "plug-and-play", "scripts")
+)
 
 from ppage.core.agent import Agent  # noqa: E402
 from ppage.core.gridworld import GridWorldEnv  # noqa: E402

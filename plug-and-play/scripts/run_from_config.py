@@ -31,7 +31,7 @@ from ppage.wrappers.speed import SpeedWrapper
 # Paths
 # -------------------------------------------------
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 # -------------------------------------------------
@@ -45,7 +45,7 @@ def load_yaml(path: Path) -> dict:
 
 
 def load_all_configs(
-    config_dir: str = "configs",
+    config_dir: str = "plug-and-play/configs",
     experiment_file: str = "experiment.yaml",
 ) -> dict:
     base = REPO_ROOT / config_dir
@@ -193,7 +193,7 @@ def build_environment(configs: dict) -> GridWorldEnv:
 # -------------------------------------------------
 
 
-def main(config_dir: str = "configs"):
+def main(config_dir: str = "plug-and-play/configs"):
     configs = load_all_configs(config_dir)
 
     env = build_environment(configs)
@@ -212,4 +212,4 @@ def main(config_dir: str = "configs"):
 
 
 if __name__ == "__main__":
-    main("configs")
+    main("plug-and-play/configs")

@@ -1,20 +1,20 @@
-# src/ppage/scripts/run_dqn.py
+# plug-and-play/scripts/run_actor_critic.py
 """
-Train or evaluate DQN using configs/experiment_dqn.yaml.
+Train or evaluate the Actor-Critic baseline using
+plug-and-play/configs/experiment_actor_critic.yaml.
 
 Usage:
-    cd src
-    python -m ppage.scripts.run_dqn                      # train
-    python -m ppage.scripts.run_dqn --mode eval \\
-        --load-path trained_dqn.pkl
+    python plug-and-play/scripts/run_actor_critic.py                      # train
+    python plug-and-play/scripts/run_actor_critic.py --mode eval \\
+        --load-path trained_actor_critic.pkl
 """
 
 import argparse
 import logging
 
 import ppage.baselines  # noqa: F401 — triggers auto-registration
-from ppage.baselines.DQN.dqn import DQN
-from ppage.scripts.run_from_config import (
+from ppage.baselines.AC.actor_critic import ActorCritic
+from run_from_config import (
     load_all_configs,
     build_environment,
 )
@@ -25,14 +25,14 @@ logging.basicConfig(
     datefmt="%d-%m-%Y %H:%M:%S",
 )
 
-EXPERIMENT_FILE = "experiment_dqn.yaml"
+EXPERIMENT_FILE = "experiment_actor_critic.yaml"
 
 
 def main():
-    p = argparse.ArgumentParser("Run DQN experiment")
+    p = argparse.ArgumentParser("Run Actor-Critic experiment")
     p.add_argument("--mode", choices=["train", "eval"], default="train")
-    p.add_argument("--config-dir", default="configs")
-    p.add_argument("--save-path", default="trained_dqn.pkl")
+    p.add_argument("--config-dir", default="plug-and-play/configs")
+    p.add_argument("--save-path", default="trained_actor_critic.pkl")
     p.add_argument("--load-path", default=None)
     p.add_argument(
         "--render",
@@ -50,18 +50,14 @@ def main():
     algo_params = configs["experiment"]["experiment"]["algorithm"].get("params", {})
 
     if args.mode == "train":
-        algo = DQN(env, algo_params)
+        algo = ActorCritic(env, algo_params)
         algo.train()
         algo.save(args.save_path)
     else:
         if not args.load_path:
             raise SystemExit("--load-path is required for --mode eval")
-        algo = DQN.load(env, algo_params, args.load_path)
-        algo.epsilon = 0.0  # greedy evaluation
-        summary = algo.evaluate()
-        print("\n=== Evaluation Summary ===")
-        for k, v in summary.items():
-            print(f"  {k}: {v}")
+        algo = ActorCritic.load(env, algo_params, args.load_path)
+        print(algo.evaluate())
 
     env.close()
 

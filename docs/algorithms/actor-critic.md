@@ -97,7 +97,7 @@ experiment:
 ```
 
 ```bash
-python -m ppage.scripts.run_actor_critic
+python plug-and-play/scripts/run_actor_critic.py
 ```
 
 ## Fixes found through verification runs
@@ -118,7 +118,7 @@ reduction, confirming the diagnosis rather than run-to-run noise.
 
 **`entropy_coef=0.0` let capture rate collapse toward zero.** Isolating the
 question of "hard task vs. under-tuned algorithm" required a config with existing
-DQN data to compare against directly: `configs/dqn_1v1` (1v1, predator speed 2 /
+DQN data to compare against directly: `plug-and-play/configs/dqn_1v1` (1v1, predator speed 2 /
 prey speed 1, 2000 episodes, matching DQN's own horizon on this config). With no
 entropy bonus, capture rate declined steadily rather than staying flat:
 
@@ -175,7 +175,7 @@ Enabling entropy tracking in the training CSV (previously untracked for this
 baseline) to actually check the collapse directly turned up something the
 original entropy_coef verification above never measured: **predator entropy
 does not gradually collapse over training here the way it does in A2C — it
-collapses almost instantly.** On `configs/dqn_1v1`, predator entropy starts near
+collapses almost instantly.** On `plug-and-play/configs/dqn_1v1`, predator entropy starts near
 1.06 at episode 1 and is already ~0.0 by episode 2, staying there for the
 remaining 1998 episodes — in *every* configuration tested, including
 `actor_weight_decay=0.001`. A2C's collapse takes hundreds of episodes to fully
@@ -190,7 +190,7 @@ steps can saturate the softmax outright.
 
 Despite entropy staying flat at ~0 in both cases, `actor_weight_decay=0.001`
 still produces a real, reproducible capture-rate improvement on the identical
-2000-episode `configs/dqn_1v1` run:
+2000-episode `plug-and-play/configs/dqn_1v1` run:
 
 | `actor_weight_decay` | Capture rate Q1→Q4 | Overall |
 |---|---|---|
@@ -304,7 +304,7 @@ per-agent networks used by A3C's multiple independent workers over one
 lock-protected estimate shared across all workers instead of one per worker
 (see A3C's own writeup for the full design).
 
-Verified end-to-end on `configs/dqn_1v1` (2000 episodes, identical seed/setup
+Verified end-to-end on `plug-and-play/configs/dqn_1v1` (2000 episodes, identical seed/setup
 to every other run on this page):
 
 | | Entropy Q1→Q4 | Capture rate Q1→Q4 | Overall |

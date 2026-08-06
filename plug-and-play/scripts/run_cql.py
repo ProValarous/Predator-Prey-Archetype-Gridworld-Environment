@@ -1,24 +1,19 @@
-# src/ppage/scripts/run_mixed.py
+# plug-and-play/scripts/run_cql.py
 """
-Train or evaluate MixedTrainer using configs/experiment_mixed.yaml.
-
-MixedTrainer lets predators and prey use different algorithms independently:
-    predator_algo: cql   # predators use Centralized Q-Learning
-    prey_algo:     iql   # prey use Independent Q-Learning
+Train or evaluate CQL using plug-and-play/configs/experiment_cql.yaml.
 
 Usage:
-    cd src
-    python -m ppage.scripts.run_mixed                    # train
-    python -m ppage.scripts.run_mixed --mode eval \\
-        --load-path trained_mixed.pkl
+    python plug-and-play/scripts/run_cql.py                      # train
+    python plug-and-play/scripts/run_cql.py --mode eval \\
+        --load-path trained_cql.pkl
 """
 
 import argparse
 import logging
 
 import ppage.baselines  # noqa: F401 — triggers auto-registration
-from ppage.baselines.MIXED.mix_train import MixedTrainer
-from ppage.scripts.run_from_config import (
+from ppage.baselines.CQL.cql import CQL
+from run_from_config import (
     load_all_configs,
     build_environment,
 )
@@ -29,14 +24,14 @@ logging.basicConfig(
     datefmt="%d-%m-%Y %H:%M:%S",
 )
 
-EXPERIMENT_FILE = "experiment_mixed.yaml"
+EXPERIMENT_FILE = "experiment_cql.yaml"
 
 
 def main():
-    p = argparse.ArgumentParser("Run MixedTrainer experiment")
+    p = argparse.ArgumentParser("Run CQL experiment")
     p.add_argument("--mode", choices=["train", "eval"], default="train")
-    p.add_argument("--config-dir", default="configs")
-    p.add_argument("--save-path", default="trained_mixed.pkl")
+    p.add_argument("--config-dir", default="plug-and-play/configs")
+    p.add_argument("--save-path", default="trained_cql.pkl")
     p.add_argument("--load-path", default=None)
     p.add_argument(
         "--render",
@@ -54,13 +49,13 @@ def main():
     algo_params = configs["experiment"]["experiment"]["algorithm"].get("params", {})
 
     if args.mode == "train":
-        algo = MixedTrainer(env, algo_params)
+        algo = CQL(env, algo_params)
         algo.train()
         algo.save(args.save_path)
     else:
         if not args.load_path:
             raise SystemExit("--load-path is required for --mode eval")
-        algo = MixedTrainer.load(env, algo_params, args.load_path)
+        algo = CQL.load(env, algo_params, args.load_path)
         algo.epsilon = 0.0  # greedy evaluation
         summary = algo.evaluate()
         print("\n=== Evaluation Summary ===")

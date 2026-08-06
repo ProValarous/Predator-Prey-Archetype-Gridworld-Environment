@@ -79,7 +79,7 @@ experiment:
 ```
 
 ```bash
-python -m ppage.scripts.run_a2c
+python plug-and-play/scripts/run_a2c.py
 ```
 
 ## When to use A2C

@@ -127,14 +127,14 @@ experiment:
 ```
 
 ```bash
-python -m ppage.scripts.run_a3c
+python plug-and-play/scripts/run_a3c.py
 ```
 
 ## Verification run
 
 Built with both lessons already learned from [ActorCritic](actor-critic.md) and
 [A2C](a2c.md) from day one — Huber critic loss, `entropy_coef=0.05` — rather than
-rediscovering them. Ran `configs/dqn_1v1/experiment_a3c.yaml` (2000 episodes, 4
+rediscovering them. Ran `plug-and-play/configs/dqn_1v1/experiment_a3c.yaml` (2000 episodes, 4
 workers), the same diagnostic config AC/A2C already have data on:
 
 | | Critic loss (bounded?) | Capture rate Q1→Q4 |
@@ -176,7 +176,7 @@ verification](actor-critic.md#actor_weight_decay-doesnt-fix-the-collapse-here-bu
 did: **predator entropy collapses to ~0 within the first couple of episodes,
 in both the baseline and `actor_weight_decay=0.001` runs alike** — far too fast
 for a downstream L2 penalty to intervene, unlike A2C's slower mid-training
-collapse. Re-running `configs/dqn_1v1/experiment_a3c.yaml` end to end (2000
+collapse. Re-running `plug-and-play/configs/dqn_1v1/experiment_a3c.yaml` end to end (2000
 episodes, 4 workers) at both settings:
 
 | `actor_weight_decay` | Capture rate Q1→Q4 | Overall |
@@ -218,7 +218,7 @@ absorbs the former; the latter fights the wrong problem — see the linked
 writeup).
 
 **First version: each worker kept its own *local* running normalizer.** This
-worked — capture rate 25.9% → 85.5% overall on `configs/dqn_1v1` — but had a
+worked — capture rate 25.9% → 85.5% overall on `plug-and-play/configs/dqn_1v1` — but had a
 real, honestly-documented wrinkle: a sharp late-training partial re-collapse
 in the final ~120 episodes, shared identically across all 4 workers (not one
 unlucky process). Root cause: ActorCritic's full PopArt fix (weight-rescaling
@@ -253,7 +253,7 @@ policy near maximum entropy (`ln(5) ≈ 1.609`, i.e. close to uniform) instead
 of letting it commit. Lowering to `entropy_coef=0.01` (matching ActorCritic's
 own value) restores genuine policy differentiation.
 
-Final verified numbers, `configs/dqn_1v1` (2000 episodes, 4 workers):
+Final verified numbers, `plug-and-play/configs/dqn_1v1` (2000 episodes, 4 workers):
 
 | | Entropy Q1→Q4 | Capture rate Q1→Q4 | Overall |
 |---|---|---|---|
@@ -281,8 +281,8 @@ than left as an open problem.
 
 ## A second race, found by testing on 3v3
 
-The verification above was all on `configs/dqn_1v1`. Running the identical
-`normalize_returns=True` config on the 3v3 diagnostic config (`configs/`,
+The verification above was all on `plug-and-play/configs/dqn_1v1`. Running the identical
+`normalize_returns=True` config on the 3v3 diagnostic config (`plug-and-play/configs/`,
 6 agents, `max_steps=500`) surfaced a second real bug: one agent's critic
 loss climbed unboundedly (`predator_2`: 0.62 → 15.7 → 16.7 → 25.5 → ...) and
 crashed with the same `OverflowError` the `SharedReturnNormalizer` fix above

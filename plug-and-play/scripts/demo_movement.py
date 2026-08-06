@@ -1,4 +1,4 @@
-# src/ppage/scripts/demo_movement.py
+# plug-and-play/scripts/demo_movement.py
 """
 No-training movement-type demo.
 
@@ -9,16 +9,17 @@ movement geometry -- or, for a speed config, the effect of differing
 agent_speed values -- without waiting on DQN training.
 
 Usage (run from the repository root; --config-dir is resolved from there):
-    python -m ppage.scripts.demo_movement --config-dir CONFIG_DIR
+    python plug-and-play/scripts/demo_movement.py --config-dir CONFIG_DIR
 
-CONFIG_DIR is one of: configs/demo_plus, configs/demo_diagonal, configs/demo_speed.
+CONFIG_DIR is one of the plug-and-play/configs/ demo sets: demo_plus,
+demo_diagonal, or demo_speed.
 """
 
 import argparse
 
 import numpy as np
 
-from ppage.scripts.run_from_config import (
+from run_from_config import (
     build_environment,
     load_all_configs,
 )

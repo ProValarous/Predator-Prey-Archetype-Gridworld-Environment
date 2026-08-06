@@ -1,20 +1,19 @@
-# src/ppage/scripts/run_a2c.py
+# plug-and-play/scripts/run_iql.py
 """
-Train or evaluate A2C using configs/experiment_a2c.yaml.
+Train or evaluate IQL using plug-and-play/configs/experiment_iql.yaml.
 
 Usage:
-    cd src
-    python -m ppage.scripts.run_a2c                      # train
-    python -m ppage.scripts.run_a2c --mode eval \\
-        --load-path trained_a2c.pkl
+    python plug-and-play/scripts/run_iql.py                      # train
+    python plug-and-play/scripts/run_iql.py --mode eval \\
+        --load-path trained_iql.pkl
 """
 
 import argparse
 import logging
 
 import ppage.baselines  # noqa: F401 — triggers auto-registration
-from ppage.baselines.A2C.a2c import A2C
-from ppage.scripts.run_from_config import (
+from ppage.baselines.IQL.iql import IQL
+from run_from_config import (
     load_all_configs,
     build_environment,
 )
@@ -25,14 +24,14 @@ logging.basicConfig(
     datefmt="%d-%m-%Y %H:%M:%S",
 )
 
-EXPERIMENT_FILE = "experiment_a2c.yaml"
+EXPERIMENT_FILE = "experiment_iql.yaml"
 
 
 def main():
-    p = argparse.ArgumentParser("Run A2C experiment")
+    p = argparse.ArgumentParser("Run IQL experiment")
     p.add_argument("--mode", choices=["train", "eval"], default="train")
-    p.add_argument("--config-dir", default="configs")
-    p.add_argument("--save-path", default="trained_a2c.pkl")
+    p.add_argument("--config-dir", default="plug-and-play/configs")
+    p.add_argument("--save-path", default="trained_iql.pkl")
     p.add_argument("--load-path", default=None)
     p.add_argument(
         "--render",
@@ -49,20 +48,19 @@ def main():
     env = build_environment(configs)
     algo_params = configs["experiment"]["experiment"]["algorithm"].get("params", {})
 
-    if args.mode == "eval":
-        # A2C exploration comes from sampling the
-        # policy. For evaluation we want the greedy (argmax) action instead.
-        algo_params = dict(algo_params, greedy_eval=True)
-
     if args.mode == "train":
-        algo = A2C(env, algo_params)
+        algo = IQL(env, algo_params)
         algo.train()
         algo.save(args.save_path)
     else:
         if not args.load_path:
             raise SystemExit("--load-path is required for --mode eval")
-        algo = A2C.load(env, algo_params, args.load_path)
-        algo.evaluate()
+        algo = IQL.load(env, algo_params, args.load_path)
+        algo.epsilon = 0.0  # greedy evaluation
+        summary = algo.evaluate()
+        print("\n=== Evaluation Summary ===")
+        for k, v in summary.items():
+            print(f"  {k}: {v}")
 
     env.close()
 

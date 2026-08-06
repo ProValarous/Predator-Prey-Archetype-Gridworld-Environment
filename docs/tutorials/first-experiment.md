@@ -30,11 +30,11 @@ python -c "import ppage, baselines; print('ok')"
 
 ## 2. Train the default experiment
 
-The default config (`configs/experiment.yaml`) is 3 predators vs 3 prey learning
+The default config (`plug-and-play/configs/experiment.yaml`) is 3 predators vs 3 prey learning
 with [IQL](../algorithms/iql.md). Train it:
 
 ```bash
-python -m ppage.scripts.run_iql
+python plug-and-play/scripts/run_iql.py
 ```
 
 You will see periodic log lines as epsilon decays and the agents improve. Training
@@ -46,7 +46,7 @@ is tabular and fast. When it finishes, it writes a checkpoint (`trained_iql.pkl`
 
 Here is a trained predator (red) closing in on prey (green) around obstacles, one
 greedy episode end to end. This is a **minimal 1v1 illustration** produced offscreen
-by `scripts/make_docs_media.py` (a tabular Q-learning predator chasing a
+by `.github/scripts/make_docs_media.py` (a tabular Q-learning predator chasing a
 random-moving prey), so it shows the learning outcome clearly:
 
 <p align="center">
@@ -58,7 +58,7 @@ in training the predator wanders; after training it moves purposefully toward th
 prey. To watch a live episode yourself (opens a window):
 
 ```bash
-python -m ppage.scripts.render --load-path trained_iql.pkl
+python plug-and-play/scripts/render.py --load-path trained_iql.pkl
 ```
 
 ---
@@ -80,12 +80,12 @@ sooner).
 - A **noisy, flat** curve usually means too little exploration or too few episodes
   — raise `episodes` or `epsilon`/`epsilon_decay`.
 
-These images are produced by `scripts/make_docs_media.py`, which trains a small
+These images are produced by `.github/scripts/make_docs_media.py`, which trains a small
 tabular Q-learning predator (against a random-moving prey) offscreen and captures
 both the episode and the curves. Run it yourself to regenerate them:
 
 ```bash
-python scripts/make_docs_media.py
+python .github/scripts/make_docs_media.py
 ```
 
 ---
@@ -95,7 +95,7 @@ python scripts/make_docs_media.py
 Measure the trained policy greedily (no exploration) and print summary metrics:
 
 ```bash
-python -m ppage.scripts.run_iql --mode eval --load-path trained_iql.pkl
+python plug-and-play/scripts/run_iql.py --mode eval --load-path trained_iql.pkl
 ```
 
 This prints the mean episode length and mean per-agent return over several
@@ -109,16 +109,16 @@ evaluates a *trained* model rather than a fresh one.)
 The whole point of this testbed is controlled, one-variable-at-a-time change. Try
 any of these and re-run:
 
-- **Reward shaping.** In `configs/rewards.yaml`, add or remove the
+- **Reward shaping.** In `plug-and-play/configs/rewards.yaml`, add or remove the
   `predator_distance` shaping term and compare how fast episodes shorten. See
   [Rewards](../concepts/rewards.md).
-- **Observation model.** In `configs/observations.yaml`, switch `type` between
+- **Observation model.** In `plug-and-play/configs/observations.yaml`, switch `type` between
   `local_radius` (partial view) and `absolute` (full view). See
   [Observations](../concepts/observations.md).
 - **Algorithm.** Swap `name: iql` for `cql` or `mixed` in the experiment config.
   See [Algorithms](../algorithms/index.md).
 - **Embodiment.** Give predators or prey different `speed`/`stamina` in
-  `configs/agents.yaml` (honored by the [SpeedWrapper](../concepts/wrappers.md)).
+  `plug-and-play/configs/agents.yaml` (honored by the [SpeedWrapper](../concepts/wrappers.md)).
 
 Because runs are fully seeded, the only thing that changed is the variable you
 touched — that is what makes the comparison meaningful.

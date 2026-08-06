@@ -29,7 +29,7 @@ from ppage.rewards.base import RewardFunction
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _CONFIG_DIRS = sorted(
     os.path.relpath(p, _REPO_ROOT)
-    for p in glob.glob(os.path.join(_REPO_ROOT, "configs", "*"))
+    for p in glob.glob(os.path.join(_REPO_ROOT, "plug-and-play/configs", "*"))
     if os.path.isdir(p) and os.path.exists(os.path.join(p, "experiment_dqn.yaml"))
 )
 
@@ -113,7 +113,7 @@ class TestPluginsDoNotMutateEnvState:
 
 # ------------------------------------------------------------------
 # Full config-driven pipeline, swept across every shipped config set
-# (configs/dqn_1v1, dqn_speed1, dqn_speed2, dqn_speed3, ...). A new
+# (plug-and-play/configs/dqn_1v1, dqn_speed1, dqn_speed2, dqn_speed3, ...). A new
 # config directory that breaks the pipeline should fail here instead
 # of only surfacing when someone happens to run it manually.
 # ------------------------------------------------------------------
@@ -122,7 +122,7 @@ class TestPluginsDoNotMutateEnvState:
 class TestConfigPipelineEndToEnd:
     @pytest.mark.parametrize("config_dir", _CONFIG_DIRS)
     def test_pipeline_runs_end_to_end(self, config_dir):
-        from ppage.scripts.run_from_config import (
+        from run_from_config import (
             build_environment,
             load_all_configs,
         )

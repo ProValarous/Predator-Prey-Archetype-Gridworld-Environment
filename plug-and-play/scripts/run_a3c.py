@@ -1,11 +1,10 @@
-# src/ppage/scripts/run_a3c.py
+# plug-and-play/scripts/run_a3c.py
 """
-Train or evaluate A3C using configs/experiment_a3c.yaml.
+Train or evaluate A3C using plug-and-play/configs/experiment_a3c.yaml.
 
 Usage:
-    cd src
-    python -m ppage.scripts.run_a3c                      # train
-    python -m ppage.scripts.run_a3c --mode eval \\
+    python plug-and-play/scripts/run_a3c.py                      # train
+    python plug-and-play/scripts/run_a3c.py --mode eval \\
         --load-path trained_a3c.pkl
 
 A3C spawns worker processes, so this script (like any A3C entry point)
@@ -19,7 +18,7 @@ import logging
 
 import ppage.baselines  # noqa: F401 — triggers auto-registration
 from ppage.baselines.A3C.a3c import A3C
-from ppage.scripts.run_from_config import (
+from run_from_config import (
     load_all_configs,
     build_environment,
 )
@@ -49,7 +48,7 @@ class EnvFactory:
 def main():
     p = argparse.ArgumentParser("Run A3C experiment")
     p.add_argument("--mode", choices=["train", "eval"], default="train")
-    p.add_argument("--config-dir", default="configs")
+    p.add_argument("--config-dir", default="plug-and-play/configs")
     p.add_argument("--save-path", default="trained_a3c.pkl")
     p.add_argument("--load-path", default=None)
     args = p.parse_args()

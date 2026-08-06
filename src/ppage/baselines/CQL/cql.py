@@ -20,7 +20,6 @@ Usage (config-driven):
     experiment.yaml → algorithm: cql
 
 Usage (standalone CLI):
-    cd src
     python -m ppage.baselines.CQL.cql --episodes 1000 --size 6 --predators 1 --preys 1
 """
 

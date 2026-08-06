@@ -71,7 +71,7 @@ _REWARD_REGISTRY = {
 ## Step 3 — Configure it
 
 ```yaml
-# configs/rewards.yaml
+# plug-and-play/configs/rewards.yaml
 rewards:
   base:
     enabled: true

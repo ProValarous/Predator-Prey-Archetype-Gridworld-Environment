@@ -80,8 +80,8 @@ experiment:
 Run it:
 
 ```bash
-python -m ppage.scripts.run_iql            # train
-python -m ppage.scripts.run_iql --mode eval --load-path trained_iql.pkl
+python plug-and-play/scripts/run_iql.py            # train
+python plug-and-play/scripts/run_iql.py --mode eval --load-path trained_iql.pkl
 ```
 
 ## Worked example

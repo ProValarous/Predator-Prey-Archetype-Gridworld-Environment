@@ -143,7 +143,7 @@ Unlike IQL/CQL/MixedTrainer (tabular), `DQN` (`ppage/baselines/DQN/dqn.py`) uses
 
 **`action_dim` resolution differs from the tabular baselines:** DQN infers it from `env.action_space_plugin.n_actions` (falling back to `env.action_space.n` if no plugin is set) rather than taking a bare `config.get("action_dim", 5)`. If the config also sets `action_dim` explicitly and it disagrees with the inferred value, construction raises `ValueError` immediately — fail-fast instead of silently building a network with the wrong output size.
 
-**Config keys** (`experiment_dqn.yaml`): `gamma`, `epsilon`, `epsilon_decay`, `min_epsilon`, `episodes`, `batch_size`, `buffer_size`, `min_replay_size`, `target_update_interval`, `learning_rate`, `hidden_layers`, `grad_clip`, `device`, `verbose`, `log_interval`, `debug_first_episode`, `save_path`, `curves_path`, plus two flags: `double_dqn` and `dueling` (both default `false`; the shipped `configs/experiment_dqn.yaml` doesn't set them, so it trains vanilla DQN by default — `configs/dqn_1v1/experiment_dqn.yaml` sets both `true`).
+**Config keys** (`experiment_dqn.yaml`): `gamma`, `epsilon`, `epsilon_decay`, `min_epsilon`, `episodes`, `batch_size`, `buffer_size`, `min_replay_size`, `target_update_interval`, `learning_rate`, `hidden_layers`, `grad_clip`, `device`, `verbose`, `log_interval`, `debug_first_episode`, `save_path`, `curves_path`, plus two flags: `double_dqn` and `dueling` (both default `false`; the shipped `plug-and-play/configs/experiment_dqn.yaml` doesn't set them, so it trains vanilla DQN by default — `plug-and-play/configs/dqn_1v1/experiment_dqn.yaml` sets both `true`).
 
 **Double DQN** (`double_dqn: true`): the bootstrap action is selected via the *online* network's argmax on `next_states`, but its Q-value is read from the *target* network — decoupling selection from evaluation to reduce the max operator's overestimation bias. Vanilla DQN (`double_dqn: false`) just takes `target_network(next_states).max()`.
 
@@ -208,7 +208,7 @@ guards against: reward magnitudes in the thousands make squared error's
 gradients large enough to destabilize the shared trunk both heads depend on.
 
 **`entropy_coef` default is `0.01`, not `0.0` — also found via a verification
-run.** With no entropy bonus, capture rate on `configs/dqn_1v1` (2000 episodes,
+run.** With no entropy bonus, capture rate on `plug-and-play/configs/dqn_1v1` (2000 episodes,
 matching DQN's own horizon there) declined from 6.4% (Q1) to 0.6% (Q4) even
 though critic loss dropped smoothly over the same run — the signature of the
 critic learning to predict a boring, predictable timeout rather than the policy
@@ -223,7 +223,7 @@ the related reward-vs-capture-rate disconnect this surfaced.
 **`actor_weight_decay` (default `0.001`) — a workaround, not a fix.** Scoped to
 a dedicated Adam param group over just `policy_head`'s parameters
 (`trunk`/`value_head` left at `weight_decay=0`, since they're shared with the
-critic). Raises capture rate on `configs/dqn_1v1` from 25.1% to 35.0% overall,
+critic). Raises capture rate on `plug-and-play/configs/dqn_1v1` from 25.1% to 35.0% overall,
 but entropy tracking (previously untracked) showed it never actually restores
 entropy — predator entropy collapses to ~0 within the first couple of episodes
 regardless of this setting.
@@ -252,7 +252,7 @@ instead of the raw one, keeping trunk feature norms small (2-10 instead of
 instant ("preserving outputs precisely") — confirmed necessary, not just
 theoretically nice, after a plain (non-rescaling) version diverged to a
 numerical overflow under a faster `return_norm_decay` on A3C (see A3C's
-section below). Verified on `configs/dqn_1v1` (2000 episodes): entropy holds
+section below). Verified on `plug-and-play/configs/dqn_1v1` (2000 episodes): entropy holds
 in a healthy 1.1-1.3 range instead of collapsing, capture rate 25.1% → 75.1%
 overall — next to DQN's own 80.3% on this config, a range no actor-critic
 variant here had reached before. See
@@ -362,7 +362,7 @@ touched during training.
 **Verification run — critic loss bounded from the start, capture rate comparable
 to A2C's tuned baseline.** Built with both lessons already learned from AC/A2C
 from day one (Huber critic loss, `entropy_coef=0.05`) rather than rediscovering
-them. Ran `configs/dqn_1v1/experiment_a3c.yaml` (2000 episodes, 4 workers) — the
+them. Ran `plug-and-play/configs/dqn_1v1/experiment_a3c.yaml` (2000 episodes, 4 workers) — the
 same config AC/A2C already have data on:
 
 | | Critic loss (bounded?) | Capture rate Q1→Q4 |
@@ -388,7 +388,7 @@ undecayed). Entropy tracking added to the per-worker CSV (previously untracked)
 confirmed predator entropy collapses to ~0 within the first couple of episodes
 regardless of `actor_weight_decay` — same near-instant collapse ActorCritic
 shows, too fast for the fix to intervene. Re-run of
-`configs/dqn_1v1/experiment_a3c.yaml` end to end at both settings: capture rate
+`plug-and-play/configs/dqn_1v1/experiment_a3c.yaml` end to end at both settings: capture rate
 25.9% → 33.0% overall (33.6/26.4/22.8/20.8 → 36.0/35.4/31.2/29.4 by quarter,
 still declining somewhat but consistently higher and less steep) — a real
 improvement despite entropy staying flat at ~0 throughout, mirroring
@@ -402,7 +402,7 @@ instability).
 `ActorCriticNetwork`, so the unbounded-shared-trunk mechanism (see
 ActorCritic's section above) applies identically. A first version of
 `normalize_returns` gave each worker its own *local* running normalizer,
-which worked (capture rate 25.9% → 85.5% overall on `configs/dqn_1v1`) but
+which worked (capture rate 25.9% → 85.5% overall on `plug-and-play/configs/dqn_1v1`) but
 had a real wrinkle: a sharp late-training partial re-collapse shared
 identically across all 4 workers (entropy 0.9-1.3 through ~episode 1880,
 dropping to 0.24-0.55 in the final ~120 episodes) — not one unlucky worker.
@@ -472,7 +472,7 @@ After a prey is captured, IQL/CQL continue updating its Q-table for the remainde
 ### Reward-vs-Capture-Rate Disconnect
 
 Rising capture rate does not imply rising (less negative) reward, and this holds
-across every algorithm tested, not just one. Splitting `configs/dqn_1v1` episodes
+across every algorithm tested, not just one. Splitting `plug-and-play/configs/dqn_1v1` episodes
 into "captured" vs. "timeout" groups and comparing average predator reward within
 each group (no new training needed — re-reading existing per-episode CSVs):
 

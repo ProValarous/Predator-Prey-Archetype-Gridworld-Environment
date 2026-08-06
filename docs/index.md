@@ -12,7 +12,7 @@ pursuit–evasion, and emergent behavior in **Multi-Agent Reinforcement Learning
 <p align="center">
   <img src="assets/images/demo.gif" alt="A speed-2 predator pursuing a speed-1 prey around obstacles on a 10x10 grid until capture" width="440"/>
 </p>
-<p align="center"><em>A speed-2 predator chasing a speed-1 prey around obstacles until capture (<code>configs/dqn_1v1</code>).</em></p>
+<p align="center"><em>A speed-2 predator chasing a speed-1 prey around obstacles until capture (<code>plug-and-play/configs/dqn_1v1</code>).</em></p>
 
 ---
 
@@ -68,7 +68,7 @@ source .venv/bin/activate        # Windows: .venv\Scripts\Activate.ps1
 pip install -e .
 
 # Train the default experiment (3 predators vs 3 prey, IQL)
-python -m ppage.scripts.run_from_config
+python plug-and-play/scripts/run_from_config.py
 ```
 
 ### Minimal example

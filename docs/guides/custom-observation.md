@@ -101,7 +101,7 @@ __all__ = [..., "MyObservation"]
 ## Step 4 — Configure it
 
 ```yaml
-# configs/observations.yaml
+# plug-and-play/configs/observations.yaml
 observations:
   type: my_obs
   params:

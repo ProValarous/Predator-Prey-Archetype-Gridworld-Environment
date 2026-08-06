@@ -2,7 +2,7 @@ name: Suggest Next Version
 
 # Advisory only: computes what the next release-segment version (X.Y.Z)
 # would be based on conventional-commit messages since the last git tag,
-# using scripts/suggest_next_version.py. Never writes to pyproject.toml,
+# using .github/scripts/suggest_next_version.py. Never writes to pyproject.toml,
 # never tags, never publishes anything, purely informational.
 on:
   pull_request:
@@ -30,7 +30,7 @@ jobs:
 
       - name: Run suggestion script
         id: suggest
-        run: python scripts/suggest_next_version.py | tee -a "$GITHUB_STEP_SUMMARY"
+        run: python .github/scripts/suggest_next_version.py | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Comment on PR
         if: github.event_name == 'pull_request'

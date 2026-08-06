@@ -49,11 +49,11 @@ On `step(actions)`:
 
 ## Worked Example
 
-`configs/dqn_1v1`: predator `agent_speed=2`, prey `agent_speed=1`, both `stamina=9999`.
+`plug-and-play/configs/dqn_1v1`: predator `agent_speed=2`, prey `agent_speed=1`, both `stamina=9999`.
 
 - `max_speed = 2`, so the fast path is skipped even though prey never gets extra sub-steps.
 - Predator sends its real action for `min(2, 9999) = 2` sub-steps; prey sends its real action for `min(1, 9999) = 1` sub-step, then `NOOP` for the second sub-step.
-- Net effect: the predator moves up to 2 cells per logical turn while the prey moves 1 — this 2x speed advantage is what the `configs/dqn_speed1/2/3` sweep configs vary and what `configs/dqn_1v1/agents.yaml`'s comment calls out as "enables consistent capture."
+- Net effect: the predator moves up to 2 cells per logical turn while the prey moves 1 — this 2x speed advantage is what the `plug-and-play/configs/dqn_speed1/2/3` sweep configs vary and what `plug-and-play/configs/dqn_1v1/agents.yaml`'s comment calls out as "enables consistent capture."
 
 ---
 

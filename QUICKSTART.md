@@ -7,34 +7,32 @@ Get from zero to a running training run in five minutes.
 ## 1. Prerequisites
 
 - Python 3.10+
-- A virtual environment (example uses `.new_venv`)
+- A virtual environment
 
 ```bash
-python -m venv .new_venv
+python -m venv .venv
 ```
 
 ## 2. Install Dependencies
 
+Everything below runs from the repository root.
+
 ```bash
 # Windows
-.new_venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scriptsctivate
 
 # macOS / Linux
-.new_venv/bin/pip install -r requirements.txt
+source .venv/bin/activate
+
+pip install -e ".[baselines]"   # baselines extra adds PyTorch (DQN, AC, A2C, A3C)
 ```
 
 ## 3. Run Training
 
-All experiments are driven by the YAML files in `configs/`.
+All experiments are driven by the YAML files in `plug-and-play/configs/`.
 
 ```bash
-cd src
-
-# Windows
-..\.new_venv\Scripts\python.exe -m ppage.scripts.run_from_config
-
-# macOS / Linux
-../.new_venv/bin/python -m ppage.scripts.run_from_config
+python plug-and-play/scripts/run_from_config.py
 ```
 
 This runs IQL for 500 episodes on a 10×10 grid with 3 predators and 3 prey.  
@@ -42,11 +40,10 @@ Progress is logged every 100 episodes.
 
 ## 4. Render an Episode
 
-Set `render_mode: human` in `configs/env.yaml` (it is the default), then:
+Set `render_mode: human` in `plug-and-play/configs/env.yaml` (it is the default), then:
 
 ```bash
-cd src
-python -m ppage.scripts.render
+python plug-and-play/scripts/render.py
 ```
 
 A pygame window opens and plays one training run visually.  
@@ -57,8 +54,6 @@ Set `render_mode: null` to disable the window and run headless.
 For quick experiments without editing YAML files:
 
 ```bash
-cd src
-
 # IQL
 python -m ppage.baselines.IQL.iql --episodes 1000 --size 8 --predators 1 --preys 1
 
@@ -74,8 +69,6 @@ All scripts save trained Q-tables to a `.pkl` file (see `--save-path`).
 ## 6. Evaluate a Saved Model
 
 ```bash
-cd src
-
 # IQL
 python -m ppage.baselines.IQL.iql --mode eval --load-path trained_iql.pkl
 
@@ -92,11 +85,11 @@ python -m ppage.baselines.MIXED.mix_train --mode eval --load-path trained_mixed.
 
 | File | Controls |
 |------|----------|
-| `configs/env.yaml` | Grid size, obstacles, render mode, episode cap |
-| `configs/agents.yaml` | Predator / prey counts, speed, stamina |
-| `configs/observations.yaml` | Observation type and radius per agent type |
-| `configs/rewards.yaml` | Base reward + shaping weights |
-| `configs/experiment.yaml` | Algorithm name and hyperparameters |
+| `plug-and-play/configs/env.yaml` | Grid size, obstacles, render mode, episode cap |
+| `plug-and-play/configs/agents.yaml` | Predator / prey counts, speed, stamina |
+| `plug-and-play/configs/observations.yaml` | Observation type and radius per agent type |
+| `plug-and-play/configs/rewards.yaml` | Base reward + shaping weights |
+| `plug-and-play/configs/experiment.yaml` | Algorithm name and hyperparameters |
 
 ---
 
@@ -104,23 +97,23 @@ python -m ppage.baselines.MIXED.mix_train --mode eval --load-path trained_mixed.
 
 ```
 src/
-  ppage/                      # Environment core
+  ppage/                      # Environment core (the installable library)
     core/                     # GridWorldEnv, Agent
     observations/             # Pluggable observation builders
     rewards/                  # Pluggable reward functions
-    scripts/                  # run_from_config.py, render.py
     baselines/
       IQL/                    # Independent Q-Learning
       CQL/                    # Centralized Q-Learning
-configs/                      # All experiment YAML files
-wiki/                         # Architecture specs and ADRs
+plug-and-play/                # Start here: runnable entry points
+  scripts/                    # run_from_config.py, render.py, evaluate.py ...
+  configs/                    # All experiment YAML files
 ```
 
 ---
 
 ## Troubleshooting
 
-**`ModuleNotFoundError`** — run scripts from inside `src/`, or add `src/` to `PYTHONPATH`.
+**`ModuleNotFoundError: ppage`** — install the package first: `pip install -e .` from the repository root.
 
 **pygame window does not open** — set `render_mode: null` in `env.yaml` for headless runs.
 

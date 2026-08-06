@@ -90,10 +90,10 @@ experiment:
 
 DQN needs an observation plugin whose `encode()` yields a **fixed-length**
 vector; `local_only`, `absolute`, `relative`, and `local_radius` all qualify.
-Ready-made presets live in `configs/dqn_1v1/` and `configs/dqn_speed{1,2,3}/`.
+Ready-made presets live in `plug-and-play/configs/dqn_1v1/` and `plug-and-play/configs/dqn_speed{1,2,3}/`.
 
 ```bash
-python -m ppage.scripts.run_dqn --config-dir configs/dqn_1v1
+python plug-and-play/scripts/run_dqn.py --config-dir plug-and-play/configs/dqn_1v1
 ```
 
 ## When to use DQN

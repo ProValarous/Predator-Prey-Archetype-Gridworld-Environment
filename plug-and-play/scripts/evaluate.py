@@ -11,7 +11,7 @@ from collections import defaultdict
 
 import ppage.baselines  # noqa: F401 — triggers auto-registration
 from ppage.baselines.registry import get as get_algorithm
-from ppage.scripts.run_from_config import (
+from run_from_config import (
     load_all_configs,
     build_environment,
 )
@@ -20,7 +20,7 @@ LOGGER = logging.getLogger("evaluate")
 
 
 def evaluate(
-    config_dir: str = "configs", episodes: int = 10, load_path: str = None
+    config_dir: str = "plug-and-play/configs", episodes: int = 10, load_path: str = None
 ) -> dict:
     configs = load_all_configs(config_dir)
     configs["env"]["env"]["render_mode"] = None  # headless evaluation
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     )
 
     p = argparse.ArgumentParser("Evaluate a trained policy from YAML configs")
-    p.add_argument("--config-dir", default="configs")
+    p.add_argument("--config-dir", default="plug-and-play/configs")
     p.add_argument("--episodes", type=int, default=10)
     p.add_argument(
         "--load-path",

@@ -1,20 +1,19 @@
-# src/ppage/scripts/run_actor_critic.py
+# plug-and-play/scripts/run_a2c.py
 """
-Train or evaluate the Actor-Critic baseline using configs/experiment_actor_critic.yaml.
+Train or evaluate A2C using plug-and-play/configs/experiment_a2c.yaml.
 
 Usage:
-    cd src
-    python -m ppage.scripts.run_actor_critic                      # train
-    python -m ppage.scripts.run_actor_critic --mode eval \\
-        --load-path trained_actor_critic.pkl
+    python plug-and-play/scripts/run_a2c.py                      # train
+    python plug-and-play/scripts/run_a2c.py --mode eval \\
+        --load-path trained_a2c.pkl
 """
 
 import argparse
 import logging
 
 import ppage.baselines  # noqa: F401 — triggers auto-registration
-from ppage.baselines.AC.actor_critic import ActorCritic
-from ppage.scripts.run_from_config import (
+from ppage.baselines.A2C.a2c import A2C
+from run_from_config import (
     load_all_configs,
     build_environment,
 )
@@ -25,14 +24,14 @@ logging.basicConfig(
     datefmt="%d-%m-%Y %H:%M:%S",
 )
 
-EXPERIMENT_FILE = "experiment_actor_critic.yaml"
+EXPERIMENT_FILE = "experiment_a2c.yaml"
 
 
 def main():
-    p = argparse.ArgumentParser("Run Actor-Critic experiment")
+    p = argparse.ArgumentParser("Run A2C experiment")
     p.add_argument("--mode", choices=["train", "eval"], default="train")
-    p.add_argument("--config-dir", default="configs")
-    p.add_argument("--save-path", default="trained_actor_critic.pkl")
+    p.add_argument("--config-dir", default="plug-and-play/configs")
+    p.add_argument("--save-path", default="trained_a2c.pkl")
     p.add_argument("--load-path", default=None)
     p.add_argument(
         "--render",
@@ -49,15 +48,20 @@ def main():
     env = build_environment(configs)
     algo_params = configs["experiment"]["experiment"]["algorithm"].get("params", {})
 
+    if args.mode == "eval":
+        # A2C exploration comes from sampling the
+        # policy. For evaluation we want the greedy (argmax) action instead.
+        algo_params = dict(algo_params, greedy_eval=True)
+
     if args.mode == "train":
-        algo = ActorCritic(env, algo_params)
+        algo = A2C(env, algo_params)
         algo.train()
         algo.save(args.save_path)
     else:
         if not args.load_path:
             raise SystemExit("--load-path is required for --mode eval")
-        algo = ActorCritic.load(env, algo_params, args.load_path)
-        print(algo.evaluate())
+        algo = A2C.load(env, algo_params, args.load_path)
+        algo.evaluate()
 
     env.close()
 

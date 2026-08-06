@@ -50,7 +50,7 @@ The pattern where the environment holds a function pointer (`env.reward_fn`, `en
 An object that wraps the environment (or another wrapper), overriding specific methods (`step()`/`reset()`) while proxying everything else through `__getattr__`. Not registry-driven — there's exactly one, `SpeedWrapper`, applied explicitly by `run_from_config.build_environment()` as the outermost layer. See [concepts/wrappers.md](../concepts/wrappers.md).
 
 **Action Space Plugin**
-An `ActionSpace` subclass that maps discrete integer actions to `[dx, dy]` direction vectors. Registered in `action_registry.py` and declared in `configs/actions.yaml`. Injected as `env.action_space_plugin` before training.
+An `ActionSpace` subclass that maps discrete integer actions to `[dx, dy]` direction vectors. Registered in `action_registry.py` and declared in `plug-and-play/configs/actions.yaml`. Injected as `env.action_space_plugin` before training.
 
 **Reward Shaping**
 Additional reward signal layered on top of base rewards to guide learning. Implemented as separate `RewardFunction` subclasses combined via a closure. Does not replace base rewards.
@@ -124,7 +124,7 @@ The process of converting an observation dict (which may contain numpy arrays an
 ## Configuration Terms
 
 **Config Directory**
-The `configs/` directory containing six YAML files per experiment set: `env.yaml`, `agents.yaml`, `observations.yaml`, `rewards.yaml`, `actions.yaml`, and an experiment file (`experiment.yaml` or `experiment_{iql,cql,mixed,dqn}.yaml`). Ready-made DQN experiment sets also exist as subdirectories: `configs/dqn_1v1/`, `configs/dqn_speed1/`, `configs/dqn_speed2/`, `configs/dqn_speed3/`.
+The `plug-and-play/configs/` directory containing six YAML files per experiment set: `env.yaml`, `agents.yaml`, `observations.yaml`, `rewards.yaml`, `actions.yaml`, and an experiment file (`experiment.yaml` or `experiment_{iql,cql,mixed,dqn}.yaml`). Ready-made DQN experiment sets also exist as subdirectories: `plug-and-play/configs/dqn_1v1/`, `plug-and-play/configs/dqn_speed1/`, `plug-and-play/configs/dqn_speed2/`, `plug-and-play/configs/dqn_speed3/`.
 
 **Seed**
 An integer passed to `np.random.default_rng(seed)` that initializes the environment's random number generator. The same seed produces the same obstacle layout, agent start positions, and (if the algorithm is deterministic) training trajectory.

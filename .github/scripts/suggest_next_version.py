@@ -14,7 +14,7 @@ should carry a pre-release suffix (-beta, -rc1, ...) or ship final is a
 human decision, not something this script guesses.
 
 Usage:
-    python scripts/suggest_next_version.py [--base-ref <tag_or_commit>]
+    python .github/scripts/suggest_next_version.py [--base-ref <tag_or_commit>]
 
 Exits non-zero only on a real error (e.g. not a git repo); an empty
 commit range or an unparsable current version are reported, not fatal.
@@ -27,7 +27,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 PYPROJECT = REPO_ROOT / "pyproject.toml"
 
 BREAKING_RE = re.compile(r"^\w+(\([^)]*\))?!:|BREAKING[ -]CHANGE", re.MULTILINE)

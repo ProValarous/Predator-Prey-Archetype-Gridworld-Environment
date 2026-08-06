@@ -222,9 +222,9 @@ configs["experiment"]["experiment"]["algorithm"]["params"]   # {...}
 
 | Directory | Setup |
 |-----------|-------|
-| `configs/dqn_1v1/` | 1 predator (speed 2) vs 1 prey (speed 1), 10×10 grid, 20% obstacles, `double_dqn`+`dueling` both enabled |
-| `configs/dqn_speed1/` | 1v1, both agents speed 1 (baseline, no speed advantage) |
-| `configs/dqn_speed2/` | 1v1, predator speed 2 |
-| `configs/dqn_speed3/` | 1v1, predator speed 3 |
+| `plug-and-play/configs/dqn_1v1/` | 1 predator (speed 2) vs 1 prey (speed 1), 10×10 grid, 20% obstacles, `double_dqn`+`dueling` both enabled |
+| `plug-and-play/configs/dqn_speed1/` | 1v1, both agents speed 1 (baseline, no speed advantage) |
+| `plug-and-play/configs/dqn_speed2/` | 1v1, predator speed 2 |
+| `plug-and-play/configs/dqn_speed3/` | 1v1, predator speed 3 |
 
-Run any of them with `python -m ppage.scripts.run_dqn --config-dir configs/dqn_1v1`.
+Run any of them with `python plug-and-play/scripts/run_dqn.py --config-dir plug-and-play/configs/dqn_1v1`.

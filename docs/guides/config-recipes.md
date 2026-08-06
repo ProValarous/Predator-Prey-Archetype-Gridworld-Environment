@@ -233,7 +233,7 @@ agents:
     speed: 1
 ```
 
-See `configs/dqn_speed1`, `dqn_speed2`, `dqn_speed3` for a ready-made 1/2/3 speed sweep, and [concepts/wrappers.md](../concepts/wrappers.md) for the mechanics.
+See `plug-and-play/configs/dqn_speed1`, `dqn_speed2`, `dqn_speed3` for a ready-made 1/2/3 speed sweep, and [concepts/wrappers.md](../concepts/wrappers.md) for the mechanics.
 
 ---
 
@@ -262,4 +262,4 @@ experiment:
       dueling: true      # splits the network into value + advantage streams
 ```
 
-See `configs/dqn_1v1/experiment_dqn.yaml` for a working example with both enabled.
+See `plug-and-play/configs/dqn_1v1/experiment_dqn.yaml` for a working example with both enabled.
