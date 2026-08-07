@@ -3,6 +3,7 @@
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](contributing.md)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-enforced-orange.svg)](CODE_OF_CONDUCT.md)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/UHUMALAB/PPAGE/blob/main/LICENSE)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21833286.svg)](https://doi.org/10.5281/zenodo.21833286)
 
 A **discrete, grid-based multi-agent predator–prey environment** built as a
 controlled, interpretable, and reproducible testbed for studying coordination,
@@ -123,7 +124,8 @@ BibTeX equivalent:
   author       = {Muhammad Ahmed Atif and Nehal Naeem Haji and Muhammad Affan and Areesha Kashif and Musab Kasbati and Afshad Yazdi Sidhwa},
   title        = {Predator-Prey Archetype Gridworld Environment},
   year         = {2026},
-  version      = {0.9.0b2},
+  version      = {0.9.1},
+  doi          = {10.5281/zenodo.21833286},
   url          = {https://github.com/UHUMALAB/PPAGE},
   note         = {A deterministic modular testbed for Multi-Agent Reinforcement Learning}
 }

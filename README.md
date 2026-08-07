@@ -6,6 +6,7 @@
 </p>
 
 <p align="center">
+  <a href="https://doi.org/10.5281/zenodo.21833286"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.21833286.svg" alt="DOI"></a>
   <a href="https://pypi.org/project/ppage/"><img src="https://img.shields.io/pypi/v/ppage.svg?color=blue&label=PyPI" alt="PyPI"></a>
   <img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue" alt="Python versions">
   <a href="https://uhumalab.github.io/PPAGE/"><img src="https://img.shields.io/badge/docs-mkdocs-teal.svg" alt="Docs"></a>
@@ -345,7 +346,8 @@ This repository ships a machine-readable [`CITATION.cff`](CITATION.cff); GitHub'
   author       = {Muhammad Ahmed Atif and Nehal Naeem Haji and Muhammad Affan and Areesha Kashif and Musab Kasbati and Afshad Yazdi Sidhwa},
   title        = {Predator-Prey Archetype Gridworld Environment},
   year         = {2026},
-  version      = {0.9.0b2},
+  version      = {0.9.1},
+  doi          = {10.5281/zenodo.21833286},
   url          = {https://github.com/UHUMALAB/PPAGE},
   note         = {A deterministic modular testbed for Multi-Agent Reinforcement Learning}
 }

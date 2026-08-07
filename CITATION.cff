@@ -2,9 +2,10 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata below."
 title: "Predator-Prey Archetype Gridworld Environment"
 type: software
-version: 0.9.0b2
-date-released: "2026-08-06"
+version: 0.9.1
+date-released: "2026-08-07"
 license: Apache-2.0
+doi: "10.5281/zenodo.21833286"
 repository-code: "https://github.com/UHUMALAB/PPAGE"
 url: "https://uhumalab.github.io/PPAGE/"
 abstract: >-
