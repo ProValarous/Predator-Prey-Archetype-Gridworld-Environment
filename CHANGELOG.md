@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-08-07
+
+Released to repair the PyPI project page: 0.9.1 shipped a README whose image
+paths were repo-relative, so the project page showed none of the artwork.
+
 ### Fixed
 - Three images were 404s on the published docs site: the trained-episode GIF and
   the learning curve in the first-experiment tutorial, and the gridworld

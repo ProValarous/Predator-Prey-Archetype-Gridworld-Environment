@@ -349,7 +349,7 @@ This repository ships a machine-readable [`CITATION.cff`](https://github.com/UHU
   author       = {Muhammad Ahmed Atif and Nehal Naeem Haji and Muhammad Affan and Areesha Kashif and Musab Kasbati and Afshad Yazdi Sidhwa},
   title        = {Predator-Prey Archetype Gridworld Environment},
   year         = {2026},
-  version      = {0.9.1},
+  version      = {0.9.2},
   doi          = {10.5281/zenodo.21833286},
   url          = {https://github.com/UHUMALAB/PPAGE},
   note         = {A deterministic modular testbed for Multi-Agent Reinforcement Learning}
