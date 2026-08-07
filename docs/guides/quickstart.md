@@ -8,6 +8,12 @@ Five steps from a fresh clone to a trained agent.
 
 Prerequisite: Python 3.10-3.12.
 
+This guide takes the clone route, because the YAML-driven runners in
+`plug-and-play/` ship with the repository rather than the package. If you only
+want the environment and baselines as a library, `pip install ppage` (or
+`pip install "ppage[baselines]"` for the PyTorch ones) is enough and you can
+skip to the [minimal example](../index.md#minimal-example).
+
 The package uses a standard `src/` layout with a `pyproject.toml` build backend,
 so an editable install makes `ppage` (including `ppage.baselines`) importable
 without setting `PYTHONPATH`. Run commands from the repository root.
