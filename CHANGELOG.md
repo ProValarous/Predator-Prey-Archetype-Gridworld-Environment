@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Three images were 404s on the published docs site: the trained-episode GIF and
+  the learning curve in the first-experiment tutorial, and the gridworld
+  snapshot. MkDocs does not rewrite paths inside raw HTML, and with directory
+  URLs a non-index page one directory deep needs `../../`, not `../`.
+- The showcase clips no longer stall: the double-speed clip showed motionless
+  predators for 44 of 55 frames (stamina, which `SpeedWrapper` spends per
+  sub-step and only refills on reset, ran out at frame 11), and the 1v1 clip was
+  effectively a still image after its capture at step 2, because the core freezes
+  captured prey while continuing to draw them. Stamina is now sized per scenario
+  and episodes end at the first capture and restart.
+- The README's images and links were repo-relative, so the wordmark, hero clip
+  and whole collage were missing from the PyPI project page, which renders this
+  README as the long description without resolving relative paths. They are now
+  absolute URLs. (The already-published 0.9.1 page keeps the old paths; the fix
+  applies from the next upload.)
+- Corrected documentation claims that contradicted the code: `stamina` is read
+  once by `SpeedWrapper` and tracked in its private state, so the attribute
+  never changes and `info["stamina"]` stays flat; wrappers are not
+  registry-mediated and have no YAML key; `encode()` must return a flat
+  1-D vector, so an "egocentric grid patch" cannot be a CNN-ready 2-D tensor;
+  per-team action spaces are not Tier 1 roadmap scope; not every plugin axis has
+  a step-by-step guide; and the showcase's 1v1 tile is the hero's roster but not
+  its configuration (the hero runs at 20% obstacles with a speed-2 predator).
+- A `QUICKSTART.md` troubleshooting entry prescribed a remedy that cannot work
+  (`render_mode: null` is already the default and `render.py` overrides it); it
+  now covers both the unwanted-window and missing-window cases.
+- The docs deploy workflow had no `concurrency` guard, so a push during an
+  in-flight deployment failed and that commit never published. Added.
+- `PPAGE_overview.png` has white connectors on a transparent background, so
+  every edge in the architecture diagram vanished on the light theme. Added
+  `docs/stylesheets/extra.css` to give it a dark backdrop there.
+- A stray `mkdocs-validtest.yml`, created while validating the docs config, was
+  committed by accident and is removed.
+
 ## [0.9.1] - 2026-08-07
 
 ### Added

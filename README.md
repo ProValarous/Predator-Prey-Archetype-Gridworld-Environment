@@ -34,7 +34,7 @@ A <b>deterministic, modular, research-grade multi-agent predator–prey environm
   <tr>
     <td width="50%" align="center">
       <img src="https://raw.githubusercontent.com/UHUMALAB/PPAGE/main/miscellenous/gifs/showcase/showcase_1v1_10x10.gif" alt="One predator and one prey moving on a 10x10 grid with obstacles" width="100%">
-      <br><sub><b>1 predator vs 1 prey</b> · 10&times;10<br>the same setup as the hero, untrained</sub>
+      <br><sub><b>1 predator vs 1 prey</b> · 10&times;10<br>the hero's 1v1 roster, untrained and at speed 1</sub>
     </td>
     <td width="50%" align="center">
       <img src="https://raw.githubusercontent.com/UHUMALAB/PPAGE/main/miscellenous/gifs/showcase/showcase_2v2_10x10.gif" alt="Two predators and two double-speed prey on a 10x10 grid" width="100%">
@@ -68,8 +68,8 @@ green, shade and shape separating subteams). Regenerate them with
 > One caveat on the third clip: the two movement geometries are the shipped
 > `discrete_5` and `cross` action spaces, but assigning a *different* one per
 > team is composed in the generator script rather than selected from YAML. The
-> core holds a single global action space, and per-team assignment is Tier 1
-> roadmap work.
+> core holds a single global action space, and per-team assignment is not yet
+> configurable from YAML.
 
 ---
 
@@ -217,11 +217,12 @@ for yours:
 | Actions | `discrete_5`, `cross`, `speed_discrete_5` (+ `SpeedWrapper`) | king moves, momentum actions, wait-and-observe, macro-actions |
 | Algorithms | IQL, CQL, MixedTrainer, DQN, ActorCritic, A2C, A3C | game-theoretic learners (JAL-GT/minimax-Q, WoLF-PHC, fictitious play), CTDE methods (VDN, QMIX) |
 
-Each row has a written contract (`docs/specs/`) and a step-by-step guide
-(`docs/guides/`); see [Design Philosophy](https://uhumalab.github.io/PPAGE/overview/design-philosophy/)
+Each row has a written contract (`docs/specs/`); the observation, reward, and
+action rows also have a step-by-step guide (`docs/guides/`); see [Design Philosophy](https://uhumalab.github.io/PPAGE/overview/design-philosophy/)
 in the docs for the full extension menu with difficulty ratings.
 
-For four of these axes side by side, see the
+For the configuration range this buys you (grid size, populations, obstacle
+count, per-agent speed, and movement geometry), see the
 [Showcase](#-showcase-four-scenarios-one-unchanged-core) at the top of this
 README.
 

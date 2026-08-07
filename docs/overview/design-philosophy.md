@@ -16,7 +16,7 @@ flowchart TB
     A --> A3["YAML-only experiment changes<br/>no Python required"]
     V --> V1["👁 observations"]
     V --> V2["🎯 rewards"]
-    V --> V3["🕹 actions + wrappers"]
+    V --> V3["🕹 actions"]
     V --> V4["🧠 algorithms"]
     V1 --> R
     V2 --> R
@@ -47,16 +47,16 @@ Getting a first result must cost minutes:
 
 ## The versatility pillar
 
-Every scientific axis of variation is an independent plugin behind a
-registry, with an immutable physics core underneath (enforced by the
-`core-guard` CI check, see [Architecture](architecture.md)):
+Four of the five axes below are independent plugins behind a registry, with
+an immutable physics core underneath (enforced by the `core-guard` CI check,
+see [Architecture](architecture.md)):
 
 | Axis | Contract | Shipped implementations |
 | --- | --- | --- |
 | Observations | [`ObservationBuilder`](../specs/observation-builder-spec.md): `build(env)` + `encode(obs, env)` | `default`, `local_only`, `local_radius`, `absolute`, `relative` |
 | Rewards | [`RewardFunction`](../specs/reward-function-spec.md): `compute(env)`; terms compose | `base`, `predator_distance`, `survival` |
 | Actions | [`ActionSpace`](../specs/action-space-spec.md): `to_direction(action)` | `discrete_5`, `cross`, `speed_discrete_5` |
-| Wrappers | follows the `SpeedWrapper` pattern | `SpeedWrapper` (per-agent speed/stamina) |
+| Wrappers | follows the `SpeedWrapper` pattern; no registry, applied unconditionally in `build_environment()` ([Tier 1](scope-and-roadmap.md)) | `SpeedWrapper` (per-agent speed/stamina) |
 | Algorithms | [`BaseAlgorithm`](../specs/algorithm-spec.md): `select_actions(obs)` + `train()` | IQL, CQL, MixedTrainer, DQN, ActorCritic, A2C, A3C |
 
 ## The bridge: registries
@@ -97,7 +97,8 @@ actions**: they show what the environment can be configured to express, not
 learned behaviour, and each clip runs a few short episodes: an episode ends at
 the first capture, then the next begins with a fresh layout. For the contrast,
 the [trained DQN pursuit on the landing page](../index.md) uses the same 1v1
-configuration as the first tile. Colours and marker shapes are the
+roster and grid size as the first tile, at 20% obstacles and with a speed-2
+predator. Colours and marker shapes are the
 environment's own, from
 [`Agent.get_agent_color()`](../api/agents.md) (predators on the red hue, prey on
 green, with shade and shape separating subteams), and the two movement
@@ -110,8 +111,8 @@ spaces.
     configuration. Assigning a *different* action space per team is not: the
     core holds one global `action_space_plugin`, and the third clip composes
     per-team geometry in the generator script through the core's per-agent
-    direction-map fallback. Making that YAML-selectable is Tier 1 work on the
-    [roadmap](scope-and-roadmap.md).
+    direction-map fallback. Making that YAML-selectable is not yet supported;
+    see the [roadmap](scope-and-roadmap.md).
 
 Regenerate the clips with `python .github/scripts/make_showcase_gifs.py`
 (needs `pip install -e ".[docs]"`).
@@ -130,8 +131,9 @@ capstone or research project).
 - **Line-of-sight occlusion** ★★ — obstacles block vision.
 - **Frame-stacking memory** ★★ — the last *k* observations, for
   partial-observability studies.
-- **Egocentric grid patch** ★★ — an `encode()` that returns a CNN-ready 2D
-  tensor.
+- **Egocentric grid patch** ★★ — a local grid patch flattened into the
+  fixed-length vector `encode()` must return (a CNN consumer would also need
+  a baseline that reshapes it).
 
 ### Rewards ★–★★ (composable, so each is also an ablation)
 

@@ -35,7 +35,7 @@ Six YAML files in `plug-and-play/configs/` control everything. For a first run, 
 | `observations.yaml` | What each agent can see |
 | `rewards.yaml` | Reward signals and shaping |
 | `actions.yaml` | Which action space (`discrete_5`, `cross`, or `speed_discrete_5`) |
-| `experiment.yaml` (or `experiment_{iql,cql,mixed,dqn}.yaml`) | Which algorithm, its hyperparameters |
+| `experiment.yaml` (or `experiment_{iql,cql,mixed,dqn,actor_critic,a2c,a3c}.yaml`) | Which algorithm, its hyperparameters |
 
 Each algorithm has its own dedicated runner script that reads the matching experiment file and supports `--mode train|eval`:
 

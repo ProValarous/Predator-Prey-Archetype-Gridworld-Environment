@@ -212,7 +212,7 @@ experiment:
 `experiment_actor_critic.yaml`, `experiment_a2c.yaml`, and `experiment_a3c.yaml` also ship. Their
 main extra keys (`n_steps`, `entropy_coef`, `value_coef`, per-network learning rates,
 `normalize_returns`, `num_workers`) are documented in the per-algorithm pages under
-[docs/algorithms/](../algorithms/).
+[docs/algorithms/](../algorithms/index.md).
 
 **Accessing in code:**
 ```python

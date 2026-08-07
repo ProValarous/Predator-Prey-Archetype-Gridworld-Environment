@@ -9,6 +9,13 @@ permissions:
   pages: write
   id-token: write
 
+# Pages allows one deployment at a time; without this, a second push while a
+# deploy is in flight fails with "Deployment request failed ... due to in progress
+# deployment" and that commit never publishes.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest

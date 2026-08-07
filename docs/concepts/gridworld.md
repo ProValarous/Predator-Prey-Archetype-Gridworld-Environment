@@ -7,7 +7,7 @@ The GridWorld is a **bounded 2D discrete grid** — the physical substrate of th
 It is implemented as `GridWorldEnv` in `src/ppage/core/gridworld.py` and inherits from `gymnasium.Env`.
 
 <p align="center">
-  <img src="../assets/images/game_snap.png" alt="A snapshot of the gridworld: predators, prey, and obstacles on a bounded grid" width="360"/>
+  <img src="../../assets/images/game_snap.png" alt="A snapshot of the gridworld: predators, prey, and obstacles on a bounded grid" width="360"/>
 </p>
 
 ---

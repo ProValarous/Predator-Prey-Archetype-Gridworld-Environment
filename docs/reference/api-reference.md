@@ -84,7 +84,7 @@ Agent(
 | `agent_type` | `str` | `"predator"` or `"prey"` |
 | `agent_team` | `str\|int` | Team identifier |
 | `agent_speed` | `int` | Defaults to 1 (predator)/3 (prey) from `__init__`, but `build_agents()` always overwrites it from `agents.yaml`. Ignored by `GridWorldEnv.step()` itself; consumed by `SpeedWrapper` for sub-step budgeting. |
-| `stamina` | `int` | Default 10. Ignored by `GridWorldEnv.step()` itself; depleted by `SpeedWrapper` (1 per sub-step), reset to max on `env.reset()`. |
+| `stamina` | `int` | Default 10. Ignored by `GridWorldEnv.step()` itself; read once by `SpeedWrapper`, which then tracks depletion in its own private state, so the attribute itself never changes (and nothing is deducted at all when every agent is at speed 1). |
 | `_agent_location` | `np.ndarray (2,)` | Current `[x, y]` position |
 | `action_space` | `gym.spaces.Discrete(5)` | 5 discrete actions |
 

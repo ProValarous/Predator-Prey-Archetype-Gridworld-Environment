@@ -1,0 +1,12 @@
+/*
+ * PPAGE_overview.png is exported on a transparent background with white
+ * connector lines and arrowheads, so on the light palette every edge in the
+ * flowchart disappears and only the coloured boxes remain. The site defaults to
+ * the dark (slate) scheme where it reads correctly; this keeps it legible for
+ * readers who flip the toggle, without needing the diagram source to re-export.
+ */
+[data-md-color-scheme="default"] img[src$="PPAGE_overview.png"] {
+  background: #21252b;
+  padding: 0.5rem;
+  border-radius: 4px;
+}

@@ -31,7 +31,7 @@ Implemented in `src/ppage/core/agent.py`.
 | `agent_team` | Identity | No |
 | `agent_speed` | Identity | Yes, once — overwritten by `build_agents()` from `agents.yaml` right after construction |
 | `_agent_location` | State | Yes (every step) |
-| `stamina` | State | Yes — depleted by `SpeedWrapper` (1 per sub-step taken), reset to max on `env.reset()` |
+| `stamina` | State | No — read once by `SpeedWrapper`, which tracks depletion in its own private state |
 
 Agent identity is set at construction and never changes. The environment modifies `_agent_location` directly during `step()`.
 

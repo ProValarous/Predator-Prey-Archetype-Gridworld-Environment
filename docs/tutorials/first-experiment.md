@@ -50,7 +50,7 @@ by `.github/scripts/make_docs_media.py` (a tabular Q-learning predator chasing a
 random-moving prey), so it shows the learning outcome clearly:
 
 <p align="center">
-  <img src="../assets/images/episode_trained.gif" alt="A trained predator chasing and capturing prey on a 7x7 grid" width="320"/>
+  <img src="../../assets/images/episode_trained.gif" alt="A trained predator chasing and capturing prey on a 7x7 grid" width="320"/>
 </p>
 
 The episode ends the moment a predator lands on the prey's cell (a capture). Early
@@ -71,7 +71,7 @@ proceeds, return should rise and episode length should fall (captures happen
 sooner).
 
 <p align="center">
-  <img src="../assets/images/learning_curve.png" alt="Predator return rising and episode length falling over training episodes" width="640"/>
+  <img src="../../assets/images/learning_curve.png" alt="Predator return rising and episode length falling over training episodes" width="640"/>
 </p>
 
 - **Return going up** → the policy is finding more reward (captures, less step cost).

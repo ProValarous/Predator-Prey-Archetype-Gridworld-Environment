@@ -123,6 +123,8 @@ plug-and-play/                # Start here: runnable entry points
 
 **`ModuleNotFoundError: ppage`** — install the package first: `pip install -e .` from the repository root.
 
-**pygame window does not open** — set `render_mode: null` in `env.yaml` for headless runs.
+**an unwanted pygame window opens during training** — set `render_mode: null` in `plug-and-play/configs/env.yaml` (already the shipped default). Note that `render.py` overrides this key to `"human"`, so it cannot suppress the window there.
+
+**pygame window never appears when running `render.py`** — the script forces a window, so a missing one means pygame failed to initialise; check the traceback.
 
 **`pip` not found** — use `python -m pip install` instead of calling `pip` directly.
