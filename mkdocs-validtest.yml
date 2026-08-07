@@ -1,0 +1,178 @@
+site_name: Predator-Prey Gridworld Environment
+site_description: A minimalist multi-agent predator-prey environment for MARL research.
+site_url: https://uhumalab.github.io/PPAGE/
+repo_url: https://github.com/UHUMALAB/PPAGE
+repo_name: UHUMALAB/PPAGE
+
+nav:
+  - Home: index.md
+  - Mission: mission.md
+  - Getting Started:
+    - Quickstart: guides/quickstart.md
+    - Student Reading Guide: student-guide.md
+  - Learn the Theory:
+    - RL Foundations: concepts/rl-foundations.md
+    - MARL Theory: concepts/marl.md
+  - Overview:
+    - Project Overview: overview/index.md
+    - Design Philosophy: overview/design-philosophy.md
+    - Scope & Roadmap: overview/scope-and-roadmap.md
+    - Architecture: overview/architecture.md
+    - Glossary: overview/glossary.md
+  - Concepts:
+    - GridWorld: concepts/gridworld.md
+    - Agents: concepts/agents.md
+    - Observations: concepts/observations.md
+    - Rewards: concepts/rewards.md
+    - Actions: concepts/actions.md
+    - Wrappers: concepts/wrappers.md
+  - Data Flows:
+    - Initialization: flows/init-flow.md
+    - Per-Step Pipeline: flows/step-flow.md
+    - Training Loop: flows/training-loop.md
+  - Algorithms:
+    - Overview: algorithms/index.md
+    - IQL (Independent Q-Learning): algorithms/iql.md
+    - CQL & MixedTrainer: algorithms/cql-mixed.md
+    - DQN (Deep Q-Network): algorithms/dqn.md
+    - DQN Variants: concepts/dqn-variants.md
+    - ActorCritic (On-Policy): algorithms/actor-critic.md
+    - A2C (Batched Actor-Critic): algorithms/a2c.md
+    - A3C (Asynchronous Actor-Critic): algorithms/a3c.md
+  - Tutorials &amp; Guides:
+    - First Experiment: tutorials/first-experiment.md
+    - Custom Observation Builder: guides/custom-observation.md
+    - Custom Reward Function: guides/custom-reward.md
+    - Custom Action Space: guides/custom-action.md
+    - Config Recipes: guides/config-recipes.md
+    - Using evaluate.py: guides/using-evaluate.md
+  - Specs:
+    - ObservationBuilder Spec: specs/observation-builder-spec.md
+    - RewardFunction Spec: specs/reward-function-spec.md
+    - ActionSpace Spec: specs/action-space-spec.md
+    - BaseAlgorithm Spec: specs/algorithm-spec.md
+  - Reference:
+    - API Reference: reference/api-reference.md
+    - Config Reference: reference/config-reference.md
+    - Papers & Further Reading: reference/papers.md
+    - Agent Class: api/agents.md
+    - GridWorldEnv Class: api/gridworld.md
+    - Baselines Classes: api/baselines.md
+  - Contributing:
+    - How to Contribute: contributing.md
+    - Git Workflow: git-workflow.md
+    - Code of Conduct: CODE_OF_CONDUCT.md
+  - Historical Notes:
+    - DQN Integration Notes: dqn-integration-notes.md
+    - DQN PR Comparison (22-24): pr-comparison-22-23-24.md
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - navigation.expand
+    - toc.follow
+    - search.highlight
+    - search.suggest
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+  palette:
+    # First entry is the default: dark
+    - scheme: slate
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          # ppage/core/ and each ppage/baselines/<ALGO>/ subdir have
+          # no __init__.py (namespace packages) — griffe can't traverse
+          # them as submodules of their parent package. core/ is
+          # deliberately kept that way (off-limits per CONTRIBUTING.md's
+          # Golden Rule, so adding __init__.py there isn't an option);
+          # the ppage/baselines/ subdirs are just an existing gap. Rather than
+          # touch source for a docs config, each is listed here as its
+          # own search root instead, referenced with a bare module name
+          # in docs/api/*.md (e.g. `agent.Agent`, `iql.IQL`).
+          paths:
+            - src
+            - src/ppage/core
+            - src/ppage/baselines
+            - src/ppage/baselines/IQL
+            - src/ppage/baselines/CQL
+            - src/ppage/baselines/MIXED
+            - src/ppage/baselines/DQN
+            - src/ppage/baselines/AC
+            - src/ppage/baselines/A2C
+            - src/ppage/baselines/A3C
+          options:
+            docstring_style: numpy
+            show_source: true
+            show_root_heading: true
+            heading_level: 2
+            members_order: source
+            show_signature_annotations: true
+            separate_signature: true
+
+markdown_extensions:
+  - admonition
+  - tables
+  - footnotes
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - attr_list
+  - md_in_html
+
+# LaTeX math rendering (MathJax) for the theory pages
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+  links:
+    not_found: warn
+    anchors: warn
+    unrecognized_links: warn

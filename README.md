@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="miscellenous/imgs/title-dark.png?v=2">
-    <img src="miscellenous/imgs/title-light.png?v=2" alt="PPAGE: Predator–Prey Archetype Gridworld Environment" width="540">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/UHUMALAB/PPAGE/main/miscellenous/imgs/title-dark.png?v=2">
+    <img src="https://raw.githubusercontent.com/UHUMALAB/PPAGE/main/miscellenous/imgs/title-light.png?v=2" alt="PPAGE: Predator–Prey Archetype Gridworld Environment" width="540">
   </picture>
 </p>
 
@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="miscellenous/gifs/demo.gif" alt="A trained DQN predator (red) running down a prey (green) across a 10x10 obstacle grid until capture" width="480">
+  <img src="https://raw.githubusercontent.com/UHUMALAB/PPAGE/main/miscellenous/gifs/demo.gif" alt="A trained DQN predator (red) running down a prey (green) across a 10x10 obstacle grid until capture" width="480">
 </p>
 
 <p align="center"><sub>A <b>trained</b> DQN predator (speed 2) running down a speed-1 prey around obstacles until capture, from the ready-made <code>plug-and-play/configs/dqn_1v1</code> experiment.</sub></p>
@@ -33,21 +33,21 @@ A <b>deterministic, modular, research-grade multi-agent predator–prey environm
 <table>
   <tr>
     <td width="50%" align="center">
-      <img src="miscellenous/gifs/showcase/showcase_1v1_10x10.gif" alt="One predator and one prey moving on a 10x10 grid with obstacles" width="100%">
+      <img src="https://raw.githubusercontent.com/UHUMALAB/PPAGE/main/miscellenous/gifs/showcase/showcase_1v1_10x10.gif" alt="One predator and one prey moving on a 10x10 grid with obstacles" width="100%">
       <br><sub><b>1 predator vs 1 prey</b> · 10&times;10<br>the same setup as the hero, untrained</sub>
     </td>
     <td width="50%" align="center">
-      <img src="miscellenous/gifs/showcase/showcase_2v2_10x10.gif" alt="Two predators and two double-speed prey on a 10x10 grid" width="100%">
+      <img src="https://raw.githubusercontent.com/UHUMALAB/PPAGE/main/miscellenous/gifs/showcase/showcase_2v2_10x10.gif" alt="Two predators and two double-speed prey on a 10x10 grid" width="100%">
       <br><sub><b>2 predators vs 2 prey at double speed</b> · 10&times;10<br>speed/stamina via <code>SpeedWrapper</code></sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
-      <img src="miscellenous/gifs/showcase/showcase_3v3v10_50x50.gif" alt="Two predator teams, one moving cardinally and one diagonally, hunting ten prey on a 50x50 grid" width="100%">
+      <img src="https://raw.githubusercontent.com/UHUMALAB/PPAGE/main/miscellenous/gifs/showcase/showcase_3v3v10_50x50.gif" alt="Two predator teams, one moving cardinally and one diagonally, hunting ten prey on a 50x50 grid" width="100%">
       <br><sub><b>Two predator teams vs 10 prey</b> · 50&times;50<br>cardinal movement (red) vs diagonal movement (pink)</sub>
     </td>
     <td width="50%" align="center">
-      <img src="miscellenous/gifs/showcase/showcase_5v20_100x100.gif" alt="Five predators and twenty prey scattered across a 100x100 grid with a thousand obstacles" width="100%">
+      <img src="https://raw.githubusercontent.com/UHUMALAB/PPAGE/main/miscellenous/gifs/showcase/showcase_5v20_100x100.gif" alt="Five predators and twenty prey scattered across a 100x100 grid with a thousand obstacles" width="100%">
       <br><sub><b>5 predators vs 20 prey</b> · 100&times;100<br>1,000 obstacles</sub>
     </td>
   </tr>
@@ -57,8 +57,10 @@ The clip above shows a *trained* policy on one configuration; these four show
 the range of configurations themselves, all under **untrained, uniformly
 random actions**. Read the first tile against the hero above and the difference
 between learned pursuit and random motion is the whole point of the testbed.
-Grid size, populations, obstacle density, and per-agent speed are all YAML
-keys, so the same unmodified core produces every one of these.
+Each clip runs a few short episodes: an episode ends at the first capture, then
+the next begins with a fresh layout. Grid size, populations, obstacle density,
+and per-agent speed are all YAML keys, so the same unmodified core produces
+every one of these.
 Colours and shapes are the environment's own (predators on the red hue, prey on
 green, shade and shape separating subteams). Regenerate them with
 `python .github/scripts/make_showcase_gifs.py`.
@@ -128,7 +130,7 @@ result = env.reset()
 
 ### Option 2: clone the repository (ready-made experiments)
 
-The YAML-driven experiment runners live in [`plug-and-play/`](plug-and-play/),
+The YAML-driven experiment runners live in [`plug-and-play/`](https://github.com/UHUMALAB/PPAGE/tree/main/plug-and-play/),
 which ships with the repository, not the pip package. The package uses a
 standard `src/` layout, so an editable install makes `ppage` importable
 without setting `PYTHONPATH`.
@@ -150,7 +152,7 @@ python plug-and-play/scripts/run_dqn.py --config-dir plug-and-play/configs/dqn_1
 ```
 
 All experiments are launched from the repository root. For a five-minute
-walkthrough, see [`QUICKSTART.md`](QUICKSTART.md); for the full guided version,
+walkthrough, see [`QUICKSTART.md`](https://github.com/UHUMALAB/PPAGE/blob/main/QUICKSTART.md); for the full guided version,
 the [docs quickstart](https://uhumalab.github.io/PPAGE/guides/quickstart/).
 
 ### Running the tests
@@ -174,7 +176,7 @@ PPAGE deliberately balances two properties that usually trade off against
 each other:
 
 * **Accessibility** — a first experiment should cost minutes, not days.
-  `pip install ppage`, one [`plug-and-play/`](plug-and-play/) folder where
+  `pip install ppage`, one [`plug-and-play/`](https://github.com/UHUMALAB/PPAGE/tree/main/plug-and-play/) folder where
   runnable scripts sit next to the YAML configs they consume, and experiment
   changes that never require touching Python.
 * **Versatility** — every scientific axis of the experiment is swappable.
@@ -252,7 +254,7 @@ table above.
 * **A2C**: n-step advantage actor-critic (PyTorch)
 * **A3C**: asynchronous A2C across worker processes (PyTorch, Hogwild)
 
-See [`src/ppage/baselines/README.md`](src/ppage/baselines/README.md) for the
+See [`src/ppage/baselines/README.md`](https://github.com/UHUMALAB/PPAGE/blob/main/src/ppage/baselines/README.md) for the
 algorithm contract and when to use each one.
 
 Algorithms interact with the environment only through:
@@ -328,8 +330,8 @@ You are encouraged to:
 
 You are not expected to modify core environment dynamics; this is enforced
 automatically: a CI check fails any pull request that touches
-`src/ppage/core/`. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full
-contribution rules, and [`docs/git-workflow.md`](docs/git-workflow.md) for
+`src/ppage/core/`. See [`CONTRIBUTING.md`](https://github.com/UHUMALAB/PPAGE/blob/main/CONTRIBUTING.md) for the full
+contribution rules, and [`docs/git-workflow.md`](https://github.com/UHUMALAB/PPAGE/blob/main/docs/git-workflow.md) for
 branching, commits, and how to open a PR.
 
 This mirrors how research infrastructure is structured in practice.
@@ -338,7 +340,7 @@ This mirrors how research infrastructure is structured in practice.
 
 ## 📜 Citation
 
-This repository ships a machine-readable [`CITATION.cff`](CITATION.cff); GitHub's
+This repository ships a machine-readable [`CITATION.cff`](https://github.com/UHUMALAB/PPAGE/blob/main/CITATION.cff); GitHub's
 "Cite this repository" button uses it. BibTeX equivalent:
 
 ```bibtex
@@ -357,4 +359,4 @@ This repository ships a machine-readable [`CITATION.cff`](CITATION.cff); GitHub'
 
 ## ⚖️ License
 
-[Apache License 2.0](LICENSE)
+[Apache License 2.0](https://github.com/UHUMALAB/PPAGE/blob/main/LICENSE)

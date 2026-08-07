@@ -94,14 +94,15 @@ the architecture-contract tests hold your plugin to the same rules.
 
 Every clip runs at 10% obstacle density with **untrained, uniformly random
 actions**: they show what the environment can be configured to express, not
-learned behaviour. For the contrast, the
-[trained DQN pursuit on the landing page](../index.md) uses the same 1v1
+learned behaviour, and each clip runs a few short episodes: an episode ends at
+the first capture, then the next begins with a fresh layout. For the contrast,
+the [trained DQN pursuit on the landing page](../index.md) uses the same 1v1
 configuration as the first tile. Colours and marker shapes are the
 environment's own, from
-[`Agent.get_agent_color()`](../reference/api-reference.md) (predators on the red
-hue, prey on green, with shade and shape separating subteams), and the two
-movement geometries in the third clip are the shipped `discrete_5` and `cross`
-action spaces.
+[`Agent.get_agent_color()`](../api/agents.md) (predators on the red hue, prey on
+green, with shade and shape separating subteams), and the two movement
+geometries in the third clip are the shipped `discrete_5` and `cross` action
+spaces.
 
 !!! note "What is config and what is not"
     Grid size, populations, obstacle density, and per-agent speed/stamina are

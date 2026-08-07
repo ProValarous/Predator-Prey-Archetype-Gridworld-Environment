@@ -23,8 +23,11 @@ Three things worth knowing about how these clips are composed:
 
 1. **Double speed** (scenario 2) is the real ``SpeedWrapper`` mechanic: a
    logical step is replayed as ``min(speed, stamina)`` sub-steps, so the prey
-   advance two cells per frame. Stamina is raised well above its default 10 so
-   the clip does not show prey freezing once their budget runs out.
+   advance two cells per frame. Stamina is sized per scenario
+   (``Scenario.stamina_for``) rather than left at the shipped default of 10,
+   which would otherwise strand an agent motionless partway through the clip.
+   Episodes end at the first capture and the clip resets and keeps filming,
+   because the core freezes captured prey in place and keeps drawing them.
 2. **Per-team movement geometry** (scenario 3) is *not* a supported core
    feature -- ``GridWorldEnv`` holds one global ``action_space_plugin``. The
    clip composes it through the core's documented per-agent fallback: with no
@@ -107,7 +110,6 @@ class Group:
     team: str
     count: int
     speed: int = 1
-    stamina: int = 10
     geometry: Optional[str] = None  # None -> the Agent's own cardinal map
 
 
@@ -130,13 +132,30 @@ class Scenario:
     stats: Dict[str, int] = field(default_factory=dict)
 
     @property
-    def mixed_geometry(self) -> bool:
-        """True when agents need different direction maps from each other."""
-        return len({g.geometry for g in self.groups if g.geometry}) > 1
+    def per_agent_geometry(self) -> bool:
+        """
+        True when any group names a movement geometry.
+
+        The per-agent direction map is only consulted while no global action
+        plugin is attached, so naming *any* geometry means the plugin has to
+        stay off. Keying this off "more than one distinct geometry" would
+        silently ignore a single named geometry.
+        """
+        return any(g.geometry for g in self.groups)
 
     @property
     def max_speed(self) -> int:
         return max((g.speed for g in self.groups), default=1)
+
+    def stamina_for(self, group: "Group") -> int:
+        """
+        Stamina large enough that no agent can run dry inside the clip.
+
+        SpeedWrapper spends one stamina per sub-step and only refills on
+        reset(), so the shipped default of 10 would freeze an agent partway
+        through and misrepresent the mechanic being demonstrated.
+        """
+        return (self.frames + 2) * max(1, group.speed)
 
 
 SCENARIOS = [
@@ -160,9 +179,9 @@ SCENARIOS = [
         seed=23,
         groups=[
             Group("predator", "predator_1", 2),
-            # Double speed via SpeedWrapper; stamina raised so the budget lasts
-            # the whole clip instead of emptying after five logical steps.
-            Group("prey", "prey_1", 2, speed=2, stamina=10_000),
+            # Double speed via SpeedWrapper. Stamina is sized per scenario (see
+            # Scenario.stamina_for) so neither side runs dry mid-clip.
+            Group("prey", "prey_1", 2, speed=2),
         ],
         caption="2 predators vs 2 prey at double speed, 10x10",
     ),
@@ -219,7 +238,7 @@ def build_agents(scn: Scenario) -> List[Agent]:
                 agent_name=f"{group.team}_{i}",
             )
             agent.agent_speed = group.speed
-            agent.stamina = group.stamina
+            agent.stamina = scn.stamina_for(group)
             if scn.total_subteams is not None:
                 agent.total_subteams = scn.total_subteams
             if group.geometry is not None:
@@ -230,35 +249,43 @@ def build_agents(scn: Scenario) -> List[Agent]:
                     a: plugin.to_direction(a) for a in range(plugin.n_actions)
                 }
             agents.append(agent)
+
+    names = [a.agent_name for a in agents]
+    if len(set(names)) != len(names):
+        # Agent names key the action dict and the wrapper's speed/stamina
+        # tables, so a collision would silently drop an agent's action.
+        raise ValueError(f"{scn.slug}: duplicate agent names in roster: {names}")
     return agents
 
 
 def make_env(scn: Scenario, agents: List[Agent]):
     """Build the env for a scenario; returns (steppable, core_env)."""
-    n_prey = sum(g.count for g in scn.groups if g.agent_type == "prey")
     env = GridWorldEnv(
         agents=agents,
         size=scn.size,
         perc_num_obstacle=OBSTACLE_PERCENT,
         render_mode=None,  # frames are drawn here, offscreen
         seed=scn.seed,
-        # Let the clip run past the first capture so the whole population stays
-        # visible for the length of the animation.
-        capture_threshold=n_prey + 1,
+        # End the episode on the first capture. The core freezes captured prey
+        # in place and keeps drawing them, so letting the episode run on would
+        # park a motionless agent on screen for most of the clip; build_clip
+        # resets instead and films the next episode.
+        capture_threshold=1,
         # SpeedWrapper replays a logical step as several core steps, and
         # max_steps counts core steps, so scale the budget by the top speed or
         # the clip truncates early.
         max_steps=(scn.frames + 1) * scn.max_speed,
     )
 
-    if scn.mixed_geometry:
+    if scn.per_agent_geometry:
         # Per-agent direction maps only take effect while no global plugin is
         # attached, which also rules out SpeedWrapper (it needs a plugin to
         # detect NOOP actions).
         if scn.max_speed > 1:
             raise ValueError(
-                f"{scn.slug}: mixed movement geometry cannot be combined with "
-                "speeds above 1 (SpeedWrapper requires a global action plugin)"
+                f"{scn.slug}: per-agent movement geometry cannot be combined "
+                "with speeds above 1 (SpeedWrapper requires a global action "
+                "plugin, which overrides the per-agent maps)"
             )
         env.action_space_plugin = None
         return env, env
@@ -358,6 +385,8 @@ def build_clip(scn: Scenario) -> List[Image.Image]:
     policy_rng = np.random.default_rng(scn.seed + 1000)
 
     frames = [render_frame(core, scn)]
+    episodes = 1
+    captures = 0
     for _ in range(scn.frames):
         actions = {
             ag.agent_name: int(policy_rng.integers(N_ACTIONS)) for ag in core.agents
@@ -365,14 +394,23 @@ def build_clip(scn: Scenario) -> List[Image.Image]:
         result = steppable.step(actions)
         frames.append(render_frame(core, scn))
         if result["terminated"] or result["truncated"]:
-            break
+            # Show the terminal frame briefly, then start a fresh episode so the
+            # clip keeps moving rather than holding on frozen captured prey.
+            # reset() without a seed lets the environment's generator carry on,
+            # giving a new layout while the whole clip stays reproducible.
+            captures += len(core._captured_agents)
+            frames.append(frames[-1])
+            steppable.reset()
+            episodes += 1
+            frames.append(render_frame(core, scn))
 
-    frames.extend([frames[-1]] * 4)  # brief hold on the final frame
+    frames.extend([frames[-1]] * 3)  # brief hold on the final frame
     scn.stats = {
         "agents": len(core.agents),
         "obstacles": len(core._obstacle_location),
-        "captured": len(core._captured_agents),
-        "frames": len(frames),
+        "episodes": episodes,
+        "captures": captures,
+        "rendered": len(frames),
     }
     steppable.close()
     return frames
@@ -412,12 +450,18 @@ def main() -> None:
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes((primary / f"{scn.slug}.gif").read_bytes())
         total += size
+        # Report the frame count actually present in the written file: the GIF
+        # writer drops frames identical to their predecessor, so the number of
+        # rendered frames overstates it.
+        with Image.open(primary / f"{scn.slug}.gif") as written:
+            n_frames = getattr(written, "n_frames", 1)
         print(
             f"wrote {scn.slug}.gif  "
-            f"{scn.stats['frames']} frames  "
+            f"{n_frames} frames (of {scn.stats['rendered']} rendered)  "
             f"{scn.stats['agents']} agents  "
             f"{scn.stats['obstacles']} obstacles  "
-            f"{scn.stats['captured']} captured  "
+            f"{scn.stats['episodes']} episodes  "
+            f"{scn.stats['captures']} captures  "
             f"{size / 1024:.0f} KB"
         )
     print(f"total {total / 1024:.0f} KB in {len(OUTPUT_DIRS)} locations")
