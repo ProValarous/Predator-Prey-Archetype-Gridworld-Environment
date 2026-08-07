@@ -37,6 +37,27 @@ jobs:
           python -m pip install --upgrade pip
           pip install build
 
+      # README.md is the package long description (pyproject's readme key), and
+      # PyPI does not resolve repo-relative paths, so its image and link URLs are
+      # absolute. The committed copy points at main so the GitHub page always
+      # shows current artwork; a published sdist's long description, by contrast,
+      # is frozen forever, so pin this build's copy to the tag being released.
+      # That keeps this version's PyPI page rendering even if files later move on
+      # main, without anyone having to bump URLs by hand each release.
+      - name: Pin README URLs to the released tag
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          sed -i \
+            -e "s|raw.githubusercontent.com/UHUMALAB/PPAGE/main/|raw.githubusercontent.com/UHUMALAB/PPAGE/${TAG}/|g" \
+            -e "s|github.com/UHUMALAB/PPAGE/blob/main/|github.com/UHUMALAB/PPAGE/blob/${TAG}/|g" \
+            -e "s|github.com/UHUMALAB/PPAGE/tree/main/|github.com/UHUMALAB/PPAGE/tree/${TAG}/|g" \
+            README.md
+          echo "pinned $(grep -c "UHUMALAB/PPAGE/${TAG}/" README.md) URLs to ${TAG}"
+          if grep -q "UHUMALAB/PPAGE/\(blob/\|tree/\)\?main/" README.md; then
+            echo "::error::README still references main after pinning" && exit 1
+          fi
+
       - name: Build sdist and wheel
         run: python -m build
 

@@ -47,6 +47,12 @@ paths were repo-relative, so the project page showed none of the artwork.
 - A stray `mkdocs-validtest.yml`, created while validating the docs config, was
   committed by accident and is removed.
 
+### Changed
+- The release workflow now pins the packaged README's GitHub URLs to the tag
+  being released. The committed README stays pointed at `main`, so the GitHub
+  page always shows current artwork, while each published sdist keeps a frozen
+  long description whose links and images cannot rot when files later move.
+
 ## [0.9.1] - 2026-08-07
 
 ### Added
