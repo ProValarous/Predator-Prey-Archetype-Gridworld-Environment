@@ -9,6 +9,7 @@ from multi_agent_package.core.agent import Agent
 from multi_agent_package.core.gridworld import GridWorldEnv
 from multi_agent_package.rewards.base_reward import BaseReward
 from multi_agent_package.rewards.predator_distance import PredatorDistanceReward
+from multi_agent_package.rewards.prey_distance import PreyDistanceReward
 from multi_agent_package.rewards.survival_reward import SurvivalReward
 
 # ------------------------------------------------------------------
@@ -137,6 +138,85 @@ class TestPredatorDistanceReward:
         reward_fn = PredatorDistanceReward(weight=1.0)
         rewards = reward_fn.compute(env)
         assert rewards["pred_1"] == pytest.approx(0.0)
+
+
+# ------------------------------------------------------------------
+# PreyDistanceReward
+# ------------------------------------------------------------------
+
+
+class TestPreyDistanceReward:
+    def test_returns_all_agent_keys(self):
+        env = make_env()
+        reward_fn = PreyDistanceReward(weight=1.0)
+        rewards = reward_fn.compute(env)
+        assert set(rewards.keys()) == {"pred_1", "prey_1"}
+
+    def test_prey_reward_is_positive(self):
+        """Prey should receive positive reward proportional to distance."""
+        env = make_env()
+        env.agents[0]._agent_location = np.array([0, 0], dtype=np.int32)
+        env.agents[1]._agent_location = np.array([3, 4], dtype=np.int32)
+        reward_fn = PreyDistanceReward(weight=1.0)
+        rewards = reward_fn.compute(env)
+        assert rewards["prey_1"] > 0
+
+    def test_predator_reward_is_zero(self):
+        env = make_env()
+        reward_fn = PreyDistanceReward(weight=1.0)
+        rewards = reward_fn.compute(env)
+        assert rewards["pred_1"] == pytest.approx(0.0)
+
+    def test_farther_prey_gets_more_positive_reward(self):
+        env = make_env()
+        env.agents[0]._agent_location = np.array([0, 0], dtype=np.int32)
+        env.agents[1]._agent_location = np.array([1, 0], dtype=np.int32)
+        reward_fn = PreyDistanceReward(weight=1.0)
+        close_reward = reward_fn.compute(env)["prey_1"]
+
+        env.agents[1]._agent_location = np.array([5, 5], dtype=np.int32)
+        far_reward = reward_fn.compute(env)["prey_1"]
+
+        assert far_reward > close_reward
+
+    def test_weight_scales_prey_reward(self):
+        env = make_env()
+        env.agents[0]._agent_location = np.array([0, 0], dtype=np.int32)
+        env.agents[1]._agent_location = np.array([3, 0], dtype=np.int32)
+
+        reward_fn_1 = PreyDistanceReward(weight=1.0)
+        reward_fn_2 = PreyDistanceReward(weight=2.0)
+        r1 = reward_fn_1.compute(env)["prey_1"]
+        r2 = reward_fn_2.compute(env)["prey_1"]
+        assert r2 == pytest.approx(r1 * 2)
+
+    def test_no_predator_gives_zero_to_all(self):
+        agents = [Agent(agent_type="prey", agent_team="prey_1", agent_name="prey_1")]
+        env = GridWorldEnv(
+            agents=agents, size=5, perc_num_obstacle=0, render_mode=None, seed=0
+        )
+        env.reset()
+        reward_fn = PreyDistanceReward(weight=1.0)
+        rewards = reward_fn.compute(env)
+        assert rewards["prey_1"] == pytest.approx(0.0)
+
+    def test_not_a_negation_of_predator_distance(self):
+        """At matching, non-equal weights the two shaping terms must NOT sum
+        to a constant (the degenerate case Ahmed flagged: equal-and-opposite
+        weights zero out the LP's welfare signal on every step)."""
+        env = make_env()
+        env.agents[0]._agent_location = np.array([0, 0], dtype=np.int32)
+        env.agents[1]._agent_location = np.array([2, 0], dtype=np.int32)
+        pred_fn = PredatorDistanceReward(weight=0.5)
+        prey_fn = PreyDistanceReward(weight=0.2)
+        sum_close = pred_fn.compute(env)["pred_1"] + prey_fn.compute(env)["prey_1"]
+
+        env.agents[1]._agent_location = np.array([5, 5], dtype=np.int32)
+        sum_far = pred_fn.compute(env)["pred_1"] + prey_fn.compute(env)["prey_1"]
+
+        assert sum_close != pytest.approx(0.0)
+        assert sum_far != pytest.approx(0.0)
+        assert sum_close != pytest.approx(sum_far)
 
 
 # ------------------------------------------------------------------

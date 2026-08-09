@@ -51,25 +51,18 @@ class ActorCritic(BaseAlgorithm):
         self.value_coef = float(config.get("value_coef", 0.5))
         self.entropy_coef = float(config.get("entropy_coef", 0.0))
         self.grad_clip = float(config.get("grad_clip", 5.0))
-        # L2 penalty on the policy head only (see A2C's actor_weight_decay,
-        # docs/algorithms/a2c.md). AC's trunk is SHARED between the policy and
-        # value heads, unlike A2C's fully separate actor/critic networks, so
-        # decay is scoped to policy_head's own parameters via a dedicated
-        # optimizer param group -- decaying the shared trunk would also
-        # regularize the critic's features, not just the actor's. 0.0
-        # preserves the original single-group behavior.
+        # L2 penalty on the policy head only, via a dedicated optimizer
+        # param group -- the trunk is SHARED with the value head here
+        # (unlike A2C's separate networks), so decaying it would also
+        # regularize the critic. 0.0 preserves the original behavior.
         self.actor_weight_decay = float(config.get("actor_weight_decay", 0.0))
-        # Normalizes the critic's regression target (not just the reward) by
-        # its own running mean/std -- fixes the actual root cause of the
-        # entropy collapse actor_weight_decay only works around: with nothing
-        # bounding the shared trunk's output scale, the critic's need to
-        # represent this env's large-magnitude returns forces the trunk to
-        # grow without limit, and policy_head's logits (a fixed linear
-        # readout on those same trunk features) inherit that growth for
-        # free, saturating the softmax independent of any actor gradient.
-        # See docs/algorithms/actor-critic.md for the full diagnostic trail.
-        # False preserves the original raw-value behavior (Sutton & Barto
-        # Algorithm 13.5 as originally implemented).
+        # Normalizes the critic's regression target by a running mean/std.
+        # Root cause this fixes: an unbounded shared trunk grows to
+        # represent this env's large returns, and policy_head's logits
+        # (a linear readout on those same features) saturate the softmax
+        # as a side effect, independent of any actor gradient. See
+        # docs/algorithms/actor-critic.md for the diagnostic trail. False
+        # preserves the original Sutton & Barto Algorithm 13.5 behavior.
         self.normalize_returns = bool(config.get("normalize_returns", False))
         self.return_norm_decay = float(config.get("return_norm_decay", 0.999))
         self.device = torch.device(config.get("device", "cpu"))
@@ -240,14 +233,12 @@ class ActorCritic(BaseAlgorithm):
             next_value = next_value * (0.0 if terminal else 1.0)
 
             if self.normalize_returns:
-                # `value`/`next_value` are on a NORMALIZED scale once this is
-                # enabled. Un-normalize next_value against the PRIOR estimate
-                # to bootstrap in raw units, then update the running stats
-                # AND analytically rescale value_head's weights (PopArt's
-                # "preserving outputs precisely") so its denormalized
-                # prediction stays consistent across this update -- see
-                # return_normalizer.py's docstring for why the plain,
-                # non-rescaling update() alone can diverge.
+                # value/next_value are on a NORMALIZED scale here. Un-
+                # normalize next_value against the PRIOR estimate to
+                # bootstrap in raw units, then update the running stats AND
+                # rescale value_head's weights (PopArt) so its denormalized
+                # prediction stays consistent -- see return_normalizer.py's
+                # docstring for why skipping the rescale can diverge.
                 normalizer = self.return_normalizers[agent_id]
                 next_value_raw = normalizer.denormalize(next_value.item())
                 raw_target = reward + self.gamma * next_value_raw

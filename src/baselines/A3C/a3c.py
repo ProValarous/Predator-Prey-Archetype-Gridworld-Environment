@@ -142,14 +142,11 @@ def _worker_loop(
                         global_networks[aid].state_dict()
                     )
 
-                # ONE snapshot of each agent's normalizer stats, taken right
-                # at sync time and reused for this whole rollout -- local
-                # network's collected values below reflect whatever scale
-                # was true at THIS sync, so the returns computed against
-                # them must use this exact same snapshot to stay internally
-                # consistent, even though the shared estimate may keep
-                # moving (from other workers) while this rollout is still
-                # in flight. See SharedReturnNormalizer's docstring.
+                # ONE snapshot of each agent's normalizer stats, taken at
+                # sync time and reused for this whole rollout, so returns
+                # stay consistent with the values collected under it even
+                # while the shared estimate keeps moving from other workers.
+                # See SharedReturnNormalizer's docstring.
                 norm_snapshot = (
                     {aid: return_normalizers[aid].stats() for aid in agent_ids}
                     if return_normalizers is not None
@@ -251,26 +248,20 @@ def _worker_loop(
 
                     # Hogwild: push local gradients straight onto the shared
                     # global parameters and step the shared optimizer --
-                    # other workers may be doing the same concurrently;
-                    # that staleness is the point of A3C, and an ordinary
-                    # gradient-push race is benign SGD noise.
+                    # other workers may do the same concurrently; that
+                    # staleness is the point of A3C, and a plain gradient
+                    # race is benign SGD noise.
                     #
-                    # When normalize_returns is on, this step is bracketed
-                    # in the SAME lock as the rescale below (rather than
-                    # left unlocked): a concurrent unlocked step() CAN
-                    # interleave with the rescale's in-place
-                    # `weight.mul_(ratio)` and leave the shared value_head
-                    # internally inconsistent (some weight elements
-                    # rescaled, others not) -- unlike a plain gradient race,
-                    # that is NOT self-correcting, and was confirmed as a
-                    # real bug: a 3v3 config's much higher return variance
-                    # made large rescale ratios common enough that this hit
-                    # in practice (OverflowError within ~450 episodes),
-                    # where 1v1's steadier returns had been surviving the
-                    # same unprotected race by luck. See
-                    # SharedReturnNormalizer's docstring for the full
-                    # writeup. When normalize_returns is off there is no
-                    # shared rescale to race against, so no lock is needed.
+                    # When normalize_returns is on, step() is bracketed in
+                    # the SAME lock as the rescale below: an unlocked
+                    # step() can interleave with the rescale's in-place
+                    # weight.mul_(ratio) and leave value_head partially
+                    # rescaled -- not self-correcting like a gradient race.
+                    # Confirmed in practice on a 3v3 config (higher return
+                    # variance -> larger rescale ratios -> OverflowError
+                    # within ~450 episodes; see SharedReturnNormalizer's
+                    # docstring). No lock needed when normalize_returns is
+                    # off -- nothing shared to race against.
                     lock_ctx = (
                         return_normalizers[aid].lock()
                         if return_normalizers is not None
@@ -350,18 +341,14 @@ class A3C(BaseAlgorithm):
         self.entropy_coef = float(config.get("entropy_coef", 0.05))
         self.value_coef = float(config.get("value_coef", 0.5))
         self.grad_clip = float(config.get("grad_clip", 5.0))
-        # L2 penalty on the policy head only (see A2C's actor_weight_decay,
-        # docs/algorithms/a2c.md). A3C reuses AC's shared-trunk network, so
-        # decay is scoped to policy_head's own parameters via a dedicated
-        # optimizer param group -- decaying the shared trunk would also
-        # regularize the critic's features across every worker, not just the
-        # actor's. 0.0 preserves the original single-group behavior.
+        # L2 penalty on the policy head only, via a dedicated optimizer
+        # param group -- A3C reuses AC's shared-trunk network, so decaying
+        # the trunk would also regularize the critic across every worker.
         self.actor_weight_decay = float(config.get("actor_weight_decay", 0.0))
-        # See baselines/AC/return_normalizer.py and AC's own normalize_returns
-        # (docs/algorithms/actor-critic.md) -- same fix, using ONE shared,
-        # lock-protected SharedReturnNormalizer per agent across all workers
-        # (see _build_learners/_worker_loop), so the PopArt weight-rescale
-        # applies consistently instead of workers fighting each other.
+        # Same fix as AC's normalize_returns (docs/algorithms/actor-critic.md),
+        # via ONE shared, lock-protected SharedReturnNormalizer per agent
+        # across all workers, so the PopArt rescale stays consistent instead
+        # of workers fighting each other.
         self.normalize_returns = bool(config.get("normalize_returns", False))
         self.return_norm_decay = float(config.get("return_norm_decay", 0.999))
         self.num_workers = int(config.get("num_workers", 4))

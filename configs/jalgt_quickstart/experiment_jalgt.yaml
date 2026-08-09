@@ -9,5 +9,13 @@ experiment:
       min_epsilon: 0.05
       action_dim: 5
 
+      # Random init (Ahmed's A1 suggestion, 8 Aug 2026): breaks the
+      # all-cells-tied-at-0.0 symmetry that made an early, mostly-unvisited
+      # row indistinguishable until real data arrived. q_init_scale is
+      # small on purpose -- meant to break ties, not dominate genuinely
+      # learned values once they arrive.
+      q_init: random
+      q_init_scale: 0.01
+
       episodes: 3000
       seed: 42

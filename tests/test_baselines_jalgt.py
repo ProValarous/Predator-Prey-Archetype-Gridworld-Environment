@@ -351,6 +351,56 @@ class TestMarginalWeight:
         assert half[aid] == pytest.approx(expected_half)
 
 
+class TestQInit:
+    def test_rejects_invalid_q_init(self):
+        env = make_env(n_pred=1, n_prey=1)
+        with pytest.raises(ValueError):
+            JALGT(env, base_config(q_init="bogus"))
+
+    def test_default_q_init_is_zero(self):
+        env = make_env(n_pred=1, n_prey=1)
+        algo = JALGT(env, base_config(action_dim=5))
+        assert algo.q_init == "zero"
+        js = algo._joint_state(env.reset()[0])
+        assert np.array_equal(algo.q_tables["pred_1"][js], np.zeros(25))
+
+    def test_random_q_init_produces_nonzero_rows(self):
+        env = make_env(n_pred=1, n_prey=1)
+        algo = JALGT(env, base_config(action_dim=5, q_init="random", seed=1))
+        js = algo._joint_state(env.reset()[0])
+        row = algo.q_tables["pred_1"][js]
+        assert row.shape == (25,)
+        assert not np.array_equal(row, np.zeros(25))
+
+    def test_random_q_init_draws_independently_per_state_and_agent(self):
+        """A fresh draw for every never-before-seen (agent, joint_state) pair
+        -- not the same row reused everywhere, and not shared across agents
+        (same independent-object requirement as the zero-init default)."""
+        env = make_env(n_pred=1, n_prey=1)
+        algo = JALGT(env, base_config(action_dim=5, q_init="random", seed=2))
+        js1 = algo._joint_state(env.reset()[0])
+        row_pred = algo.q_tables["pred_1"][js1]
+        row_prey = algo.q_tables["prey_1"][js1]
+        assert not np.array_equal(row_pred, row_prey)
+
+        js2 = js1 + (("marker", 1),)  # a distinct, never-visited joint state
+        row_pred_2 = algo.q_tables["pred_1"][js2]
+        assert not np.array_equal(row_pred, row_pred_2)
+
+    def test_q_init_scale_controls_draw_magnitude(self):
+        env = make_env(n_pred=1, n_prey=1)
+        algo_small = JALGT(
+            env, base_config(action_dim=5, q_init="random", q_init_scale=0.001, seed=3)
+        )
+        algo_large = JALGT(
+            env, base_config(action_dim=5, q_init="random", q_init_scale=10.0, seed=3)
+        )
+        js = algo_small._joint_state(env.reset()[0])
+        small_row = algo_small.q_tables["pred_1"][js]
+        large_row = algo_large.q_tables["pred_1"][js]
+        assert np.abs(small_row).max() < np.abs(large_row).max()
+
+
 class TestJALGTSelectActions:
     def test_returns_all_agents(self):
         env = make_env()
