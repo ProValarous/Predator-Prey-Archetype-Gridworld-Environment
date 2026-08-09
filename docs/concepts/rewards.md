@@ -57,7 +57,15 @@ Without shaping, predators only receive signal when they capture prey (`+100`). 
 | Key | Class | Signal | For |
 |-----|-------|--------|-----|
 | `predator_distance` | `PredatorDistanceReward` | `−weight × dist_to_nearest_prey` | Predators |
+| `prey_distance` | `PreyDistanceReward` | `+weight × dist_to_nearest_predator` | Prey |
 | `survival` | `SurvivalReward` | `+weight` per step alive | Prey |
+
+> **Don't pair `predator_distance` and `prey_distance` at equal weights.**
+> An exact negation of the predator's shaping sums to zero on every step,
+> which can degenerate an equilibrium-based algorithm's objective (see
+> [JAL-GT](../algorithms/jal-gt.md)) into an arbitrary choice. Use
+> asymmetric weights, as `configs/jalgt_quickstart/rewards.yaml` does
+> (`predator_distance` at `0.5`, `prey_distance` at `0.2`).
 
 ---
 
@@ -127,7 +135,7 @@ In practice: IQL often works but may oscillate or converge to suboptimal joint p
 The predator-prey setup is **mixed competitive-cooperative**: predators cooperate implicitly (multiple predators in the same region increase capture probability) while competing with prey. Reward shaping must account for both sides:
 
 - Predator shaping (e.g., `predator_distance`) speeds predator learning at the cost of potential reward hacking (predators orbit prey without capturing)
-- Prey shaping (e.g., `survival`) gives prey a gradient to evade even in sparse-capture episodes
+- Prey shaping (`survival`, `prey_distance`) gives prey a gradient to evade even in sparse-capture episodes — without it, prey has no per-step signal at all beyond the rare capture penalty, which can make a game-theoretic algorithm's "game" degenerate to single-agent optimization (see [JAL-GT's verification writeup](../algorithms/jal-gt.md#verification))
 
 ---
 

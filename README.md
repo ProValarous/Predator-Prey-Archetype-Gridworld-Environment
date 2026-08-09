@@ -105,7 +105,7 @@ Currently registered plug-ins:
 | Category     | Registered options                                                    |
 | ------------ | ----------------------------------------------------------------------- |
 | Observations | `default`, `local_only`, `local_radius`, `absolute`, `relative`          |
-| Rewards      | `base`, `predator_distance`, `survival`                                  |
+| Rewards      | `base`, `predator_distance`, `prey_distance`, `survival`                 |
 | Actions      | `discrete_5`, `cross`, `speed_discrete_5`                               |
 | Wrappers     | `SpeedWrapper` (per-agent speed/stamina, applied last in the build chain) |
 
@@ -117,6 +117,10 @@ Implements:
 * **CQL**: Centralized Q-Learning (tabular)
 * **MixedTrainer**: per-team algorithm assignment (e.g. CQL predators vs IQL prey)
 * **DQN**: Deep Q-Network (PyTorch, generic observation encoder, replay buffer)
+* **ActorCritic**: one-step online actor-critic (PyTorch, on-policy)
+* **A2C**: Advantage Actor-Critic (batched on-policy rollout)
+* **A3C**: Asynchronous Advantage Actor-Critic (multi-process, lock-free)
+* **JAL-GT**: Joint-Action Learning with Game Theory — Correlated Q-learning, solves a game-theoretic equilibrium per state instead of a greedy argmax
 
 See [`src/baselines/README.md`](src/baselines/README.md) for the algorithm contract and when to use each one.
 
@@ -153,7 +157,7 @@ This is enforced, not assumed.
 ```
 src/
 ├── baselines/                # Learning algorithms
-│   ├── IQL/  CQL/  MIXED/  DQN/
+│   ├── IQL/  CQL/  MIXED/  DQN/  AC/  A2C/  A3C/  JALGT/
 │   └── registry/              # Algorithm name -> class
 └── multi_agent_package/      # Environment
     ├── core/                 # Immutable environment dynamics (maintainers only)
@@ -166,8 +170,8 @@ src/
 
 configs/                      # YAML experiment definitions
 ├── env.yaml, agents.yaml, observations.yaml, rewards.yaml, actions.yaml
-├── experiment_{iql,cql,mixed,dqn}.yaml
-└── dqn_1v1/, dqn_speed1/, dqn_speed2/, dqn_speed3/   # ready-made DQN experiment sets
+├── experiment_{iql,cql,mixed,dqn,actor_critic,a2c,a3c,jalgt}.yaml
+└── dqn_1v1/, dqn_speed1/, dqn_speed2/, dqn_speed3/, jalgt_quickstart/   # ready-made experiment sets
 
 tests/                        # pytest suite: registries, plugin contracts,
                                # end-to-end training, architecture rules
