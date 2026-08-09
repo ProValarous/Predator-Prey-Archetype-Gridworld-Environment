@@ -357,6 +357,14 @@ class TestQInit:
         with pytest.raises(ValueError):
             JALGT(env, base_config(q_init="bogus"))
 
+    def test_rejects_negative_q_init_scale(self):
+        """Fail fast at construction, not later mid-training the first time
+        a cell is actually randomly initialized (np.random.Generator.normal
+        itself raises on a negative scale, but only when called)."""
+        env = make_env(n_pred=1, n_prey=1)
+        with pytest.raises(ValueError):
+            JALGT(env, base_config(q_init="random", q_init_scale=-0.1))
+
     def test_default_q_init_is_zero(self):
         env = make_env(n_pred=1, n_prey=1)
         algo = JALGT(env, base_config(action_dim=5))

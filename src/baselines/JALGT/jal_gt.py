@@ -117,6 +117,8 @@ class JALGT(BaseAlgorithm):
         if self.q_init not in ("zero", "random"):
             raise ValueError(f"q_init must be 'zero' or 'random', got {self.q_init!r}")
         self.q_init_scale = float(config.get("q_init_scale", 0.01))
+        if self.q_init_scale < 0:
+            raise ValueError(f"q_init_scale must be >= 0, got {self.q_init_scale}")
 
         self.rng = default_rng(config.get("seed", None))
 
