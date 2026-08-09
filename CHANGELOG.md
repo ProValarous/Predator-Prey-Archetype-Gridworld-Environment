@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- New baseline: **JAL-GT** (Joint-Action Learning with Game Theory —
+  Correlated Q-learning, Algorithm 7 in Albrecht, Christianos & Tuyls 2024,
+  Section 6.2). `src/baselines/JALGT/jal_gt.py`: one joint-action value table
+  per agent, solved as a correlated-equilibrium linear program
+  (`scipy.optimize.linprog`) at every visited state rather than a greedy
+  argmax. Verified directly against the source textbook's own worked
+  examples (exact Prisoner's Dilemma result, Chicken-game welfare bound).
+  After root-causing and fixing an initial learning-effectiveness gap vs.
+  CQL (prey reward shaping, random Q-init, longer episodes — see
+  `docs/algorithms/jal-gt.md`), JAL-GT shows a modest, reproducible
+  capture-rate edge over CQL (~+1.8pp average) on a harder, real-prey-evasion
+  task, confirmed via paired runs across 5 independent environment layouts,
+  at a real compute cost (~45-70x slower than CQL). New `prey_distance`
+  reward (`src/multi_agent_package/rewards/prey_distance.py`) added
+  alongside it.
 - Documentation: new "Scope and Generalization Roadmap" page
   (`docs/overview/scope-and-roadmap.md`) giving an honest assessment of what the
   environment can express today (spatial pursuit with mixed cooperation and

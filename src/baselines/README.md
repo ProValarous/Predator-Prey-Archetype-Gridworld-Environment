@@ -106,7 +106,7 @@ The algorithm controls:
 baselines/
 │
 ├── base.py            # BaseAlgorithm interface
-├── __init__.py        # Auto-registers IQL, CQL, MixedTrainer, DQN, ActorCritic, A2C, A3C
+├── __init__.py        # Auto-registers IQL, CQL, MixedTrainer, JAL-GT, DQN, ActorCritic, A2C, A3C
 ├── registry/          # Algorithm registry
 │
 ├── IQL/               # Independent Q-Learning  (iql.py + CLI)
@@ -114,6 +114,8 @@ baselines/
 ├── CQL/               # Centralized Q-Learning  (cql.py + CLI)
 │
 ├── MIXED/             # MixedTrainer — per-team IQL/CQL  (mix_train.py + CLI)
+│
+├── JALGT/             # Joint-Action Learning with Game Theory — Correlated Q-learning  (jal_gt.py + CLI)
 │
 ├── DQN/               # Deep Q-Network, PyTorch (dqn.py + CLI, q_network.py, replay_buffer.py)
 │
@@ -197,6 +199,42 @@ Algorithms must:
 
 * Studying predator-prey algorithm asymmetry
 * Ablations where one team is centralized, the other is not
+
+---
+
+## 🟥 JAL-GT — Joint-Action Learning with Game Theory
+
+* Correlated Q-learning (Greenwald & Hall 2003) — Algorithm 7 in Albrecht,
+  Christianos & Tuyls (2024), *Multi-Agent Reinforcement Learning*, Section 6.2
+* One joint-action value table **per agent** (not a single shared table like
+  CQL) — each valued by that agent's own reward, since the whole point of
+  solving an equilibrium is that agents' interests can conflict
+* Action selection **solves a correlated-equilibrium linear program**
+  (`scipy.optimize.linprog`) over the induced stage game at every visited
+  state, rather than taking an `argmax`/`max` over a Q-table
+* Two LP solves per environment step (action selection + bootstrap target) —
+  the dominant per-step cost, roughly 45-70x slower than CQL for the same
+  episode budget
+* Two opt-in, default-off config knobs: `marginal_weight` (blends raw
+  per-joint-action values with a marginal estimate before building the stage
+  game) and `q_init` (`"random"` vs. the default `"zero"` cell initialization)
+* Extensively verified against the source textbook's own ground-truth
+  examples and cross-checked against CQL under matched conditions — see the
+  [JAL-GT deep-dive](../../docs/algorithms/jal-gt.md) for the full trail,
+  including a retracted early conclusion and a real bug found and fixed
+  along the way
+
+### When to Use
+
+* Studying a genuinely game-theoretic joint policy against CQL's
+  single-shared-table centralization
+* General-sum adversarial settings where a correlated-equilibrium solution
+  concept is the theoretically appropriate fit (this environment is
+  confirmed not zero-sum, ruling out minimax-Q; Nash-Q's convergence
+  precondition essentially never holds here either — see the deep-dive for
+  the full comparison)
+* Willing to pay a real, measured compute cost (~45-70x CQL) for that
+  theoretical grounding
 
 ---
 
@@ -386,6 +424,7 @@ From `src/`:
 PYTHONPATH=src python -m multi_agent_package.scripts.run_iql
 PYTHONPATH=src python -m multi_agent_package.scripts.run_cql
 PYTHONPATH=src python -m multi_agent_package.scripts.run_mixed
+PYTHONPATH=src python -m multi_agent_package.scripts.run_jalgt --config-dir configs/jalgt_quickstart
 PYTHONPATH=src python -m multi_agent_package.scripts.run_dqn
 PYTHONPATH=src python -m multi_agent_package.scripts.run_dqn --config-dir configs/dqn_1v1   # double+dueling example
 PYTHONPATH=src python -m multi_agent_package.scripts.run_actor_critic
@@ -396,6 +435,7 @@ PYTHONPATH=src python -m multi_agent_package.scripts.run_a3c
 python -m baselines.IQL.iql --episodes 1000 --alpha 0.1 --save-path trained_iql.pkl
 python -m baselines.CQL.cql --episodes 1000 --alpha 0.1 --save-path trained_cql.pkl   # NOT --cql-alpha
 python -m baselines.MIXED.mix_train --predator-algo cql --prey-algo iql --episodes 1000
+python -m baselines.JALGT.jal_gt --episodes 1000 --size 6 --predators 1 --preys 1 --save-path trained_jalgt.pkl
 python -m baselines.DQN.dqn --episodes 1000 --hidden-layers 64 64 --save-path trained_dqn.pkl
 python -m baselines.AC.actor_critic --episodes 1000 --hidden-layers 64 64 --save-path trained_actor_critic.pkl
 python -m baselines.A2C.a2c --episodes 1000 --hidden-layers 64 64 --save-path trained_a2c.pkl

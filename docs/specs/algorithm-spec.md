@@ -131,7 +131,50 @@ experiment:
       episodes: 1000
 ```
 
-Registered algorithms: `iql`, `cql`, `mixed` (MixedTrainer — assign IQL or CQL per team), `dqn`, `actor_critic`, `a2c`, `a3c`.
+Registered algorithms: `iql`, `cql`, `mixed` (MixedTrainer — assign IQL or CQL per team), `jalgt`, `dqn`, `actor_critic`, `a2c`, `a3c`.
+
+---
+
+## JAL-GT — the Game-Theoretic Algorithm
+
+Unlike IQL/CQL/MixedTrainer/DQN (all greedy-over-a-value-function), `JALGT`
+(`baselines/JALGT/jal_gt.py`) picks a joint action by explicitly **solving a
+game-theoretic equilibrium** at every visited state — a correlated-equilibrium
+linear program (`scipy.optimize.linprog`), not an `argmax`. Structurally
+closest to `MixedTrainer`: one trainer instance centrally owns every agent's
+value table and drives the whole step/update loop, rather than one
+`BaseAlgorithm` instance per agent.
+
+**Per-agent tables, not one shared table like CQL.** Each agent keeps its own
+joint-action value table `Q_i(s, a)`, valued by its own reward — CQL reduces
+multi-agent learning to a single centralized decision-maker (one table, summed
+reward); JAL-GT deliberately keeps agents' interests separable, since the
+whole point of solving an equilibrium is that they can conflict.
+
+**No `observation_encoder` precondition** — like IQL/CQL/MixedTrainer (not
+DQN/AC/A2C/A3C), it hashes the joint observation directly into a tuple key
+rather than requiring a fixed-length numeric encoding.
+
+**`select_actions()` samples from the solved equilibrium, not a single best
+action.** Two LP solves happen per environment step during training (one for
+action selection, one for the next state's bootstrap target) — the dominant
+per-step cost, roughly 45-70x slower than CQL's single `argmax` (see
+[Scalability](../algorithms/jal-gt.md#scalability)).
+
+**Config keys** (`experiment_jalgt.yaml`): `alpha`, `gamma`, `epsilon`,
+`epsilon_decay`, `min_epsilon`, `action_dim`, `episodes`, `seed`, plus two
+opt-in, default-off knobs unique to this algorithm: `marginal_weight`
+(blends each agent's raw Q-values with a marginal estimate before
+constructing the stage game; `0.0` default is pure, verified Algorithm 7)
+and `q_init` (`"zero"` default vs. `"random"` — draws newly-visited cells
+from a normal distribution instead of defaulting to exactly `0.0`).
+
+**Verification is unusually extensive for this baseline** — ground-truth LP
+checks against the source textbook's own worked examples, a retracted
+short-budget conclusion, a root-caused learning-effectiveness gap, a real bug
+found and fixed (bootstrap dilution), and a corrected noise-floor methodology.
+See [JAL-GT](../algorithms/jal-gt.md#verification) for the full trail rather
+than duplicating it here.
 
 ---
 
@@ -450,7 +493,9 @@ Each algorithm instance sees the environment as a single-agent MDP from its pers
 
 **CQL** is centralized: a single Q-table is shared across all agents, keyed on the joint state-action space. This enables coordinated value estimates at the cost of exponential state-space scaling with agent count. (Note: this "CQL" — Centralized Q-Learning — is unrelated to the offline-RL algorithm "Conservative Q-Learning" that shares the same acronym in the wider literature; there's no conservative/pessimistic regularization here.)
 
-Centralized Training with Decentralized Execution (CTDE) — where a centralized critic uses global state during training but agents execute independently — is intentionally out of scope for all four baselines.
+**JAL-GT** sits between the two: each agent keeps its own value table (like IQL), but the joint action comes from solving a game-theoretic equilibrium over every agent's table at once (like CQL's full centralization), rather than either purely independent action selection or one collapsed shared table.
+
+Centralized Training with Decentralized Execution (CTDE) — where a centralized critic uses global state during training but agents execute independently — is intentionally out of scope for all baselines here.
 
 ### Exploration
 Epsilon-greedy exploration is applied **independently per agent** for the

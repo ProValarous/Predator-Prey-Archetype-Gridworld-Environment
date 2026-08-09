@@ -1,21 +1,25 @@
 # JAL-GT — Joint-Action Learning with Game Theory
 
-> **Status: implemented; LP correctness verified; a real learning-effectiveness
-> limitation found, root-caused, and one mitigation attempt (marginalization)
-> tried and found insufficient.** `src/baselines/JALGT/jal_gt.py` ships
-> Correlated Q-learning as described below. The equilibrium computation
-> itself is checked directly against the book's own worked examples (exact
-> Prisoner's Dilemma ground truth, Chicken-game welfare bound) and is
-> correct. A longer training run found that it substantially underperforms
-> CQL on this environment. The actual mechanism, found by direct inspection
-> rather than assumed: sparse per-joint-action data contains extreme outlier
-> values (single unlucky/lucky episodes passing through a rarely-visited
-> cell), and the correlated-equilibrium LP's raw argmax — and, it turns out,
-> mean-based marginalization too — are both non-robust to that kind of
-> outlier, unlike CQL's `max()`-based bootstrap. See
-> [Verification](#verification) for the full, evidence-based writeup,
-> including a real bug found and fixed along the way (bootstrap dilution)
-> and a flagged-but-untested idea for anyone picking this up next.
+> **Status: implemented; LP correctness verified; the original
+> learning-effectiveness gap vs. CQL has been substantially closed.**
+> `src/baselines/JALGT/jal_gt.py` ships Correlated Q-learning as described
+> below. The equilibrium computation itself is checked directly against the
+> book's own worked examples (exact Prisoner's Dilemma ground truth,
+> Chicken-game welfare bound) and is correct. An early longer training run
+> found JAL-GT substantially underperforming CQL, root-caused to prey never
+> receiving a reward signal (making the "game" degenerate) compounded by
+> outlier-sensitive sparse Q-values. After giving prey its own reward
+> shaping, randomizing Q-table initialization, and lengthening episodes,
+> **JAL-GT now shows a modest, reproducible capture-rate edge over CQL
+> (~+1.8 percentage points on average) on a harder, more realistic version
+> of the task, confirmed via paired runs across 5 independent environment
+> layouts.** See [Verification](#verification) for the full evidence trail,
+> including a real bug found and fixed along the way (bootstrap dilution), a
+> corrected noise-floor methodology (an initial attempt was flawed and is
+> documented as such), and the open threads this doesn't resolve
+> (equilibrium-selection objective, learning rate, robust-statistic stage-game
+> construction, and which of the three fixes actually mattered — they were
+> tested bundled, not in isolation).
 
 Where [CQL](cql-mixed.md) reduces the multi-agent problem to a single
 centralized decision-maker (one shared Q-table, summed reward), **JAL-GT**
@@ -395,6 +399,125 @@ and a large enough change to deserve its own verification pass rather than
 another same-session iteration. `marginal_weight` ships as implemented and
 tested (default `0.0`, a verified no-op, preserving the original,
 book-faithful behavior) — it just isn't the fix.
+
+### Closing the gap: prey shaping, random init, longer episodes
+
+The findings above were presented at a team sync. One thread followed up
+directly: Greenwald & Hall's original Correlated-Q paper defines four
+equilibrium-selection rules, not just the utilitarian (welfare-maximizing)
+one used here — egalitarian, republican, and **libertarian** (each agent
+picks its own preferred equilibrium rather than agreeing to a shared total)
+are also defined, and libertarian in particular is a plausible better fit
+for an adversarial pair. **Not implemented** — flagged as a concrete,
+citable next step, not a vague one.
+
+Three targeted fixes came out of that discussion and were implemented and
+tested together (not isolated — a positive result below confirms the
+combination unblocks something, not which piece mattered most):
+
+- **`q_init` config option** (`"zero"`, default, unchanged Algorithm 7
+  behavior; `"random"` — draws each newly-visited joint-action cell from
+  $\mathcal{N}(0, \text{q\_init\_scale})$ instead of defaulting to exactly
+  0.0). Motivation: an all-zero, all-unvisited row can't differentiate one
+  action from another until real data arrives, which is exactly the
+  near-tie condition behind the outlier-sensitivity finding above.
+- **`max_steps`** raised from 100 to 300 in `configs/jalgt_quickstart/env.yaml`
+  — more state-space coverage per episode, directly targeting the sparse
+  per-cell visitation finding, without changing the episode budget.
+- **A new `prey_distance` reward** (`src/multi_agent_package/rewards/prey_distance.py`)
+  giving prey its own per-step incentive to move away from the nearest
+  predator, plus enabling the pre-existing but previously unused `survival`
+  reward. Prey's Q-values were exactly zero at every state before this (the
+  root cause identified above) — deliberately **not** a negation of
+  `predator_distance`: an exact negation sums to zero on every step and
+  degenerates the LP's welfare objective to an arbitrary vertex. Uses an
+  asymmetric weight (0.2 vs. predator's 0.5).
+
+**A 3,000-episode sanity check was deliberately not trusted.** With all
+three fixes, JAL-GT read 17.5% capture rate vs. CQL's 15.5% at that budget
+— the same short-budget-snapshot shape that produced the retracted
+"comparable" conclusion earlier in this document. Escalated straight to a
+full 30,000-episode confirmation run rather than reporting it.
+
+**30,000-episode confirmation (single seed):** JAL-GT averaged **15.35%**
+across its 10 checkpoints (14.5, 16.0, 19.0, 13.0, 13.5, 11.5, 18.0, 14.0,
+17.0, 17.0), CQL averaged **12.8%** (14.0, 15.0, 17.5, 14.5, 12.5, 10.5,
+11.5, 15.0, 6.5, 11.0). The hard 0.0% wall is gone — every checkpoint is
+now nonzero.
+
+**Important interpretive caveat:** this is not a re-test of the same
+question as the 56.0% benchmark above. Prey previously had zero reward
+signal (a degenerate, non-adversarial opponent); it now actively evades.
+The task itself is harder for both algorithms, so CQL's old 56.0% no
+longer applies as a comparison point. Neither algorithm shows a clean
+trend anymore either — both noisy and roughly flat across all 10
+checkpoints, unlike CQL's old monotonic climb, plausibly because
+$\epsilon$ locks to its floor (0.05) by ~episode 600 and stays there for
+the remaining ~29,400 episodes.
+
+**A first-order practical finding, independent of accuracy:** this run
+took JAL-GT 159.8 minutes; the identical CQL run took 2.3 minutes —
+roughly **70x slower**, on top of the ~45x per-step LP-solve cost already
+documented in [Scalability](#scalability).
+
+### Establishing a noise floor — a methodology correction
+
+Before trusting the 15.35% vs. 12.8% gap, its size needed to be checked
+against CQL's own run-to-run noise. **First attempt was flawed, and is
+documented as such rather than quietly redone:** reran CQL 5 times varying
+only the algorithm's own seed, holding the environment's seed fixed. Several
+checkpoints matched to the decimal across all 5 "different seed" runs.
+Root cause: CQL's greedy evaluation (`select_actions` at `epsilon=0`) is
+`np.argmax`, fully deterministic given the Q-table — eval outcomes depend
+only on the trained Q-table and the environment's reset sequence, and with
+the environment's seed held fixed, that sequence was bit-for-bit identical
+across all 5 runs. Confirmed directly with a small targeted test before
+trusting the diagnosis: varying only the environment's seed changed a
+result (18.0% → 16.0%); varying only the algorithm's seed (environment
+fixed) reproduced the identical number twice.
+
+**Corrected: 5 independent CQL runs, varying the environment's seed**
+(obstacle/start-position layout) instead:
+
+| env-seed | 101 | 202 | 303 | 404 | 505 |
+| --- | --- | --- | --- | --- | --- |
+| Average capture rate | 13.35% | 13.35% | 12.50% | 12.45% | 13.45% |
+
+**CQL's genuine noise floor: 12.45%–13.45%**, a tight ~1-point band — even
+though any single checkpoint within one run can swing 8.5%–20.5%. The
+per-run average is far more stable than any one checkpoint reading.
+
+### Paired confirmation across independent environment layouts
+
+JAL-GT was re-run on the same 4 environment seeds already used for CQL
+(101, 202, 303, 404), for a direct, same-layout paired comparison — the
+strongest evidence design available here (~110 minutes each, ~7.4 hours
+total):
+
+| env-seed | CQL average | JAL-GT average | Difference |
+| --- | --- | --- | --- |
+| 42 (original) | 12.8% | 15.35% | +2.55 |
+| 101 | 13.35% | 13.3% | −0.05 |
+| 202 | 13.35% | 15.35% | +2.00 |
+| 303 | 12.5% | 15.1% | +2.60 |
+| 404 | 12.45% | 14.55% | +2.10 |
+| **Average** | | | **+1.84** |
+
+**4 of 5 paired layouts show JAL-GT ahead by ~2.0–2.6 points; one (seed
+101) shows an essential tie.** Given how tight CQL's own 5-run band is
+(§ above), this consistency reads as a real effect rather than noise — but
+it is not universal across every seed, and that exception is kept in this
+writeup rather than smoothed over.
+
+**Where this leaves the original finding above:** the outlier-sensitivity
+mechanism (§ "Marginalized JAL-GT") is still real and still the correct
+explanation for *why* raw and mean-based equilibrium selection struggled —
+that hasn't been disproven. What changed is that prey previously
+contributing nothing to the stage game (Q-values exactly zero everywhere)
+was itself compounding the problem, on top of the outlier sensitivity, and
+fixing that alone was enough to flip the net comparison. The
+robust-statistic stage-game idea flagged above remains untested and
+addresses a different mechanism — it is not superseded by this result.
 
 ## Papers
 

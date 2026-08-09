@@ -1,9 +1,11 @@
 # Algorithms Overview
 
-This project ships seven learning **baselines**, all living under
+This project ships eight learning **baselines**, all living under
 `src/baselines/` and all talking to the environment only through
-`env.reset()` / `env.step()`. Three are tabular (they store a Q-table), one is a
-value-based neural network (DQN), and three are policy-gradient actor-critic
+`env.reset()` / `env.step()`. Four are tabular (three store a Q-table; JAL-GT
+stores a joint-action value table per agent and solves a game-theoretic
+equilibrium at every visited state instead of taking a greedy argmax), one is
+a value-based neural network (DQN), and three are policy-gradient actor-critic
 methods that differ in *how* they update (online, batched, or asynchronous).
 This page helps you pick one; each has its own deep-dive.
 
@@ -11,13 +13,14 @@ Before reading these, make sure you are comfortable with
 [RL Foundations](../concepts/rl-foundations.md) (Q-learning, the Bellman equation)
 and [MARL Theory](../concepts/marl.md) (what changes with many agents).
 
-## The seven baselines
+## The eight baselines
 
 | Algorithm | Kind | Coordination | Deep-dive |
 | --- | --- | --- | --- |
 | **IQL** — Independent Q-Learning | tabular | none — each agent learns alone | [IQL](iql.md) |
 | **CQL** — Centralized Q-Learning | tabular | full — one joint Q-table | [CQL & MixedTrainer](cql-mixed.md) |
 | **MixedTrainer** | tabular | per-team (IQL or CQL each) | [CQL & MixedTrainer](cql-mixed.md) |
+| **JAL-GT** — Joint-Action Learning with Game Theory | tabular, game-theoretic | full — per-agent value tables, solved as a stage game | [JAL-GT](jal-gt.md) |
 | **DQN** — Deep Q-Network | neural | none — one network per agent | [DQN](dqn.md) → [Variants](../concepts/dqn-variants.md) |
 | **ActorCritic** — one-step online Actor-Critic | neural, on-policy | none — one network per agent | [Actor-Critic](actor-critic.md) |
 | **A2C** — Advantage Actor-Critic | neural, on-policy, batched | none — one actor+critic per agent | [A2C](a2c.md) |
@@ -53,6 +56,12 @@ Rules of thumb:
 - **Use MixedTrainer** to study asymmetry, e.g. centralized predators against
   independent prey (exactly the kind of comparison in the
   [research study](../reference/papers.md) built on this environment).
+- **Use JAL-GT** when you want a tabular method whose joint policy comes from
+  explicitly solving a game-theoretic equilibrium each step, rather than
+  CQL's greedy argmax over a single summed-reward table — the more
+  theoretically principled choice for a genuinely general-sum game, at a
+  real computational cost (roughly 45-70x slower than CQL; see
+  [Scalability](jal-gt.md#scalability)).
 - **Use DQN** when the observation is too large to tabulate or you want a policy
   that generalizes across states; enable [Double/Dueling](../concepts/dqn-variants.md)
   for a stronger variant.

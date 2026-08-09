@@ -38,7 +38,7 @@ nav:
     - ActorCritic (On-Policy): algorithms/actor-critic.md
     - A2C (Batched Actor-Critic): algorithms/a2c.md
     - A3C (Asynchronous Actor-Critic): algorithms/a3c.md
-    - JAL-GT (Joint-Action Learning, design spec): algorithms/jal-gt.md
+    - JAL-GT (Correlated Q-Learning): algorithms/jal-gt.md
   - Tutorials &amp; Guides:
     - First Experiment: tutorials/first-experiment.md
     - Custom Observation Builder: guides/custom-observation.md
