@@ -18,8 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   After root-causing and fixing an initial learning-effectiveness gap vs.
   CQL (prey reward shaping, random Q-init, longer episodes — see
   `docs/algorithms/jal-gt.md`), JAL-GT shows a modest, reproducible
-  capture-rate edge over CQL (~+1.8pp average) on a harder, real-prey-evasion
-  task, confirmed via paired runs across 5 independent environment layouts,
+  capture-rate edge over CQL (~+1.76pp average) on a harder, real-prey-evasion
+  task, confirmed via paired runs across a complete, symmetric set of 6
+  independent environment layouts (5 of 6 favor JAL-GT),
   at a real compute cost (~45-70x slower than CQL). New `prey_distance`
   reward (`src/multi_agent_package/rewards/prey_distance.py`) added
   alongside it.

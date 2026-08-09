@@ -11,9 +11,10 @@
 > outlier-sensitive sparse Q-values. After giving prey its own reward
 > shaping, randomizing Q-table initialization, and lengthening episodes,
 > **JAL-GT now shows a modest, reproducible capture-rate edge over CQL
-> (~+1.8 percentage points on average) on a harder, more realistic version
-> of the task, confirmed via paired runs across 5 independent environment
-> layouts.** See [Verification](#verification) for the full evidence trail,
+> (~+1.76 percentage points on average) on a harder, more realistic version
+> of the task, confirmed via paired runs across a complete, symmetric set of
+> 6 independent environment layouts (5 of 6 favor JAL-GT).** See
+> [Verification](#verification) for the full evidence trail,
 > including a real bug found and fixed along the way (bootstrap dilution), a
 > corrected noise-floor methodology (an initial attempt was flawed and is
 > documented as such), and the open threads this doesn't resolve
@@ -489,10 +490,11 @@ per-run average is far more stable than any one checkpoint reading.
 
 ### Paired confirmation across independent environment layouts
 
-JAL-GT was re-run on the same 4 environment seeds already used for CQL
-(101, 202, 303, 404), for a direct, same-layout paired comparison — the
-strongest evidence design available here (~110 minutes each, ~7.4 hours
-total):
+JAL-GT was re-run on all 5 environment seeds already used for CQL (101,
+202, 303, 404, 505), for a direct, same-layout paired comparison — the
+strongest evidence design available here, and a fully symmetric one: both
+algorithms now have 6 independent env-seed measurements each (~110 minutes
+per JAL-GT run, ~9.3 hours total across two sessions):
 
 | env-seed | CQL average | JAL-GT average | Difference |
 | --- | --- | --- | --- |
@@ -501,12 +503,16 @@ total):
 | 202 | 13.35% | 15.35% | +2.00 |
 | 303 | 12.5% | 15.1% | +2.60 |
 | 404 | 12.45% | 14.55% | +2.10 |
-| **Average** | | | **+1.84** |
+| 505 | 13.45% | 14.8% | +1.35 |
+| **Average** | | | **+1.76** |
 
-**4 of 5 paired layouts show JAL-GT ahead by ~2.0–2.6 points; one (seed
-101) shows an essential tie.** Given how tight CQL's own 5-run band is
-(§ above), this consistency reads as a real effect rather than noise — but
-it is not universal across every seed, and that exception is kept in this
+**5 of 6 paired layouts show JAL-GT ahead by ~1.35–2.6 points; one (seed
+101) shows an essential tie.** JAL-GT's own 6-seed spread (13.3%–15.35%) is
+a bit wider than CQL's tight 6-seed band (12.45%–13.45%, § above), but sits
+mostly above it rather than overlapping — only seed 101 falls inside CQL's
+own noise floor. This consistency across a now-complete, symmetric set of
+independent layouts reads as a real effect rather than noise — but it is
+not universal across every seed, and that exception is kept in this
 writeup rather than smoothed over.
 
 **Where this leaves the original finding above:** the outlier-sensitivity
