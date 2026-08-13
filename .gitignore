@@ -28,6 +28,7 @@ test_file.md
 # Personal meeting-prep notes -- never meant to be committed
 PROGRESS_REPORT.md
 PRESENTATION_SCRIPT.txt
+NEW_CHAT_PRIMER.md
 
 # Trained model artifacts
 *.pkl
